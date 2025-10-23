@@ -2,15 +2,19 @@
 
 #include <math.h>
 
-typedef struct {
+
+struct DTMData;
+struct LineState;
+
+typedef struct DTMData{
     int max_distance_check;
 
     // Function pointers act like methods
     void (*set_relative_origin)(struct DTMData* self, float latitude, float longitude);
-    void (*get_relative_height)(struct DTMData* self, int* E, int* N, int* h, boolean* out_of_bounds);
+    void (*get_relative_height)(struct DTMData* self, int* E, int* N, float* h, boolean* out_of_bounds);
 } DTMData;
 
-typedef struct {
+typedef struct LineState {
     int E, N; //Current point on line
     float d; // Distance travelled along line (not Euclidean)
     int dE, dN; //Absolute step size to each point
@@ -18,9 +22,9 @@ typedef struct {
     int err, e2; // Error tracking
 } LineState;
 
-
 boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_long, float origin_height, DTMData* DTM);
 void step_along_line(LineState* l);
+
 
 //void los_update() #TODO set imports
 //
@@ -40,11 +44,11 @@ boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_l
     // Set up height checks
     float max_checked_DTM_height = origin_height;
     float current_DTM_height = 0, sat_height = 0;
-    float sat_vertical_slope = tan(sat_elev);
+    float sat_vertical_slope = tanf(sat_elev);
 
     // Draws a line from (0,0) to (E1, N1) that's the maximum distance required to check
-    int E1 = round(DTM->max_distance_check * sin(sat_az));
-    int N1 = round(DTM->max_distance_check * cos(sat_az));
+    int E1 = (int)roundf(DTM->max_distance_check * sinf(sat_az));
+    int N1 = (int)roundf(DTM->max_distance_check * cosf(sat_az));
 
     // Set up Bresenham Algorithm
     int dE = abs(E1), sE = 0 < E1 ? 1 : -1;
@@ -94,7 +98,7 @@ void step_along_line(LineState* l)
     }
 
     if (l->e2 <= l->dE && l->e2 >= l->dN) {
-        l->d += 1.41421356237; //Root 2
+        l->d += 1.41421356237f; //Root 2
     }
     else {
         l->d += 1;
