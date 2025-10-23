@@ -3,16 +3,6 @@
 #include <math.h>
 
 
-struct DTMData;
-struct LineState;
-
-typedef struct DTMData{
-    int max_distance_check;
-
-    // Function pointers act like methods
-    void (*set_relative_origin)(struct DTMData* self, float latitude, float longitude);
-    void (*get_relative_height)(struct DTMData* self, int* E, int* N, float* h, boolean* out_of_bounds);
-} DTMData;
 
 typedef struct LineState {
     int E, N; //Current point on line
@@ -22,20 +12,19 @@ typedef struct LineState {
     int err, e2; // Error tracking
 } LineState;
 
-boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_long, float origin_height, DTMData* DTM);
 void step_along_line(LineState* l);
 
 
-//void los_update() #TODO set imports
+//void los_update() #TODO-DC set imports
 //
-//for sat in RTKLibSatObject{// TODO properly parse Sat
+//for sat in RTKLibSatObject{// TODO-DC properly parse Sat
 //    obstructed = check_los(sat_az, sat_elev, origin_lat, origin_long, origin_height, threshold, DTMClass);
 //    if not check_los(sat_az, sat_elev, origin_lat, origin_long, origin_height, threshold, DTMClass) {
 //        RTKLibObject.removeobservation(sat);
 //    }
 //}
 
-boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_long, float origin_height, DTMData* DTM) {
+extern boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_long, float origin_height, DTMData* DTM) {
     
     //Set up DTM call
     DTM->set_relative_origin(DTM, origin_lat, origin_long);
