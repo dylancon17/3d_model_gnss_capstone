@@ -83,7 +83,7 @@ boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_l
     }
 }
 
-void step_along_line(LineState* l)
+void step_along_line(LineState* l) // credit to https://zingl.github.io/bresenham.html
 {
     l->e2 = 2 * l->err;
 
