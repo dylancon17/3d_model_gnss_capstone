@@ -10,6 +10,7 @@ boolean test_los_case(
 	boolean expected_result,
 	boolean* success);
 
+// TODO-DS as part of setting up project flow, create a trigger to run tests
 extern boolean test_los_summary(DTMData* DTM) {
 	boolean success = 1;
 
