@@ -81,5 +81,8 @@
     <ClCompile Include="..\..\..\src\solution.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="checkLOS.c">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

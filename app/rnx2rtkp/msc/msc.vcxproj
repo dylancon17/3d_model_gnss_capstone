@@ -116,6 +116,9 @@
     <ClCompile Include="..\..\..\src\sbas.c" />
     <ClCompile Include="..\..\..\src\solution.c" />
     <ClCompile Include="..\rnx2rtkp.c" />
+    <ClCompile Include="checkLOS.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
