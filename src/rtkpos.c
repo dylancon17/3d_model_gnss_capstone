@@ -1534,6 +1534,10 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     }
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
+
+    // TODO-DC should reupdate satazel based off of the velocity propagation instead of using a single point estimation
+    // TODO-DC this is where observations should have their LOS checked. After this point they are then differenced and updated in the filter
+
     
     trace(4,"x(0)="); tracemat(4,rtk->x,1,NR(opt),13,4);
     
