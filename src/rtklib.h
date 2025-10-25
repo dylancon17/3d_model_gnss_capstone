@@ -1729,6 +1729,27 @@ extern int lexeph2pos(gtime_t time, int sat, const nav_t *nav, double *rs,
 extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
+/* custom project structs*/
+typedef struct DTMData {
+    int max_distance_check;
+
+    // Function pointers act like methods
+    void (*set_relative_origin)(struct DTMData* self, float latitude, float longitude);
+    void (*get_relative_height)(struct DTMData* self, int* E, int* N, float* h, boolean* out_of_bounds);
+} DTMData;
+
+/* custom project functions*/
+extern boolean test_los_summary(DTMData* DTM);
+
+extern boolean check_los(
+    float sat_az, 
+    float sat_elev, 
+    float origin_lat, 
+    float origin_long, 
+    float origin_height, 
+    DTMData* DTM);
+
+
 #ifdef __cplusplus
 }
 #endif

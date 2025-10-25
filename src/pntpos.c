@@ -226,11 +226,16 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         /* geometric distance/azimuth/elevation angle */
         if ((r=geodist(rs+i*6,rr,e))<=0.0||
             satazel(pos,e,azel+i*2)<opt->elmin) continue;
-        
+
+        // TODO-DC - Reject non los observations. Question - how to access previous position estimate?
+
+
         /* psudorange with code bias correction */
+		// DC-Warning - I don't think that a 0 pseudorange necesarrily means it gets rejected here
         if ((P=prange(obs+i,nav,azel+i*2,iter,opt,&vmeas))==0.0) continue;
         
         /* excluded satellite? */
+        // DC-Warning - Sat Exclude is not trivial logic
         if (satexclude(obs[i].sat,svh[i],opt)) continue;
         
         /* ionospheric corrections */
@@ -311,6 +316,14 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
                   const prcopt_t *opt, sol_t *sol, double *azel, int *vsat,
                   double *resp, char *msg)
 {
+    //obs, n = Observations and number of observations
+    //rs, dts, var, svh = satpos location, clock, variance and health
+    //nav = ephemeris (not needed at this point?)
+    //opt (only do LOS if this is the actual positioning type?)
+    //azel is blank!
+    //vsat = sat residuals?
+    //resp?
+    //msg = Error messages
     double x[NX]={0},dx[NX],Q[NX*NX],*v,*H,*var,sig;
     int i,j,k,info,stat,nv,ns;
     
@@ -319,9 +332,9 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
     v=mat(n+4,1); H=mat(NX,n+4); var=mat(n+4,1);
     
     for (i=0;i<3;i++) x[i]=sol->rr[i];
-    
+
     for (i=0;i<MAXITR;i++) {
-        
+
         /* pseudorange residuals */
         nv=rescode(i,obs,n,rs,dts,vare,svh,nav,x,opt,v,H,var,azel,vsat,resp,
                    &ns);
@@ -330,6 +343,9 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
             sprintf(msg,"lack of valid sats ns=%d",nv);
             break;
         }
+
+        // TODO-DC - Update the weights here for a SPP solution
+
         /* weight by variance */
         for (j=0;j<nv;j++) {
             sig=sqrt(var[j]);
@@ -540,6 +556,7 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
                   const prcopt_t *opt, sol_t *sol, double *azel, ssat_t *ssat,
                   char *msg)
 {
+    //Single Point solution, primary solution if opt->mode==PMODE_SINGLE
     prcopt_t opt_=*opt;
     double *rs,*dts,*var,*azel_,*resp;
     int i,stat,vsat[MAXOBS]={0},svh[MAXOBS];
@@ -567,6 +584,7 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
     /* estimate receiver position with pseudorange */
     stat=estpos(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
     
+    // TODO-DC - Consider disabling RAIM for error comparison
     /* raim fde */
     if (!stat&&n>=6&&opt->posopt[4]) {
         stat=raim_fde(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
