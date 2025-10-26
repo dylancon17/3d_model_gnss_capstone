@@ -6,7 +6,7 @@
 
 typedef struct LineState {
     int E, N; //Current point on line
-    float d; // Distance travelled along line (not Euclidean)
+    double d; // Distance travelled along line (not Euclidean)
     int dE, dN; //Absolute step size to each point
     int sE, sN; // Unit direction to step along line 
     int err, e2; // Error tracking
@@ -24,16 +24,40 @@ void step_along_line(LineState* l);
 //    }
 //}
 
-extern boolean check_los(float sat_az, float sat_elev, float origin_lat, float origin_long, float origin_height, DTMData* DTM) {
+void los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int *ns, const double* rs) {
+    // TODO confirm how rs is being passed
+    int i;
+    double rr[3] = rtk->x; // TODO properly declare this. Add in check for if RTK position doesn't yet exist! Confirm coordinate system. TODO, add filtering if initial position SD if terrible
+    double *e, *azel; //warning get's overwritten each satellite. Should be fine?
+    double r;
+    boolean reject = 0;
+    for (i = 0;i < ns && i < MAXOBS;i++) {
+        geodist(rs + i * 6, rr, e); // TODO add logic here for if this fails
+        satazel(rr, e, azel); // TODO add logic here for if this fails
+
+        reject = !check_los(azel[0], azel[1], rr[0], rr[1], rr[2], DEM); //TODO figure out how to pass the DEM class. Maybe through opt?
+
+        if (reject) {
+            ns = ns - 1;
+            //TODO remove and shift the indices of sat, iu, ir
+        }
+        
+        // TODO add logging to report on what's happening
+    }
+
+
+extern boolean check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, DTMData* DTM) {
     
     //Set up DTM call
     DTM->set_relative_origin(DTM, origin_lat, origin_long);
     boolean out_of_bounds = 0;
     
+
+    //TODO use DEM height if > than origin_height
     // Set up height checks
-    float max_checked_DTM_height = origin_height;
-    float current_DTM_height = 0, sat_height = 0;
-    float sat_vertical_slope = tanf(sat_elev);
+    double max_checked_DTM_height = origin_height;
+    double current_DTM_height = 0, sat_height = 0;
+    double sat_vertical_slope = tanf(sat_elev);
 
     // Draws a line from (0,0) to (E1, N1) that's the maximum distance required to check
     int E1 = (int)roundf(DTM->max_distance_check * sinf(sat_az));
