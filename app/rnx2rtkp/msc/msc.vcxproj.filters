@@ -84,5 +84,11 @@
     <ClCompile Include="checkLOS.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="custom_tests.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="demdata.c">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
