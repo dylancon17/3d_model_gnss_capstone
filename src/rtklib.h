@@ -470,6 +470,12 @@ extern "C" {
 #define FILEPATHSEP '/'
 #endif
 
+/* custom project structs*/
+typedef struct DTMData {
+    int max_distance_check; /* Max Range*/
+    boolean reject_observations; /* 1 to not perform any LoS calcs*/
+} DTMData;
+
 /* type definitions ----------------------------------------------------------*/
 
 typedef struct {        /* time struct */
@@ -1018,6 +1024,7 @@ typedef struct {        /* processing options type */
     int  syncsol;       /* solution sync mode (0:off,1:on) */
     double odisp[2][6*11]; /* ocean tide loading parameters {rov,base} */
     exterr_t exterr;    /* extended receiver error model */
+    struct DTMData dtm;     /* The DEM related data*/
 } prcopt_t;
 
 typedef struct {        /* solution options type */
@@ -1729,25 +1736,38 @@ extern int lexeph2pos(gtime_t time, int sat, const nav_t *nav, double *rs,
 extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
-/* custom project structs*/
-typedef struct DTMData {
-    int max_distance_check;
-
-    // Function pointers act like methods
-    void (*set_relative_origin)(struct DTMData* self, float latitude, float longitude);
-    void (*get_relative_height)(struct DTMData* self, int* E, int* N, float* h, boolean* out_of_bounds);
-} DTMData;
 
 /* custom project functions*/
 extern boolean test_los_summary(DTMData* DTM);
 
 extern boolean check_los(
-    float sat_az, 
-    float sat_elev, 
-    float origin_lat, 
-    float origin_long, 
-    float origin_height, 
-    DTMData* DTM);
+    double sat_az,
+    double sat_elev,
+    double origin_lat,
+    double origin_long,
+    double origin_height,
+    struct DTMData* DTM);
+
+extern int los_update(
+    rtk_t* rtk,
+    const obsd_t* obs,
+    int* sat,
+    int* iu,
+    int* ir,
+    int* ns,
+    const double* rs);
+
+extern void set_relative_origin(
+    struct DTMData* DEM, 
+    double latitude, 
+    double longitude);
+
+extern void get_relative_height(
+    struct DTMData* DEM, 
+    int* E, 
+    int* N, 
+    float* h, 
+    boolean* out_of_bounds);
 
 
 #ifdef __cplusplus
