@@ -1,4 +1,6 @@
-#include "rtklib.h"
+﻿#include "rtklib.h"
+
+#include <stdlib.h>
 
 #include <math.h>
 
@@ -15,41 +17,70 @@ typedef struct LineState {
 void step_along_line(LineState* l);
 
 
-//void los_update() #TODO-DC set imports
-//
-//for sat in RTKLibSatObject{// TODO-DC properly parse Sat
-//    obstructed = check_los(sat_az, sat_elev, origin_lat, origin_long, origin_height, threshold, DTMClass);
-//    if not check_los(sat_az, sat_elev, origin_lat, origin_long, origin_height, threshold, DTMClass) {
-//        RTKLibObject.removeobservation(sat);
-//    }
-//}
-
-void los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int *ns, const double* rs) {
+/* los update ---------------------------------------------------
+* check and update observations based off of line of sight
+* args   : rtl_t     *rtk   I   rtk object. Assumed that position is propagated and initialized. Includes link to DEM
+*          obsd_t    *level I   rover and base observations. Rover is all first then base. Can also check receiver flag.
+*          int       *sat   I   PRN of common satellite[k]
+*          int       *iu    I   index of rover sat[k] in obsd_t
+*          int       *ir    I   index of base sat[k] in obsd_t
+*          int       *ns    I   number of common satellites
+*          double    *rs    I   satellite positions in ECEF
+* return : int (number of rejected sats) */
+extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
     // TODO confirm how rs is being passed
-    int i;
-    double rr[3] = rtk->x; // TODO properly declare this. Add in check for if RTK position doesn't yet exist! Confirm coordinate system. TODO, add filtering if initial position SD if terrible
-    double *e, *azel; //warning get's overwritten each satellite. Should be fine?
+    int i, nrej=0;
+    int rej_idx[MAXOBS];
+    const double *rr = rtk->sol.rr; // TODO add filtering for if the estimated position is poor
+    // TODO is a check needed if no initial position? Or does the Update step account for that?
+
+
+    double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
     boolean reject = 0;
-    for (i = 0;i < ns && i < MAXOBS;i++) {
-        geodist(rs + i * 6, rr, e); // TODO add logic here for if this fails
-        satazel(rr, e, azel); // TODO add logic here for if this fails
 
-        reject = !check_los(azel[0], azel[1], rr[0], rr[1], rr[2], DEM); //TODO figure out how to pass the DEM class. Maybe through opt?
+    for (i = 0;i < *ns && i < MAXOBS;i++) {
+        r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
+            /* geodist failure check */
+        if (r <= 0) {
+            /* Bad geometry → reject satellite */
+            rej_idx[nrej++] = i;
+            continue;
+        }
+
+        satazel(rr, e, azel);
+
+        reject = !check_los(azel[0], azel[1], rr[0], rr[1], rr[2], &rtk->opt.dtm);
+
 
         if (reject) {
-            ns = ns - 1;
-            //TODO remove and shift the indices of sat, iu, ir
+            rej_idx[nrej++] = i;
+            trace(3, "Rejected satellite %d: az=%.2f°, el=%.2f°\n", sat[i], azel[0], azel[1]);
         }
-        
+
         // TODO add logging to report on what's happening
     }
 
+    // TODO add check if removing too many (indicates incorrect estimated position more likely)
+    // Remove the rejected indices
+    for (i = nrej - 1; i >= 0; i--) {
+        int idx = rej_idx[i];
+        memmove(sat + idx, sat + idx + 1, (*ns - idx - 1) * sizeof(int));
+        memmove(iu + idx, iu + idx + 1, (*ns - idx - 1) * sizeof(int));
+        memmove(ir + idx, ir + idx + 1, (*ns - idx - 1) * sizeof(int));
 
-extern boolean check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, DTMData* DTM) {
+        (*ns)--;
+    }
+
+    return  nrej;
+    
+}
+
+
+extern boolean check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, struct DTMData* DTM) {
     
     //Set up DTM call
-    DTM->set_relative_origin(DTM, origin_lat, origin_long);
+    set_relative_origin(DTM, origin_lat, origin_long);
     boolean out_of_bounds = 0;
     
 
@@ -65,14 +96,14 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
 
     // Set up Bresenham Algorithm
     int dE = abs(E1), sE = 0 < E1 ? 1 : -1;
-    int dN = -abs(N1), sN = 0 < N1 ? 1 : -1;; // Defines directions of steps
+    int dN = -abs(N1), sN = 0 < N1 ? 1 : -1; // Defines directions of steps
     LineState line = {0, 0, 0, dE, dN, sE, sN, dE + dN, 0};
 
 
     while (1) {
         // Traverse the DTM
         step_along_line(&line);
-        DTM->get_relative_height(DTM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
+        get_relative_height(DTM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
 
         // If fully traversed DTM, LOS is clear
         if (out_of_bounds) {return 1;}
@@ -90,7 +121,7 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
         if (sat_height < current_DTM_height) { return 0; }
 
         // Have traversed the max distance required to trraverse, LOS is clear
-        if (line.E == E1 && line.N == N1) { return 1; }
+        if (DTM->max_distance_check < line.d) { return 1; }
 
         // Otherwise continue traversing
     }
@@ -100,19 +131,23 @@ void step_along_line(LineState* l) // credit to https://zingl.github.io/bresenha
 {
     l->e2 = 2 * l->err;
 
+    // Traverse North/South
     if (l->e2 >= l->dN) {
         l->err += l->dN;
         l->E += l->sE;
     }
     
+    // Traverse East/West
     if (l->e2 <= l->dE) {
         l->err += l->dE;
         l->N += l->sN;
     }
 
+    // If traversed East/West and North/South add root 2 distance
     if (l->e2 <= l->dE && l->e2 >= l->dN) {
         l->d += 1.41421356237f; //Root 2
     }
+    // Otherwise only travelled one axis
     else {
         l->d += 1;
     }
