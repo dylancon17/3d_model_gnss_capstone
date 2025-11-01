@@ -89,6 +89,8 @@ static void printhelp(void)
 /* rnx2rtkp main -------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
+    
+
     prcopt_t prcopt=prcopt_default;
     solopt_t solopt=solopt_default;
     filopt_t filopt={""};
@@ -105,6 +107,10 @@ int main(int argc, char **argv)
     sprintf(solopt.prog ,"%s ver.%s",PROGNAME,VER_RTKLIB);
     sprintf(filopt.trace,"%s.trace",PROGNAME);
     
+    /* set DEM options TODO-TC*/
+    prcopt.dtm.max_distance_check = 500;
+    prcopt.dtm.reject_observations = 0;
+
     /* load options from configuration file */
     for (i=1;i<argc;i++) {
         if (!strcmp(argv[i],"-k")&&i+1<argc) {
