@@ -67,6 +67,7 @@ static const char *help[]={
 " -l lat lon hgt reference (base) receiver latitude/longitude/height (deg/m)",
 " -y level  output soltion status (0:off,1:states,2:residuals) [0]",
 " -x level  debug trace level (0:off) [0]"
+" -dem      use a dem to aid in the solution output"
 };
 /* show message --------------------------------------------------------------*/
 extern int showmsg(char *format, ...)
@@ -161,6 +162,7 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(argv[i],"-y")&&i+1<argc) solopt.sstat=atoi(argv[++i]);
         else if (!strcmp(argv[i],"-x")&&i+1<argc) solopt.trace=atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-dem")) prcopt.dtm.reject_observations = 1;
         else if (*argv[i]=='-') printhelp();
         else if (n<MAXFILE) infile[n++]=argv[i];
     }
