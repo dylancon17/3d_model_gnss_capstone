@@ -66,7 +66,7 @@ static const char *help[]={
 " -r x y z  reference (base) receiver ecef pos (m) [average of single pos]",
 " -l lat lon hgt reference (base) receiver latitude/longitude/height (deg/m)",
 " -y level  output soltion status (0:off,1:states,2:residuals) [0]",
-" -x level  debug trace level (0:off) [0]"
+" -x level  debug trace level (0:off) [0]",
 " -dem      use a dem to aid in the solution output"
 };
 /* show message --------------------------------------------------------------*/
