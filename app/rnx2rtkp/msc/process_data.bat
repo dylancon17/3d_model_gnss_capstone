@@ -1,14 +1,12 @@
 @echo off
 REM ===================================================================
 REM Usage:
-REM   process_data.bat [Dataset] [DEM] [PLOT] [PREFIX]
+REM   process_data.bat [Dataset] [DEM] [PLOT] [BUILD] [PERFORMANCE] [ANALYZE] [PREFIX]
 REM Example:
 REM   process.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
 REM   process.bat 3 DEM PLOT RUN3     -> dataset 3, DEM only, plot, prefix RUN3
-REM   process.bat 123 BOTHDEM NOPLOT  -> datasets 1,2,3 in order, both DEM & NODEM, no plot
-REM   process.bat ALL_DATA NODEM PLOT -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
-REM   TODO add in argument related to auto building the code
-REM   TODO add in arugment for measuring resources (check out vsperfcmd)
+REM   process.bat 123 BOTHDEM NOBUILD NOPERFORMANCE NOANALYZE NOPLOT  -> datasets 1,2,3 in order, both DEM & NODEM, no plot
+REM   process.bat ALL_DATA NODEM BUILD PERFORMANCE ANALYZE PLOT -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
 REM   TODO add in argument for running the python script
 REM ===================================================================
 
@@ -28,31 +26,37 @@ REM Arg order: Dataset, DEM, PLOT, PREFIX
 set "ARG_DATASET=%~1"
 set "ARG_DEM=%~2"
 set "ARG_PLOT=%~3"
-set "ARG_PREFIX=%~4"
+set "ARG_BUILD=%~4"
+set "ARG_PERFORMANCE=%~5"
+set "ARG_ANALYZE=%~6"
+set "ARG_PREFIX=%~7"
 
-if "%ARG_DATASET%"=="" set "ARG_DATASET=ALL_DATA"
-if "%ARG_DEM%"=="" set "ARG_DEM=BOTHDEM"
-if "%ARG_PLOT%"=="" set "ARG_PLOT=NOPLOT"
+if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
+if "!ARG_DEM!"=="" set "ARG_DEM=BOTHDEM"
+if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
+if "!ARG_BUILD!"=="" set "ARG_BUILD=BUILD"
+if "!ARG_PERFORMANCE!"=="" set "ARG_PERFORMANCE=PERFORMANCE"
+if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 REM ARG_PREFIX default is empty
 
 REM ------------------ Build dataset list preserving order --------------
 set "DATASET_LIST="
 
-if /I "%ARG_DATASET%"=="ALL_DATA" (
+if /I "!ARG_DATASET!"=="ALL_DATA" (
     set "DATASET_LIST=1 2 3 4 5 6"
 ) else (
     REM Parse characters in ARG_DATASET and accept only digits 1..6 in the order they appear
-    set "s=%ARG_DATASET%"
+    set "s=!ARG_DATASET!"
     set "i=0"
     :__char_loop
     call set "ch=%%s:~%i%,1%%"
-    if "%ch%"=="" goto __char_done
-    if "%ch%"=="1" (set "DATASET_LIST=!DATASET_LIST! 1")
-    if "%ch%"=="2" (set "DATASET_LIST=!DATASET_LIST! 2")
-    if "%ch%"=="3" (set "DATASET_LIST=!DATASET_LIST! 3")
-    if "%ch%"=="4" (set "DATASET_LIST=!DATASET_LIST! 4")
-    if "%ch%"=="5" (set "DATASET_LIST=!DATASET_LIST! 5")
-    if "%ch%"=="6" (set "DATASET_LIST=!DATASET_LIST! 6")
+    if "!ch!"=="" goto __char_done
+    if "!ch!"=="1" (set "DATASET_LIST=!DATASET_LIST! 1")
+    if "!ch!"=="2" (set "DATASET_LIST=!DATASET_LIST! 2")
+    if "!ch!"=="3" (set "DATASET_LIST=!DATASET_LIST! 3")
+    if "!ch!"=="4" (set "DATASET_LIST=!DATASET_LIST! 4")
+    if "!ch!"=="5" (set "DATASET_LIST=!DATASET_LIST! 5")
+    if "!ch!"=="6" (set "DATASET_LIST=!DATASET_LIST! 6")
     set /a i+=1
     goto __char_loop
     :__char_done
@@ -67,9 +71,9 @@ REM Accept DEM, NODEM, BOTHDEM (default BOTHDEM)
 set "DO_DEM_1=0"   REM flag: run WITH -dem
 set "DO_DEM_0=0"   REM flag: run WITHOUT -dem
 
-if /I "%ARG_DEM%"=="DEM" (
+if /I "!ARG_DEM!"=="DEM" (
     set "DO_DEM_1=1"
-) else if /I "%ARG_DEM%"=="NODEM" (
+) else if /I "!ARG_DEM!"=="NODEM" (
     set "DO_DEM_0=1"
 ) else (
     REM BOTHDEM default
@@ -79,7 +83,7 @@ if /I "%ARG_DEM%"=="DEM" (
 
 REM ------------------ Interpret PLOT argument ---------------------------
 set "DO_PLOT=0"
-if /I "%ARG_PLOT%"=="PLOT" (
+if /I "!ARG_PLOT!"=="PLOT" (
     set "DO_PLOT=1"
 )
 
@@ -102,6 +106,11 @@ if "!SEC!"==" " set "SEC=00"
 REM Final timestamp
 set "TIMESTAMP=%YYYY%%MM%%DD%_%HH%%MIN%%SEC%"
 
+
+REM ------------------ Build the Code --------------------------
+if /I "!ARG_BUILD!"=="BUILD" (
+    msbuild rnx2rtkp_vc.sln /p:Configuration=Release
+)
 
 REM ------------------ MAIN loop over datasets --------------------------
 REM DATASET_LIST is space-separated and preserves user order
@@ -139,8 +148,16 @@ for %%D in (!DATASET_LIST!) do (
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
         REM Run rnx2rtkp with -dem, silent. Remove >nul 2>&1 if you want console output.
 	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
+	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
+            set "OUTPATHPERF=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
+	    vsperfcmd /start:sample /output:profile.vspx
+	)
         "%RTKLIB_EXE%" -k "%CONFIG%" !DEMFLAG! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
-	echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
+	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
+            vsperfcmd /shutdown
+	    vsperfreport profile.vspx /summary:all /output:!OUTPATHPERF!
+	)
+        echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
         set "OUTPATH_DEM=!OUTPATH!"
     )
 
@@ -150,7 +167,15 @@ for %%D in (!DATASET_LIST!) do (
         set "OUTFILE=solution_!TIMESTAMP!.pos"
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
 	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
+	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
+            set "OUTPATHPERF=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
+	    vsperfcmd /start:sample /output:profile.vspx
+	)
         "%RTKLIB_EXE%" -k "%CONFIG%" -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
+            vsperfcmd /shutdown
+            vsperfreport profile.vspx /summary:all /output:!OUTPATHPERF!
+        )
 	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
         set "OUTPATH_NODEM=!OUTPATH!"
     )
