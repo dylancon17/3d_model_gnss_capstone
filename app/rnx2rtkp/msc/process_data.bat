@@ -7,6 +7,9 @@ REM   process.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (d
 REM   process.bat 3 DEM PLOT RUN3     -> dataset 3, DEM only, plot, prefix RUN3
 REM   process.bat 123 BOTHDEM NOPLOT  -> datasets 1,2,3 in order, both DEM & NODEM, no plot
 REM   process.bat ALL_DATA NODEM PLOT -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
+REM   TODO add in argument related to auto building the code
+REM   TODO add in arugment for measuring resources (check out vsperfcmd)
+REM   TODO add in argument for running the python script
 REM ===================================================================
 
 REM ---------------- Configuration (edit paths if necessary) -----------
@@ -90,10 +93,15 @@ for /f "tokens=1-6 delims=/:. " %%a in ("%date% %time%") do (
     set "MIN=%%e"
     set "SEC=%%f"
 )
-set "HH=%HH: =0%"
-set "MIN=%MIN: =0%"
-set "SEC=%SEC: =0%"
+
+REM Pad single-digit values with leading zero
+if "!HH!"==" " set "HH=00"
+if "!MIN!"==" " set "MIN=00"
+if "!SEC!"==" " set "SEC=00"
+
+REM Final timestamp
 set "TIMESTAMP=%YYYY%%MM%%DD%_%HH%%MIN%%SEC%"
+
 
 REM ------------------ MAIN loop over datasets --------------------------
 REM DATASET_LIST is space-separated and preserves user order
@@ -130,9 +138,9 @@ for %%D in (!DATASET_LIST!) do (
         set "OUTFILE=solution_!TIMESTAMP!.pos"
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
         REM Run rnx2rtkp with -dem, silent. Remove >nul 2>&1 if you want console output.
-	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Yes Output Name: !OUTPATH!
+	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
         "%RTKLIB_EXE%" -k "%CONFIG%" !DEMFLAG! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
-	echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Yes Output Name: !OUTPATH!
+	echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
         set "OUTPATH_DEM=!OUTPATH!"
     )
 
@@ -141,9 +149,9 @@ for %%D in (!DATASET_LIST!) do (
         set "FINAL_PREFIX=!CUSTOM_PREFIX!"
         set "OUTFILE=solution_!TIMESTAMP!.pos"
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
-	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: No Output Name: !OUTPATH!
+	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
         "%RTKLIB_EXE%" -k "%CONFIG%" -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
-	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: No Output Name: !OUTPATH!
+	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
         set "OUTPATH_NODEM=!OUTPATH!"
     )
 
