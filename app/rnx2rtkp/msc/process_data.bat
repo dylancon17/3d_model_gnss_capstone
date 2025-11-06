@@ -4,9 +4,8 @@ REM Usage:
 REM   process_data.bat [Dataset] [DEM] [PLOT] [BUILD] [PERFORMANCE] [ANALYZE] [PREFIX]
 REM Example:
 REM   process_data.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
-REM   process_data.bat 3 DEM PLOT RUN3     -> dataset 3, DEM only, plot, prefix RUN3
 REM   process_data.bat 123 BOTHDEM NOPLOT NOBUILD NOPERFORMANCE NOANALYZE   -> datasets 1,2,3 in order, both DEM & NODEM, no plot
-REM   process_data.bat ALL_DATA NODEM PLOT BUILD PERFORMANCE ANALYZE -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
+REM   process_data.bat ALL_DATA NODEM PLOT BUILD PERFORMANCE ANALYZE RUN4 -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
 REM ===================================================================
 
 REM ---------------- Configuration (edit paths if necessary) -----------
@@ -34,9 +33,9 @@ if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
 if "!ARG_DEM!"=="" set "ARG_DEM=BOTHDEM"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
 if "!ARG_BUILD!"=="" set "ARG_BUILD=BUILD"
-if "!ARG_PERFORMANCE!"=="" set "ARG_PERFORMANCE=PERFORMANCE"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 REM ARG_PREFIX default is empty
+REM ARG_PERFORMANCE default is empty
 
 REM ------------------ Build dataset list preserving order --------------
 set "DATASET_LIST="
@@ -106,6 +105,18 @@ REM Final timestamp
 set "TIMESTAMP=%YYYY%%MM%%DD%_%HH%%MIN%%SEC%"
 
 
+REM ---------------- Elevate if needed for performance monitoring --------------------
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    if /I "%ARG_PERFORMANCE%"=="PERFORMANCE" (
+        echo Requesting administrator privileges...
+        powershell -Command "Start-Process '%~f0' -ArgumentList '%*' -Verb RunAs"
+        exit /b
+    )
+)
+echo Running with Administrator privileges for performance capture.
+
+
 REM ------------------ Build the Code --------------------------
 if /I "!ARG_BUILD!"=="BUILD" (
     msbuild rnx2rtkp_vc.sln /p:Configuration=Release
@@ -148,14 +159,17 @@ for %%D in (!DATASET_LIST!) do (
         REM Run rnx2rtkp with -dem, silent. Remove >nul 2>&1 if you want console output.
 	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            set "OUTPATHPERF=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
-	    vsperfcmd /start:sample /output:profile.vspx
+            set "OUTPATHSUMMARY=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!\"
+            set "OUTPATHETL=!OUTPATHSUMMARY!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
+            wpr -start CPU -filemode
 	)
         "%RTKLIB_EXE%" -k "%CONFIG%" !DEMFLAG! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            vsperfcmd /shutdown
-	    vsperfreport profile.vspx /summary:all /output:!OUTPATHPERF!
-	)
+            wpr -stop !OUTPATHETL!
+            wpaexporter.exe -i !OUTPATHETL! -o !OUTPATHSUMMARY! -profile CPU_Usage.wpaProfile
+            wpaexporter.exe -i !OUTPATHETL! -o !OUTPATHSUMMARY! -profile Memory_Usage.wpaProfile
+
+        )
         echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
 
     	if "!DO_PLOT!"=="1" (
@@ -170,13 +184,15 @@ for %%D in (!DATASET_LIST!) do (
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
 	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            set "OUTPATHPERF=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
-	    vsperfcmd /start:sample /output:profile.vspx
+            set "OUTPATHSUMMARY=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!\"
+            set "OUTPATHETL=!OUTPATHSUMMARY!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
+		wpr -start CPU.Light -filemode
 	)
         "%RTKLIB_EXE%" -k "%CONFIG%" -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            vsperfcmd /shutdown
-            vsperfreport profile.vspx /summary:all /output:!OUTPATHPERF!
+            wpr -stop !OUTPATHETL!
+            wpaexporter.exe -i !OUTPATHETL! -filterprocess RTKLIB.exe -output !OUTPATHSUMMARY!\CPU_CPUTrace.csv
+
         )
 	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
         if "!DO_PLOT!"=="1" (
