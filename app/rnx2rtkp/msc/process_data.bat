@@ -3,11 +3,10 @@ REM ===================================================================
 REM Usage:
 REM   process_data.bat [Dataset] [DEM] [PLOT] [BUILD] [PERFORMANCE] [ANALYZE] [PREFIX]
 REM Example:
-REM   process.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
-REM   process.bat 3 DEM PLOT RUN3     -> dataset 3, DEM only, plot, prefix RUN3
-REM   process.bat 123 BOTHDEM NOBUILD NOPERFORMANCE NOANALYZE NOPLOT  -> datasets 1,2,3 in order, both DEM & NODEM, no plot
-REM   process.bat ALL_DATA NODEM BUILD PERFORMANCE ANALYZE PLOT -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
-REM   TODO add in argument for running the python script
+REM   process_data.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
+REM   process_data.bat 3 DEM PLOT RUN3     -> dataset 3, DEM only, plot, prefix RUN3
+REM   process_data.bat 123 BOTHDEM NOPLOT NOBUILD NOPERFORMANCE NOANALYZE   -> datasets 1,2,3 in order, both DEM & NODEM, no plot
+REM   process_data.bat ALL_DATA NODEM PLOT BUILD PERFORMANCE ANALYZE -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
 REM ===================================================================
 
 REM ---------------- Configuration (edit paths if necessary) -----------
@@ -158,7 +157,10 @@ for %%D in (!DATASET_LIST!) do (
 	    vsperfreport profile.vspx /summary:all /output:!OUTPATHPERF!
 	)
         echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
-        set "OUTPATH_DEM=!OUTPATH!"
+
+    	if "!DO_PLOT!"=="1" (
+            start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
+	)
     )
 
     REM ------------------ NODEM run (if enabled) -----------------------
@@ -177,28 +179,9 @@ for %%D in (!DATASET_LIST!) do (
             vsperfreport profile.vspx /summary:all /output:!OUTPATHPERF!
         )
 	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
-        set "OUTPATH_NODEM=!OUTPATH!"
-    )
-
-    REM ------------------ RTKPLOT launching logic ----------------------
-    REM Only call RTKPLOT if DO_PLOT == 1 (user asked for PLOT)
-    REM For BOTHDEM case (both OUTPATH_DEM and OUTPATH_NODEM defined), we launch ONE RTKPLOT
-    REM with NODEM first, DEM second so DEM overlays.
-    if "!DO_PLOT!"=="1" (
-        REM BOTH available: launch combined (NODEM then DEM)
-        if defined OUTPATH_DEM if defined OUTPATH_NODEM (
-            REM Use start "" /min to launch minimized and non-blocking
-            start "" /min "%RTKPLOT_EXE%" "!OUTPATH_NODEM!" "!OUTPATH_DEM!" >nul 2>&1
-        ) else (
-            REM Only DEM exists
-            if defined OUTPATH_DEM (
-                start "" /min "%RTKPLOT_EXE%" "!OUTPATH_DEM!" >nul 2>&1
-            )
-            REM Only NODEM exists
-            if defined OUTPATH_NODEM (
-                start "" /min "%RTKPLOT_EXE%" "!OUTPATH_NODEM!" >nul 2>&1
-            )
-        )
+        if "!DO_PLOT!"=="1" (
+            start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
+	)
     )
 
     REM End of per-dataset processing
