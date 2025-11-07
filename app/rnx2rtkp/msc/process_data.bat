@@ -1,11 +1,11 @@
 @echo off
 REM ===================================================================
 REM Usage:
-REM   process_data.bat [Dataset] [DEM] [PLOT] [BUILD] [PERFORMANCE] [ANALYZE] [PREFIX]
+REM   process_data.bat [Dataset] [DEM] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
 REM Example:
 REM   process_data.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
-REM   process_data.bat 123 BOTHDEM NOPLOT NOBUILD NOPERFORMANCE NOANALYZE   -> datasets 1,2,3 in order, both DEM & NODEM, no plot
-REM   process_data.bat ALL_DATA NODEM PLOT BUILD PERFORMANCE ANALYZE RUN4 -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
+REM   process_data.bat 123 BOTHDEM NOPLOT NOPERFORMANCE NOANALYZE   -> datasets 1,2,3 in order, both DEM & NODEM, no plot
+REM   process_data.bat ALL_DATA NODEM PLOT PERFORMANCE ANALYZE RUN4 -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
 REM ===================================================================
 
 REM ---------------- Configuration (edit paths if necessary) -----------
@@ -14,6 +14,7 @@ set "DATAYEAR=23"
 set "RTKLIB_EXE=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\Release\rnx2rtkp.exe"
 set "RTKPLOT_EXE=C:\capstone\3d_model_gnss_capstone\app\rtkplot\rtkplot.exe"
 set "CONFIG=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\config.conf"
+set "wpaProfile=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\JustCPUrnx2rtkp.wpaProfile"
 REM --------------------------------------------------------------------
 
 REM Enable delayed expansion for variables modified inside loops
@@ -24,15 +25,13 @@ REM Arg order: Dataset, DEM, PLOT, PREFIX
 set "ARG_DATASET=%~1"
 set "ARG_DEM=%~2"
 set "ARG_PLOT=%~3"
-set "ARG_BUILD=%~4"
-set "ARG_PERFORMANCE=%~5"
-set "ARG_ANALYZE=%~6"
-set "ARG_PREFIX=%~7"
+set "ARG_PERFORMANCE=%~4"
+set "ARG_ANALYZE=%~5"
+set "ARG_PREFIX=%~6"
 
 if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
 if "!ARG_DEM!"=="" set "ARG_DEM=BOTHDEM"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
-if "!ARG_BUILD!"=="" set "ARG_BUILD=BUILD"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 REM ARG_PREFIX default is empty
 REM ARG_PERFORMANCE default is empty
@@ -86,23 +85,9 @@ if /I "!ARG_PLOT!"=="PLOT" (
 )
 
 REM ------------------ Generate one timestamp for entire run -----------
-REM Format: YYYYMMDD_HHMMSS
-for /f "tokens=1-6 delims=/:. " %%a in ("%date% %time%") do (
-    set "MM=%%a"
-    set "DD=%%b"
-    set "YYYY=%%c"
-    set "HH=%%d"
-    set "MIN=%%e"
-    set "SEC=%%f"
-)
+for /f %%a in ('wmic os get localdatetime ^| find "."') do set DTS=%%a
+set TIMESTAMP=%DTS:~0,8%_%DTS:~8,6%
 
-REM Pad single-digit values with leading zero
-if "!HH!"==" " set "HH=00"
-if "!MIN!"==" " set "MIN=00"
-if "!SEC!"==" " set "SEC=00"
-
-REM Final timestamp
-set "TIMESTAMP=%YYYY%%MM%%DD%_%HH%%MIN%%SEC%"
 
 
 REM ---------------- Elevate if needed for performance monitoring --------------------
@@ -116,11 +101,6 @@ if %errorlevel% neq 0 (
 )
 echo Running with Administrator privileges for performance capture.
 
-
-REM ------------------ Build the Code --------------------------
-if /I "!ARG_BUILD!"=="BUILD" (
-    msbuild rnx2rtkp_vc.sln /p:Configuration=Release
-)
 
 REM ------------------ MAIN loop over datasets --------------------------
 REM DATASET_LIST is space-separated and preserves user order
@@ -159,16 +139,15 @@ for %%D in (!DATASET_LIST!) do (
         REM Run rnx2rtkp with -dem, silent. Remove >nul 2>&1 if you want console output.
 	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            set "OUTPATHSUMMARY=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!\"
-            set "OUTPATHETL=!OUTPATHSUMMARY!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
-            wpr -start CPU -filemode
+            set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
+	    wpr -start CPU.Light -filemode
 	)
         "%RTKLIB_EXE%" -k "%CONFIG%" !DEMFLAG! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
             wpr -stop !OUTPATHETL!
-            wpaexporter.exe -i !OUTPATHETL! -o !OUTPATHSUMMARY! -profile CPU_Usage.wpaProfile
-            wpaexporter.exe -i !OUTPATHETL! -o !OUTPATHSUMMARY! -profile Memory_Usage.wpaProfile
-
+            wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
+	    ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
+            del /Q !OUTPATHETL!
         )
         echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
 
@@ -184,15 +163,15 @@ for %%D in (!DATASET_LIST!) do (
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
 	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            set "OUTPATHSUMMARY=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!\"
-            set "OUTPATHETL=!OUTPATHSUMMARY!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
-		wpr -start CPU.Light -filemode
+            set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
+	    wpr -start CPU.Light -filemode
 	)
         "%RTKLIB_EXE%" -k "%CONFIG%" -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
             wpr -stop !OUTPATHETL!
-            wpaexporter.exe -i !OUTPATHETL! -filterprocess RTKLIB.exe -output !OUTPATHSUMMARY!\CPU_CPUTrace.csv
-
+            wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
+            ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
+            del /Q !OUTPATHETL!
         )
 	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
         if "!DO_PLOT!"=="1" (

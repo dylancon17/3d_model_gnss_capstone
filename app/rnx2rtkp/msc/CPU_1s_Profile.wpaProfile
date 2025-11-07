@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<WPAProfile Version="1.0">
-  <Table Name="CPU Usage by Process" Category="CPU" Exporter="Csv" SampleInterval="1000" Filter="ProcessName='rnx2rtkp.exe'" />
-</WPAProfile>
