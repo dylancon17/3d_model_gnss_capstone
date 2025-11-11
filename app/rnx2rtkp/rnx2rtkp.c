@@ -105,10 +105,6 @@ int main(int argc, char **argv)
     solopt.timef=0;
     sprintf(solopt.prog ,"%s ver.%s",PROGNAME,VER_RTKLIB);
     sprintf(filopt.trace,"%s.trace",PROGNAME);
-    
-    /* set DEM options TODO-TC*/
-    prcopt.dtm.max_distance_check = 500;
-    prcopt.dtm.reject_observations = 0;
 
     /* load options from configuration file */
     for (i=1;i<argc;i++) {
@@ -118,6 +114,11 @@ int main(int argc, char **argv)
             getsysopts(&prcopt,&solopt,&filopt);
         }
     }
+
+    /* set DEM options TODO-TC*/
+    prcopt.dtm.max_distance_check = 10;
+    prcopt.dtm.reject_observations = 0;
+
     for (i=1,n=0;i<argc;i++) {
         if      (!strcmp(argv[i],"-o")&&i+1<argc) outfile=argv[++i];
         else if (!strcmp(argv[i],"-ts")&&i+2<argc) {
