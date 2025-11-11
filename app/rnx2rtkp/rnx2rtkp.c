@@ -66,7 +66,8 @@ static const char *help[]={
 " -r x y z  reference (base) receiver ecef pos (m) [average of single pos]",
 " -l lat lon hgt reference (base) receiver latitude/longitude/height (deg/m)",
 " -y level  output soltion status (0:off,1:states,2:residuals) [0]",
-" -x level  debug trace level (0:off) [0]"
+" -x level  debug trace level (0:off) [0]",
+" -dem      use a dem to aid in the solution output"
 };
 /* show message --------------------------------------------------------------*/
 extern int showmsg(char *format, ...)
@@ -89,6 +90,8 @@ static void printhelp(void)
 /* rnx2rtkp main -------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
+    
+
     prcopt_t prcopt=prcopt_default;
     solopt_t solopt=solopt_default;
     filopt_t filopt={""};
@@ -105,6 +108,10 @@ int main(int argc, char **argv)
     sprintf(solopt.prog ,"%s ver.%s",PROGNAME,VER_RTKLIB);
     sprintf(filopt.trace,"%s.trace",PROGNAME);
     
+    /* set DEM options TODO-TC*/
+    prcopt.dtm.max_distance_check = 500;
+    prcopt.dtm.reject_observations = 0;
+
     /* load options from configuration file */
     for (i=1;i<argc;i++) {
         if (!strcmp(argv[i],"-k")&&i+1<argc) {
@@ -155,6 +162,7 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(argv[i],"-y")&&i+1<argc) solopt.sstat=atoi(argv[++i]);
         else if (!strcmp(argv[i],"-x")&&i+1<argc) solopt.trace=atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-dem")) prcopt.dtm.reject_observations = 1;
         else if (*argv[i]=='-') printhelp();
         else if (n<MAXFILE) infile[n++]=argv[i];
     }

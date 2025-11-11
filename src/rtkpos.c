@@ -411,6 +411,14 @@ static void initx(rtk_t *rtk, double xi, double var, int i)
 static int selsat(const obsd_t *obs, double *azel, int nu, int nr,
                   const prcopt_t *opt, int *sat, int *iu, int *ir)
 {
+    // obs - the obs
+    // azel - the BASE azimuth and el to sats
+    // nu, nr - number of unknown sats, number of reference station sats
+    // opt - user options
+    // sat, iu, ir - uninitialized integer arrays. Used in this function as:
+        // sat: PRN's of common satellites
+        // iu: index list of the rover common sats
+        // ir: index list of the base commond sats
     int i,j,k=0;
     
     trace(3,"selsat  : nu=%d nr=%d\n",nu,nr);
@@ -423,7 +431,7 @@ static int selsat(const obsd_t *obs, double *azel, int nu, int nr,
             trace(4,"(%2d) sat=%3d iu=%2d ir=%2d\n",k-1,obs[i].sat,i,j);
         }
     }
-    return k;
+    return k; //num matches
 }
 /* temporal update of position/velocity/acceleration -------------------------*/
 static void udpos(rtk_t *rtk, double tt)
@@ -796,7 +804,7 @@ static void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
     if (rtk->opt.glomodear==2&&(rtk->opt.navsys&SYS_GLO)) {
         udrcvbias(rtk,tt);
     }
-    /* temporal update of phase-bias */
+    /* temporal update of phase-bias */ // WARNING - this may mess with removing observations after this
     if (rtk->opt.mode>PMODE_DGPS) {
         udbias(rtk,tt,obs,sat,iu,ir,ns,nav);
     }
@@ -1491,6 +1499,10 @@ static int valpos(rtk_t *rtk, const double *v, const double *R, const int *vflg,
 static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
                   const nav_t *nav)
 {
+    // RTK - the rtk solution (contains previous solution too!)
+    // obs - observations
+    // nu, nr - number of rover obs, number of reference obs
+    // nav - sat data
     prcopt_t *opt=&rtk->opt;
     gtime_t time=obs[0].time;
     double *rs,*dts,*var,*y,*e,*azel,*v,*H,*R,*xp,*Pp,*xa,*bias,dt;
@@ -1535,8 +1547,14 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
 
-    // TODO-DC should reupdate satazel based off of the velocity propagation instead of using a single point estimation
-    // TODO-DC this is where observations should have their LOS checked. After this point they are then differenced and updated in the filter
+    if (rtk->opt.dtm.reject_observations) {
+        int nrejected = los_update(rtk, obs, sat, iu, ir, ns, rs);
+        trace(2, "%i observations rejected due to no line of sight", nrejected);
+    }
+    else {
+        trace(2, "Skipping line of sight checks");
+    }
+
 
     trace(4,"x(0)="); tracemat(4,rtk->x,1,NR(opt),13,4);
     
