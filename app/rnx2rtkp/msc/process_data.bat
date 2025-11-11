@@ -4,8 +4,8 @@ REM Usage:
 REM   process_data.bat [Dataset] [DEM] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
 REM Example:
 REM   process_data.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
-REM   process_data.bat 123 BOTHDEM NOPLOT NOPERFORMANCE NOANALYZE   -> datasets 1,2,3 in order, both DEM & NODEM, no plot
-REM   process_data.bat ALL_DATA NODEM PLOT PERFORMANCE ANALYZE RUN4 -> datasets 1-6, NODEM only, open RTKPLOT minimized/non-blocking
+REM   process_data.bat 123 BOTHDEM NOPLOT NOPERFORMANCE NOANALYZE   -> datasets 1,2,3, dem and no dem processing, no rtkplotting, no performance analysis, no python script calls
+REM   process_data.bat ALL_DATA NODEM PLOT PERFORMANCE ANALYZE RUN4 -> datasets 1-6, NODEM only, open RTKPLOT, include performance monitoring and python analysis, put run4 in all file names
 REM ===================================================================
 
 REM ---------------- Configuration (edit paths if necessary) -----------
@@ -99,7 +99,6 @@ if %errorlevel% neq 0 (
         exit /b
     )
 )
-echo Running with Administrator privileges for performance capture.
 
 
 REM ------------------ MAIN loop over datasets --------------------------
@@ -131,30 +130,27 @@ for %%D in (!DATASET_LIST!) do (
 
     REM ------------------ DEM run (if enabled) ------------------------
     if "!DO_DEM_1!"=="1" (
-        set "DEMFLAG=-dem"
-        set "DEM_PREFIX=DEM_"
-        set "FINAL_PREFIX=!CUSTOM_PREFIX!!DEM_PREFIX!"
+        set "FINAL_PREFIX=DEM_!CUSTOM_PREFIX!"
         set "OUTFILE=solution_!TIMESTAMP!.pos"
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
-        REM Run rnx2rtkp with -dem, silent. Remove >nul 2>&1 if you want console output.
-	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
+	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
             set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
 	    wpr -start CPU.Light -filemode
 	)
-        "%RTKLIB_EXE%" -k "%CONFIG%" !DEMFLAG! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+        "%RTKLIB_EXE%" -k "%CONFIG%" -dem -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
             wpr -stop !OUTPATHETL!
             wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
-	    ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
+            ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
             del /Q !OUTPATHETL!
         )
-        echo RTKLIB Complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
-
-    	if "!DO_PLOT!"=="1" (
+	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
+        if "!DO_PLOT!"=="1" (
             start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
 	)
     )
+
 
     REM ------------------ NODEM run (if enabled) -----------------------
     if "!DO_DEM_0!"=="1" (

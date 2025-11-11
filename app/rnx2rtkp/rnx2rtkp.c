@@ -90,8 +90,6 @@ static void printhelp(void)
 /* rnx2rtkp main -------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
-    
-
     prcopt_t prcopt=prcopt_default;
     solopt_t solopt=solopt_default;
     filopt_t filopt={""};
