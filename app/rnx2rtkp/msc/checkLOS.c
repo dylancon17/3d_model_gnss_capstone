@@ -36,9 +36,10 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     // Converts ECEF to LLH
     double pos[3];
     ecef2pos(rr, pos);
-                                    
-    // TODO is a check needed if no initial position? Or does the Update step account for that?
-
+                                        
+    // Set relative origin here as it is constant for the rest of the update
+    set_relative_origin(&(rtk->opt.dtm), pos[0], pos[1]);
+    
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
@@ -86,7 +87,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     
 }
 
-
+//Assumes relative origin already set
 extern boolean check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, struct DTMData* DTM) {
     //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
     //    sat_az * 180 / 3.14,
@@ -95,24 +96,34 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
     //    origin_long * 180 / 3.14,
     //    origin_height);
 
-    //Set up DTM call
-    set_relative_origin(DTM, origin_lat, origin_long);
     int out_of_bounds = 0;
-    
-
-    //TODO use DEM height if > than origin_height
-    // Set up height checks
-    double max_checked_DTM_height = origin_height;
     double current_DTM_height = 0, sat_height = 0;
     double sat_vertical_slope = tanf(sat_elev);
 
+    //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
+    get_relative_height(DTM, 0, 0, &current_DTM_height, &out_of_bounds);
+    if (out_of_bounds != 1 && (current_DTM_height > origin_height || DTM->use_dem_height_only == 1)) {
+        origin_height = current_DTM_height + DTM->antenna_dem_offset;
+    }
+
+    // Set up height checks
+    double max_checked_DTM_height = origin_height;
+
+    // Only search until a distance where you're guranteed to hit a building, or you've searched a ways
+    double max_distance_steps = (DTM->max_dem_height - origin_height) / sat_vertical_slope;
+    if (max_distance_steps > DTM->max_distance) {
+        max_distance_steps = DTM->max_distance;
+    }
+    // Scale to units of steps instead of meters
+    max_distance_steps = max_distance_steps / DTM->step_size;
+    
     // Draws a line from (0,0) to (E1, N1) that's the maximum distance required to check
-    int E1 = (int)roundf(DTM->max_distance_check * sinf(sat_az));
-    int N1 = (int)roundf(DTM->max_distance_check * cosf(sat_az));
+    int E1 = (int)roundf(max_distance_steps * sinf(sat_az)); // Find distance to end point and then reduce by step size to reduce the number of required steps
+    int N1 = (int)roundf(max_distance_steps * cosf(sat_az));
     // fprintf(stderr, "Determining End Point max distance: %i sinf: %lf cosf: %lf float solution: %lf rounded float solution: %lf",
     //      DTM->max_distance_check, sinf(sat_az), cosf(sat_az), DTM->max_distance_check* sinf(sat_az), roundf(DTM->max_distance_check * sinf(sat_az)));
     // Set up Bresenham Algorithm
-    int dE = abs(E1), sE = 0 < E1 ? 1 : -1;
+    int dE = abs(E1), sE = 0 < E1 ? 1 : -1; // Each step represents the step size
     int dN = -abs(N1), sN = 0 < N1 ? 1 : -1; // Defines directions of steps
     LineState line = {0, 0, 0, dE, dN, sE, sN, dE + dN, 0};
 
@@ -129,8 +140,8 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
         // If fully traversed DTM, LOS is clear
         if (out_of_bounds == 1) {return 1;}
 
-        // Have traversed the max distance required to trraverse, LOS is clear
-        if (DTM->max_distance_check < line.d) {
+        // Have traversed the max distance required to trraverse, LOS is clear. Depends on the number of steps travelled
+        if (max_distance_steps < line.d) {
             //fprintf(stderr, "covered max distance\n");
             return 1;
         }
@@ -144,9 +155,13 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
         // Check the height of the satellite based on the distance travelled along the satellite line
         
         // Calculate precise distance travelled for a height check. Only done here for efficiency
-        line.d = sqrt(pow(line.E, 2) + pow(line.N, 2));
+        // Get the distance in meters instead of the units of steps, required for slope uints
+        line.d = sqrt(pow(line.E * DTM->step_size, 2) + pow(line.N * DTM->step_size, 2));
         
         sat_height = sat_vertical_slope * line.d + origin_height;
+
+        // Change distance units back to step size instead of meters
+        line.d = line.d / DTM->step_size; 
 
         // Satellite is lower than DTM, LOS is obstructed
         if (sat_height < current_DTM_height) { 

@@ -472,8 +472,12 @@ extern "C" {
 
 /* custom project structs*/
 typedef struct DTMData {
-    int max_distance_check; /* Max Range*/
-    boolean reject_observations; /* 1 to not perform any LoS calcs*/
+    int max_dem_height; /* Max DEM height. Allows for calculating how far to search*/
+    int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
+    boolean reject_observations; /* 1 to perform LoS calcs*/
+    int step_size; /* Spacing between raster points, ex. 5m*/
+    int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
+    boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
 } DTMData;
 
 /* type definitions ----------------------------------------------------------*/

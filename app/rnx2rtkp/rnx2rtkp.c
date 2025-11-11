@@ -116,8 +116,12 @@ int main(int argc, char **argv)
     }
 
     /* set DEM options TODO-TC*/
-    prcopt.dtm.max_distance_check = 10;
-    prcopt.dtm.reject_observations = 0;
+    prcopt.dtm.max_dem_height = 1400; // Max height within DEM
+    prcopt.dtm.max_distance = 2000; // Only search for buildings up to 2km away
+    prcopt.dtm.reject_observations = 0; // By default don't include the DEM
+    prcopt.dtm.step_size = 5; // 5m grid spacing
+    prcopt.dtm.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
+    prcopt.dtm.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
 
     for (i=1,n=0;i<argc;i++) {
         if      (!strcmp(argv[i],"-o")&&i+1<argc) outfile=argv[++i];
