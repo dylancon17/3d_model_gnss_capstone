@@ -16,7 +16,7 @@ extern void get_relative_height(
     //TODO-TC Currently Fake data just for testing
 
     if (*E < -3 && *N < -3) {
-        fprintf(stderr, "out of bounds triggered\n");
+        //fprintf(stderr, "out of bounds triggered\n");
         *out_of_bounds = 1;
         return;
     }

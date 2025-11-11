@@ -27,7 +27,7 @@ void step_along_line(LineState* l);
 *          double    *rs    I   satellite positions in ECEF
 * return : int (number of rejected sats) */
 extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
-    fprintf(stderr, "%s\n", "LOS Update\n");
+    //fprintf(stderr, "%s\n", "LOS Update\n");
 
     int i, nrej=0;
     int rej_idx[MAXOBS];
@@ -44,7 +44,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double r;
     boolean reject = 0;
 
-    fprintf(stderr, "%i %i", rtk->opt.dtm.max_distance_check, rtk->opt.dtm.reject_observations);
+    //fprintf(stderr, "%i %i", rtk->opt.dtm.max_distance_check, rtk->opt.dtm.reject_observations);
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
         r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
@@ -55,7 +55,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
 
         satazel(pos, e, azel);
-        fprintf(stderr, "%d", sat[i]);
+        //fprintf(stderr, "%d", sat[i]);
         reject = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], &(rtk->opt.dtm));
 
         if (reject) {
@@ -65,7 +65,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         // TODO add logging to report on what's happening
     }
 
-    fprintf(stdout, "%d possible sats\n", *ns);
+    //fprintf(stdout, "%d possible sats\n", *ns);
 
 
     // TODO add check if removing too many (indicates incorrect estimated position more likely)
@@ -79,7 +79,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         (*ns)--;
     }
 
-    fprintf(stdout, "%d sats rejected\n", nrej);
+    //fprintf(stdout, "%d sats rejected\n", nrej);
 
 
     return  nrej;
@@ -88,13 +88,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
 
 extern boolean check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, struct DTMData* DTM) {
-    fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
-        sat_az * 180 / 3.14,
-        sat_elev * 180 / 3.14,
-        origin_lat * 180 / 3.14,
-        origin_long * 180 / 3.14,
-        origin_height);
-    fprintf(stderr, "%i %i", DTM->max_distance_check, DTM->reject_observations);
+    //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
+    //    sat_az * 180 / 3.14,
+    //    sat_elev * 180 / 3.14,
+    //    origin_lat * 180 / 3.14,
+    //    origin_long * 180 / 3.14,
+    //    origin_height);
 
     //Set up DTM call
     set_relative_origin(DTM, origin_lat, origin_long);
@@ -110,13 +109,8 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
     // Draws a line from (0,0) to (E1, N1) that's the maximum distance required to check
     int E1 = (int)roundf(DTM->max_distance_check * sinf(sat_az));
     int N1 = (int)roundf(DTM->max_distance_check * cosf(sat_az));
-    fprintf(stderr, "Determining End Point max distance: %i sinf: %lf cosf: %lf float solution: %lf rounded float solution: %lf",
-        DTM->max_distance_check,
-        sinf(sat_az),
-        cosf(sat_az),
-        DTM->max_distance_check * sinf(sat_az),
-        roundf(DTM->max_distance_check * sinf(sat_az)))
-        ;
+    // fprintf(stderr, "Determining End Point max distance: %i sinf: %lf cosf: %lf float solution: %lf rounded float solution: %lf",
+    //      DTM->max_distance_check, sinf(sat_az), cosf(sat_az), DTM->max_distance_check* sinf(sat_az), roundf(DTM->max_distance_check * sinf(sat_az)));
     // Set up Bresenham Algorithm
     int dE = abs(E1), sE = 0 < E1 ? 1 : -1;
     int dN = -abs(N1), sN = 0 < N1 ? 1 : -1; // Defines directions of steps
@@ -129,25 +123,15 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
         
         get_relative_height(DTM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
 
-        fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
-            line.E,
-            line.N,
-            line.d,
-            line.dE,
-            line.dN,
-            line.sE,
-            line.sN,
-            line.err,
-            line.e2,
-            current_DTM_height,
-            out_of_bounds);
+        //fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
+        //    line.E, line.N, line.d, line.dE, line.dN, line.sE, line.sN, line.err, line.e2, current_DTM_height, out_of_bounds);
 
         // If fully traversed DTM, LOS is clear
         if (out_of_bounds == 1) {return 1;}
 
         // Have traversed the max distance required to trraverse, LOS is clear
         if (DTM->max_distance_check < line.d) {
-            fprintf(stderr, "covered max distance\n");
+            //fprintf(stderr, "covered max distance\n");
             return 1;
         }
 
@@ -166,7 +150,7 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
 
         // Satellite is lower than DTM, LOS is obstructed
         if (sat_height < current_DTM_height) { 
-            fprintf(stderr, "Reject sat, too low");
+            //fprintf(stderr, "Reject sat, too low");
             return 0; 
         }
 
