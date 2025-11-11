@@ -11,16 +11,17 @@ extern void get_relative_height(
     struct DTMData* DEM,
     int* E,
     int* N,
-    float* h,
-    boolean* out_of_bounds) {
+    double* h,
+    int* out_of_bounds) {
     //TODO-TC Currently Fake data just for testing
 
-    if (*E < -100 && *N < -100) {
+    if (*E < -3 && *N < -3) {
+        fprintf(stderr, "out of bounds triggered\n");
         *out_of_bounds = 1;
         return;
     }
 
-    *h = 1000.0f + *E + *N;
+    *h = 1000.0f + 10 * *E + 20 * *N;
 
     return;
 }

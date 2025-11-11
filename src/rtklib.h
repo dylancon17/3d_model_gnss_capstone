@@ -1766,8 +1766,8 @@ extern void get_relative_height(
     struct DTMData* DEM, 
     int* E, 
     int* N, 
-    float* h, 
-    boolean* out_of_bounds);
+    double* h, 
+    int* out_of_bounds);
 
 
 #ifdef __cplusplus
