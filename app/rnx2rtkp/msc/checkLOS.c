@@ -36,10 +36,9 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     // Converts ECEF to LLH
     double pos[3];
     ecef2pos(rr, pos);
-                                        
+    
     // Set relative origin here as it is constant for the rest of the update
     set_relative_origin(&(rtk->opt.dtm), pos[0], pos[1]);
-    
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
@@ -99,9 +98,9 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
     int out_of_bounds = 0;
     double current_DTM_height = 0, sat_height = 0;
     double sat_vertical_slope = tanf(sat_elev);
-
+    int origin_x = 0, origin_y = 0;
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
-    get_relative_height(DTM, 0, 0, &current_DTM_height, &out_of_bounds);
+    get_relative_height(DTM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
     if (out_of_bounds != 1 && (current_DTM_height > origin_height || DTM->use_dem_height_only == 1)) {
         origin_height = current_DTM_height + DTM->antenna_dem_offset;
     }
@@ -116,7 +115,7 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
     }
     // Scale to units of steps instead of meters
     max_distance_steps = max_distance_steps / DTM->step_size;
-    
+
     // Draws a line from (0,0) to (E1, N1) that's the maximum distance required to check
     int E1 = (int)roundf(max_distance_steps * sinf(sat_az)); // Find distance to end point and then reduce by step size to reduce the number of required steps
     int N1 = (int)roundf(max_distance_steps * cosf(sat_az));
