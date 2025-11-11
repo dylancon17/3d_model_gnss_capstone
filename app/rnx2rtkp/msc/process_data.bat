@@ -133,7 +133,7 @@ for %%D in (!DATASET_LIST!) do (
         set "FINAL_PREFIX=DEM_!CUSTOM_PREFIX!"
         set "OUTFILE=solution_!TIMESTAMP!.pos"
         set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
-	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
+	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
 	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
             set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
 	    wpr -start CPU.Light -filemode
@@ -145,7 +145,7 @@ for %%D in (!DATASET_LIST!) do (
             ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
             del /Q !OUTPATHETL!
         )
-	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
+	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
         if "!DO_PLOT!"=="1" (
             start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
 	)
