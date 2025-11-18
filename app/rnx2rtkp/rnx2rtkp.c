@@ -90,8 +90,6 @@ static void printhelp(void)
 /* rnx2rtkp main -------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
-    
-
     prcopt_t prcopt=prcopt_default;
     solopt_t solopt=solopt_default;
     filopt_t filopt={""};
@@ -107,10 +105,6 @@ int main(int argc, char **argv)
     solopt.timef=0;
     sprintf(solopt.prog ,"%s ver.%s",PROGNAME,VER_RTKLIB);
     sprintf(filopt.trace,"%s.trace",PROGNAME);
-    
-    /* set DEM options TODO-TC*/
-    prcopt.dtm.max_distance_check = 500;
-    prcopt.dtm.reject_observations = 0;
 
     /* load options from configuration file */
     for (i=1;i<argc;i++) {
@@ -120,6 +114,15 @@ int main(int argc, char **argv)
             getsysopts(&prcopt,&solopt,&filopt);
         }
     }
+
+    /* set DEM options TODO-TC*/
+    prcopt.dtm.max_dem_height = 1400; // Max height within DEM
+    prcopt.dtm.max_distance = 2000; // Only search for buildings up to 2km away
+    prcopt.dtm.reject_observations = 0; // By default don't include the DEM
+    prcopt.dtm.step_size = 5; // 5m grid spacing
+    prcopt.dtm.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
+    prcopt.dtm.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
+
     for (i=1,n=0;i<argc;i++) {
         if      (!strcmp(argv[i],"-o")&&i+1<argc) outfile=argv[++i];
         else if (!strcmp(argv[i],"-ts")&&i+2<argc) {
