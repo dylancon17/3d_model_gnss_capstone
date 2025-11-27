@@ -15,6 +15,9 @@ typedef struct LineState {
 } LineState;
 
 void step_along_line(LineState* l);
+void apply_probability(double* y, double* probability);
+void determine_DTM_height_var(double* var, struct DTMData* DTM);
+void determine_sat_height_var(double* var);
 
 /* los update ---------------------------------------------------
 * check and update observations based off of line of sight
@@ -42,7 +45,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
-    boolean reject = 0;
+    double probability_of_obstruction = 0;
 
     //fprintf(stderr, "%i %i", rtk->opt.dtm.max_distance_check, rtk->opt.dtm.reject_observations);
 
@@ -56,13 +59,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
-        reject = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], &(rtk->opt.dtm));
-
-        if (reject) {
+        probability_of_obstruction = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], &(rtk->opt.dtm));
+        // Reject the signal if 95% confident it's obstructed
+        if (probability_of_obstruction > 0.95) {
             rej_idx[nrej++] = i;
-        }
 
-        // TODO add logging to report on what's happening
+        }
     }
 
     //fprintf(stdout, "%d possible sats\n", *ns);
@@ -87,7 +89,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern boolean check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, struct DTMData* DTM) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, struct DTMData* DTM) {
     //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
     //    sat_az * 180 / 3.14,
     //    sat_elev * 180 / 3.14,
@@ -126,6 +128,10 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
     int dN = -abs(N1), sN = 0 < N1 ? 1 : -1; // Defines directions of steps
     LineState line = {0, 0, 0, dE, dN, sE, sN, dE + dN, 0};
 
+    double probability_of_obstruction = 0;
+    double DTM_height_var = 0;
+    double sat_height_var = 0;
+    double y = 0;
 
     while (1) {
         // Traverse the DTM
@@ -136,17 +142,19 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
         //fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
         //    line.E, line.N, line.d, line.dE, line.dN, line.sE, line.sN, line.err, line.e2, current_DTM_height, out_of_bounds);
 
-        // If fully traversed DTM, LOS is clear
-        if (out_of_bounds == 1) {return 1;}
+        // If fully traversed DTM, LOS is clear after that point, return current probability
+        if (out_of_bounds == 1) {return probability_of_obstruction;}
 
-        // Have traversed the max distance required to trraverse, LOS is clear. Depends on the number of steps travelled
+        // Have traversed the max distance required to trraverse, LOS is clear after that point. Depends on the number of steps travelled
         if (max_distance_steps < line.d) {
             //fprintf(stderr, "covered max distance\n");
-            return 1;
+            return probability_of_obstruction;
         }
 
-        // If a higher height has already been checked (or lower than starting height), LOS is clear at that point. Continue traversing
-        if (current_DTM_height < max_checked_DTM_height) {continue;}
+        // If a higher height has already been checked, it's not needed to check it again, it's assumed to be low probability of obstruction. NOTE - this is a simplification for efficiency purposes. It also means only one probability per building is estiimated (assuming the building height is ~ constant)
+        if (current_DTM_height <= max_checked_DTM_height) {
+            continue;
+        }
         
         //Else, onto the new max height checked
         max_checked_DTM_height = current_DTM_height;
@@ -162,11 +170,22 @@ extern boolean check_los(double sat_az, double sat_elev, double origin_lat, doub
         // Change distance units back to step size instead of meters
         line.d = line.d / DTM->step_size; 
 
+        //Calculate probability of obstruction
+        determine_dtm_var();
+
+        determine_sat_height_var();
+        determine_DTM_height_var(&DTM_height_var, DTM);
+
+        y = (current_DTM_height - sat_height) / sqrt(DTM_height_var + sat_height_var);
+
+        apply_probability(&y, &probability_of_obstruction);
+
         // Satellite is lower than DTM, LOS is obstructed
-        if (sat_height < current_DTM_height) { 
-            //fprintf(stderr, "Reject sat, too low");
-            return 0; 
-        }
+        //if (sat_height < current_DTM_height) { 
+        //    //fprintf(stderr, "Reject sat, too low");
+        //    //Apply the probability here
+        //    return 0;
+        //}
 
         // Otherwise continue traversing
     }
@@ -196,4 +215,39 @@ void step_along_line(LineState* l) // credit to https://zingl.github.io/bresenha
     else {
         l->d += 1;
     }
+}
+
+void apply_probability(double* y, double* probability) {
+    double prob = 0.5 * erfc(-*y / sqrt(2.0)); // CDF approximation
+
+    // If probability has not yet been set
+    if (*probability == 0.0f) {
+        *probability = prob;
+        return;
+    }
+
+    //If probability has been set multiply the probabilities. Probability should go up given additional probabilities
+    *probability = 1 - (1 - prob) * (1 - *probability);
+}
+
+void determine_DTM_height_var(double* var, struct DTMData* DTM) {
+    //DTM possible error sources:
+    // Height accuracy
+    // Coordinate Horizontal accuracy - insignificant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so slight horizontal error doesn't matter
+    // Height errros due to calling the nearest height - insignficant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so no interpolation error would be introduced anyways
+    *var = DTM->vertical_point_variance;
+}
+
+void determine_sat_height_var(double* var) {
+    //Formula for sat height variance: height = tan(elev) * horizontal distance traversed + origin_height
+    //Possible Error Sources:
+    // Elevation accuracy - function of sat err, pos err and baseline distance. Assumed to be insignificant due to extremely long baseline
+    // Distance Traversed - euclidean distance of starting coordinate and traversed coordinate
+    //  Starting Coordinate - Use the horizontal variance of the starting coordinate
+    //  Traversed Coordinate - This coordinate can be incorrect due to not perfectly following the line. Bresenham is theoretically accurate to up 1/2 a pixel, arguably more accurate than that. 
+    //      Standard deviation will be reflected as 0.68 * Step Size / 2. This is probably overly pessimistic.
+    // Origin Height - Will have errors, depends on origin height source
+    //  DEM Source - use determine_DTM_height_var
+    //  KF Source - use the estimated filter variance
+    return;
 }

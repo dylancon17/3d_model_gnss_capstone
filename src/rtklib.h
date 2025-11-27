@@ -478,6 +478,7 @@ typedef struct DTMData {
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
+    double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
 } DTMData;
 
 /* type definitions ----------------------------------------------------------*/
