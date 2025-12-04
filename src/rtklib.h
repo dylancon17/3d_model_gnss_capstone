@@ -474,9 +474,11 @@ extern "C" {
 typedef struct DTMData {
     int max_dem_height; /* Max DEM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
-    boolean reject_observations; /* 1 to perform LoS calcs*/
+    int processing_type; /* 0 = don't do anything with the DEM. 1 = do boolean observation rejection. 2 = do observation rejection based on probability threshold. 3 = do observation deweighting */
+    double rejection_threshold;
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
+    double antenna_dem_offset_var; 
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
 } DTMData;
@@ -1745,12 +1747,14 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
 /* custom project functions*/
 extern boolean test_los_summary(DTMData* DTM);
 
-extern boolean check_los(
+extern double check_los(
     double sat_az,
     double sat_elev,
     double origin_lat,
     double origin_long,
     double origin_height,
+    double origin_horizontal_variance,
+    double origin_vertical_variance,
     struct DTMData* DTM);
 
 extern int los_update(

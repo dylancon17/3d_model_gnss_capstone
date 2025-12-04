@@ -118,10 +118,13 @@ int main(int argc, char **argv)
     /* set DEM options TODO-TC*/
     prcopt.dtm.max_dem_height = 1400; // Max height within DEM
     prcopt.dtm.max_distance = 2000; // Only search for buildings up to 2km away
-    prcopt.dtm.reject_observations = 0; // By default don't include the DEM
+    prcopt.dtm.processing_type = 0; // By default don't include the DEM
     prcopt.dtm.step_size = 5; // 5m grid spacing
     prcopt.dtm.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
     prcopt.dtm.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
+    prcopt.dtm.rejection_threshold = 0.5; // Reject sats with more than 50% probability of obstruction
+    prcopt.dtm.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
+    prcopt.dtm.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
 
     for (i=1,n=0;i<argc;i++) {
         if      (!strcmp(argv[i],"-o")&&i+1<argc) outfile=argv[++i];
@@ -165,7 +168,7 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(argv[i],"-y")&&i+1<argc) solopt.sstat=atoi(argv[++i]);
         else if (!strcmp(argv[i],"-x")&&i+1<argc) solopt.trace=atoi(argv[++i]);
-        else if (!strcmp(argv[i], "-dem")) prcopt.dtm.reject_observations = 1;
+        else if (!strcmp(argv[i], "-dem")) prcopt.dtm.processing_type = 2;
         else if (*argv[i]=='-') printhelp();
         else if (n<MAXFILE) infile[n++]=argv[i];
     }

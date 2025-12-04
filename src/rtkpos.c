@@ -1547,7 +1547,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
 
-    if (rtk->opt.dtm.reject_observations) {
+    if (rtk->opt.dtm.processing_type != 0) {
         int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
         trace(2, "%i observations rejected due to no line of sight", nrejected);
     }

@@ -17,7 +17,8 @@ typedef struct LineState {
 void step_along_line(LineState* l);
 void apply_probability(double* y, double* probability);
 void determine_DTM_height_var(double* var, struct DTMData* DTM);
-void determine_sat_height_var(double* var);
+void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DTMData* DTM);
+void soltocov_rtk(sol_t* sol, double* P);
 
 /* los update ---------------------------------------------------
 * check and update observations based off of line of sight
@@ -40,6 +41,13 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double pos[3];
     ecef2pos(rr, pos);
     
+    // Converts ECEF covars to LLH
+    double P[9]; // 3x3 ENU
+    double Q[9];
+    
+    soltocov_rtk(&(rtk->sol), P);
+    covenu(pos, P, Q);
+
     // Set relative origin here as it is constant for the rest of the update
     set_relative_origin(&(rtk->opt.dtm), pos[0], pos[1]);
 
@@ -54,31 +62,34 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             /* geodist failure check */
         if (r <= 0) {
             /* Bad geometry → reject satellite */
-            rej_idx[nrej++] = i;            continue;
+            rej_idx[nrej++] = i;            
+            continue;
         }
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
-        probability_of_obstruction = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], &(rtk->opt.dtm));
-        // Reject the signal if 95% confident it's obstructed
-        if (probability_of_obstruction > 0.95) {
-            rej_idx[nrej++] = i;
+        probability_of_obstruction = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4] , Q[8] , &(rtk->opt.dtm));
+        fprintf(stderr, "Probability: %lf\n", probability_of_obstruction);
 
+        // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
+        if (probability_of_obstruction > rtk->opt.dtm.rejection_threshold) {
+            rej_idx[nrej++] = i;
         }
     }
 
     //fprintf(stdout, "%d possible sats\n", *ns);
 
+    // If deterministic or probabilistic rejection
+    if (rtk->opt.dtm.processing_type == 1 || rtk->opt.dtm.processing_type == 2) {
+        // Remove the rejected indices
+        for (i = nrej - 1; i >= 0; i--) {
+            int idx = rej_idx[i];
+            memmove(sat + idx, sat + idx + 1, (*ns - idx - 1) * sizeof(int));
+            memmove(iu + idx, iu + idx + 1, (*ns - idx - 1) * sizeof(int));
+            memmove(ir + idx, ir + idx + 1, (*ns - idx - 1) * sizeof(int));
 
-    // TODO add check if removing too many (indicates incorrect estimated position more likely)
-    // Remove the rejected indices
-    for (i = nrej - 1; i >= 0; i--) {
-        int idx = rej_idx[i];
-        memmove(sat + idx, sat + idx + 1, (*ns - idx - 1) * sizeof(int));
-        memmove(iu + idx, iu + idx + 1, (*ns - idx - 1) * sizeof(int));
-        memmove(ir + idx, ir + idx + 1, (*ns - idx - 1) * sizeof(int));
-
-        (*ns)--;
+            (*ns)--;
+        }
     }
 
     //fprintf(stdout, "%d sats rejected\n", nrej);
@@ -89,7 +100,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, struct DTMData* DTM) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DTMData* DTM) {
     //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
     //    sat_az * 180 / 3.14,
     //    sat_elev * 180 / 3.14,
@@ -105,6 +116,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     get_relative_height(DTM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
     if (out_of_bounds != 1 && (current_DTM_height > origin_height || DTM->use_dem_height_only == 1)) {
         origin_height = current_DTM_height + DTM->antenna_dem_offset;
+        origin_vertical_variance = DTM->vertical_point_variance + DTM->antenna_dem_offset_var;
     }
 
     // Set up height checks
@@ -170,24 +182,42 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         // Change distance units back to step size instead of meters
         line.d = line.d / DTM->step_size; 
 
-        //Calculate probability of obstruction
-        determine_dtm_var();
 
-        determine_sat_height_var();
-        determine_DTM_height_var(&DTM_height_var, DTM);
+        if (DTM->processing_type != 1) {
+            //Calculate probability of obstruction
+            determine_sat_height_var(&sat_height_var, origin_horizontal_variance, origin_vertical_variance, sat_vertical_slope, DTM);
 
-        y = (current_DTM_height - sat_height) / sqrt(DTM_height_var + sat_height_var);
+            determine_DTM_height_var(&DTM_height_var, DTM);
 
-        apply_probability(&y, &probability_of_obstruction);
+            y = (current_DTM_height - sat_height) / sqrt(DTM_height_var + sat_height_var);
 
+            apply_probability(&y, &probability_of_obstruction);
+
+            // If hit 0.99 round up to 1.
+            if (probability_of_obstruction > 0.99) {
+                probability_of_obstruction = 1.0f;
+                return probability_of_obstruction;
+            }
+
+            fprintf(stderr, "Probability Updated To: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sqrt(sat_height_var), sqrt(DTM_height_var), y);
+
+
+            continue;
+        }
+
+        // if processing_type == 1 
+
+        // Boolean rejection (old)
         // Satellite is lower than DTM, LOS is obstructed
-        //if (sat_height < current_DTM_height) { 
-        //    //fprintf(stderr, "Reject sat, too low");
-        //    //Apply the probability here
-        //    return 0;
-        //}
+        if (sat_height < current_DTM_height) { 
+            //fprintf(stderr, "Reject sat, too low");
+            //Apply the probability here
+            return 1;
+        }
 
         // Otherwise continue traversing
+
+
     }
 }
 
@@ -238,7 +268,7 @@ void determine_DTM_height_var(double* var, struct DTMData* DTM) {
     *var = DTM->vertical_point_variance;
 }
 
-void determine_sat_height_var(double* var) {
+void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DTMData* DTM) {
     //Formula for sat height variance: height = tan(elev) * horizontal distance traversed + origin_height
     //Possible Error Sources:
     // Elevation accuracy - function of sat err, pos err and baseline distance. Assumed to be insignificant due to extremely long baseline
@@ -247,7 +277,25 @@ void determine_sat_height_var(double* var) {
     //  Traversed Coordinate - This coordinate can be incorrect due to not perfectly following the line. Bresenham is theoretically accurate to up 1/2 a pixel, arguably more accurate than that. 
     //      Standard deviation will be reflected as 0.68 * Step Size / 2. This is probably overly pessimistic.
     // Origin Height - Will have errors, depends on origin height source
-    //  DEM Source - use determine_DTM_height_var
+    //  DEM Source - use determine_DTM_height_var + DEM offset var
     //  KF Source - use the estimated filter variance
+    *var = origin_vertical_variance;
+    double distance_var = pow(0.34 * DTM->step_size,2) + origin_horizontal_variance;
+    *var = *var + pow(sat_vertical_slope, 2) * distance_var;
+
+    fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
+
+
     return;
+}
+
+/* solution to covariance ----------------------------------------------------*/
+void soltocov_rtk(sol_t* sol, double* P)
+{
+    P[0] = sol->qr[0]; /* xx or ee */
+    P[4] = sol->qr[1]; /* yy or nn */
+    P[8] = sol->qr[2]; /* zz or uu */
+    P[1] = P[3] = sol->qr[3]; /* xy or en */
+    P[5] = P[7] = sol->qr[4]; /* yz or nu */
+    P[2] = P[6] = sol->qr[5]; /* zx or ue */
 }
