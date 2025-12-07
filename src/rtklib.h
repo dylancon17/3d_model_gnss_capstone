@@ -474,13 +474,21 @@ extern "C" {
 typedef struct DTMData {
     int max_dem_height; /* Max DEM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
-    int processing_type; /* 0 = don't do anything with the DEM. 1 = do boolean observation rejection. 2 = do observation rejection based on probability threshold. 3 = do observation deweighting */
+    int processing_type; /* 
+                         0 = don't do anything with the DEM. 
+                         1 = do boolean observation rejection. 
+                         2 = do observation rejection based on probability threshold. 
+                         3 = do observation deweighting and rejection based on probability threshold
+                         4 = do observation deweighting based on probability threshold
+                         5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
+                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection*/
     double rejection_threshold;
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
+    int max_noise_scaling; /*Scale the noise by a maximum of n time*/
 } DTMData;
 
 /* type definitions ----------------------------------------------------------*/
@@ -1123,6 +1131,7 @@ typedef struct {        /* satellite status type */
     double  phw;        /* phase windup (cycle) */
     gtime_t pt[2][NFREQ]; /* previous carrier-phase time */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
+    double obstruction_scaling /* amount to scale by due to likelihood of multipath*/
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */

@@ -125,6 +125,7 @@ int main(int argc, char **argv)
     prcopt.dtm.rejection_threshold = 0.5; // Reject sats with more than 50% probability of obstruction
     prcopt.dtm.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
     prcopt.dtm.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
+    prcopt.dtm.max_noise_scaling = 20; // Scale to a max of 20 times
 
     for (i=1,n=0;i<argc;i++) {
         if      (!strcmp(argv[i],"-o")&&i+1<argc) outfile=argv[++i];

@@ -62,25 +62,36 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             /* geodist failure check */
         if (r <= 0) {
             /* Bad geometry → reject satellite */
-            rej_idx[nrej++] = i;            
+            rej_idx[nrej++] = i;
+            // Reset scaling just in case...
+            rtk->ssat[sat[i] - 1].obstruction_scaling = 1;
             continue;
         }
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
-        probability_of_obstruction = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4] , Q[8] , &(rtk->opt.dtm));
+        probability_of_obstruction = !check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
         fprintf(stderr, "Probability: %lf\n", probability_of_obstruction);
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.dtm.rejection_threshold) {
             rej_idx[nrej++] = i;
         }
+
+        double scaling = 1 / (1 - probability_of_obstruction);
+        if (scaling > rtk->opt.dtm.max_noise_scaling) 
+        {
+            scaling = rtk->opt.dtm.max_noise_scaling;
+        }
+
+        // Save data. Warning! This will last across epochs unless overwritten. Shouldn't be an issue unless implementation changed
+        rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
     }
 
     //fprintf(stdout, "%d possible sats\n", *ns);
 
     // If deterministic or probabilistic rejection
-    if (rtk->opt.dtm.processing_type == 1 || rtk->opt.dtm.processing_type == 2) {
+    if (rtk->opt.dtm.processing_type > 0 && rtk->opt.dtm.processing_type != 4) {
         // Remove the rejected indices
         for (i = nrej - 1; i >= 0; i--) {
             int idx = rej_idx[i];
@@ -183,7 +194,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         line.d = line.d / DTM->step_size; 
 
 
-        if (DTM->processing_type != 1) {
+        if (DTM->processing_type > 1) {
             //Calculate probability of obstruction
             determine_sat_height_var(&sat_height_var, origin_horizontal_variance, origin_vertical_variance, sat_vertical_slope, DTM);
 
@@ -289,7 +300,7 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     return;
 }
 
-/* solution to covariance ----------------------------------------------------*/
+/* solution to covariance - copy from solution.c-------------------*/
 void soltocov_rtk(sol_t* sol, double* P)
 {
     P[0] = sol->qr[0]; /* xx or ee */
