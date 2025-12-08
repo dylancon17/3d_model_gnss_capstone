@@ -1,12 +1,8 @@
 @echo off
-REM ===================================================================
-REM Usage:
-REM   process_data.bat [Dataset] [DEM] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
-REM Example:
-REM   process_data.bat                     -> ALL_DATA, BOTHDEM, NOPLOT, no prefix (default)
-REM   process_data.bat 123 BOTHDEM NOPLOT NOPERFORMANCE NOANALYZE   -> datasets 1,2,3, dem and no dem processing, no rtkplotting, no performance analysis, no python script calls
-REM   process_data.bat ALL_DATA NODEM PLOT PERFORMANCE ANALYZE RUN4 -> datasets 1-6, NODEM only, open RTKPLOT, include performance monitoring and python analysis, put run4 in all file names
-REM ===================================================================
+
+REM ------------------------ Help Menu -------------------------
+if /I "%~1"=="-h" goto :show_help
+if /I "%~1"=="--help" goto :show_help
 
 REM ---------------- Configuration (edit paths if necessary) -----------
 set "ROOT=C:\capstone\ToShare"
@@ -30,7 +26,7 @@ set "ARG_ANALYZE=%~5"
 set "ARG_PREFIX=%~6"
 
 if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
-if "!ARG_DEM!"=="" set "ARG_DEM=BOTHDEM"
+if "!ARG_DEM!"=="" set "ARG_DEM=0"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 REM ARG_PREFIX default is empty
@@ -63,21 +59,6 @@ if /I "!ARG_DATASET!"=="ALL_DATA" (
     if "!DATASET_LIST!"=="" set "DATASET_LIST=1 2 3 4 5 6"
 )
 
-REM ------------------ Interpret DEM argument ----------------------------
-REM Accept DEM, NODEM, BOTHDEM (default BOTHDEM)
-set "DO_DEM_1=0"   REM flag: run WITH -dem
-set "DO_DEM_0=0"   REM flag: run WITHOUT -dem
-
-if /I "!ARG_DEM!"=="DEM" (
-    set "DO_DEM_1=1"
-) else if /I "!ARG_DEM!"=="NODEM" (
-    set "DO_DEM_0=1"
-) else (
-    REM BOTHDEM default
-    set "DO_DEM_1=1"
-    set "DO_DEM_0=1"
-)
-
 REM ------------------ Interpret PLOT argument ---------------------------
 set "DO_PLOT=0"
 if /I "!ARG_PLOT!"=="PLOT" (
@@ -99,7 +80,6 @@ if %errorlevel% neq 0 (
         exit /b
     )
 )
-
 
 REM ------------------ MAIN loop over datasets --------------------------
 REM DATASET_LIST is space-separated and preserves user order
@@ -128,51 +108,25 @@ for %%D in (!DATASET_LIST!) do (
     set "OUTPATH_DEM="
     set "OUTPATH_NODEM="
 
-    REM ------------------ DEM run (if enabled) ------------------------
-    if "!DO_DEM_1!"=="1" (
-        set "FINAL_PREFIX=DEM_!CUSTOM_PREFIX!"
-        set "OUTFILE=solution_!TIMESTAMP!.pos"
-        set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
-	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
-	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
-	    wpr -start CPU.Light -filemode
-	)
-        "%RTKLIB_EXE%" -k "%CONFIG%" -dem -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
-	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            wpr -stop !OUTPATHETL!
-            wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
-            ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
-            del /Q !OUTPATHETL!
-        )
-	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Enabled Output Name: !OUTPATH!
-        if "!DO_PLOT!"=="1" (
-            start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
-	)
+
+    set "FINAL_PREFIX=!CUSTOM_PREFIX!_!ARG_DEM!"
+    set "OUTFILE=solution_!TIMESTAMP!.pos"
+    set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
+    echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: !ARG_DEM! Output Name: !OUTPATH!
+    if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
+        set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
+        wpr -start CPU.Light -filemode
     )
-
-
-    REM ------------------ NODEM run (if enabled) -----------------------
-    if "!DO_DEM_0!"=="1" (
-        set "FINAL_PREFIX=!CUSTOM_PREFIX!"
-        set "OUTFILE=solution_!TIMESTAMP!.pos"
-        set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
-	echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
-	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
-	    wpr -start CPU.Light -filemode
-	)
-        "%RTKLIB_EXE%" -k "%CONFIG%" -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
-	if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
-            wpr -stop !OUTPATHETL!
-            wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
-            ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
-            del /Q !OUTPATHETL!
-        )
-	echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: Disabled Output Name: !OUTPATH!
-        if "!DO_PLOT!"=="1" (
-            start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
-	)
+    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+    if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
+        wpr -stop !OUTPATHETL!
+        wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
+        ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
+        del /Q !OUTPATHETL!
+    )
+    echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: !ARG_DEM! Output Name: !OUTPATH!
+    if "!DO_PLOT!"=="1" (
+        start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
     )
 
     REM End of per-dataset processing
@@ -182,3 +136,46 @@ REM Clean up and exit
 pause
 endlocal
 exit /b 0
+
+:show_help
+echo.
+echo ===================================================================
+echo Usage:
+echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
+echo.
+echo DEM Options:
+echo    0 = no DEM processing
+echo    1 = boolean observation rejection
+echo    2 = probability-threshold observation rejection
+echo    3 = deweighting + rejection (probability threshold)
+echo    4 = deweighting only
+echo    5 = deweighting + rejection + reference satellite selection
+echo.
+echo PLOT Options:
+echo    PLOT       = open RTKLIB plots
+echo    NOPLOT     = do not open RTKLIB plots
+echo.
+echo PERFORMANCE Options:
+echo    PERFORMANCE   = run CPU monitoring
+echo    NOPERFORMANCE = do not run CPU monitoring
+echo.
+echo ANALYZE Options:
+echo    ANALYZE    = call python analysis script
+echo    NOANALYZE  = do not call python analysis script
+echo.
+echo PREFIX:
+echo    Added to all output file names
+echo.
+echo Examples:
+echo   process_data.bat 1 2
+echo       -> Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
+echo.
+echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
+echo       -> Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
+echo.
+echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4
+echo       -> Runs datasets 1–6 with full processing and prefix RUN4
+echo ===================================================================
+echo.
+goto :EOF
+
