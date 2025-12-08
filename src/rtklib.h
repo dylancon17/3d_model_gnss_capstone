@@ -1131,7 +1131,7 @@ typedef struct {        /* satellite status type */
     double  phw;        /* phase windup (cycle) */
     gtime_t pt[2][NFREQ]; /* previous carrier-phase time */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
-    double obstruction_scaling /* amount to scale by due to likelihood of multipath*/
+    double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */
