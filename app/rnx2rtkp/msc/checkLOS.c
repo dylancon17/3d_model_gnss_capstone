@@ -145,10 +145,11 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
 
     // If we observed less than half of the theoretically visible satellites, our estimated position is likely wrong.
     // Therefore, don't reject deweight sats to prevent us from continuing along the wrong path
+    // Only do this if the number of expected sats is > 4 (must have 3/4 then missing), otherwise sample size is too small to intelligently tell
     // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
     // TODO - make a smarter observed to expected ratio using probabilities
     // TODO - use the number of tracked but obstructed satellites in the decision process as well
-    if (num_observed_that_were_expected * 2 < num_expected && rtk->opt.dtm.processing_type > 5) {
+    if (num_observed_that_were_expected * 2 < num_expected && num_expected > 3 && rtk->opt.dtm.processing_type) {
         // Undo any scaling
         for (i = 0;i < *ns && i < MAXOBS;i++) {
             rtk->ssat[sat[i] - 1].obstruction_scaling = 1.0;
