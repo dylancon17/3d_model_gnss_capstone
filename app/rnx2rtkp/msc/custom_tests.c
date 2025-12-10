@@ -6,6 +6,8 @@ boolean test_los_case(
 	float origin_lat,
 	float origin_long,
 	float origin_height,
+	float hor_var,
+	float vert_var,
 	DTMData* DTM,
 	boolean expected_result,
 	boolean* success);
@@ -15,8 +17,8 @@ extern boolean test_los_summary(DTMData* DTM) {
 	boolean success = 1;
 
 	// TODO-TC create actual test cases
-	test_los_case(0.0f, 0.5f, 10.0f, 10.0f, 100.0f, DTM, 1, success);
-	test_los_case(1.57f, 0.1f, 10.0f, 10.0f, 50.0f, DTM, 0, success);
+	test_los_case(0.0f, 0.5f, 10.0f, 10.0f, 100.0f, 0.1f, 0.1f, DTM, 1, success);
+	test_los_case(1.57f, 0.1f, 10.0f, 10.0f, 50.0f, 0.1f, 0.1f, DTM, 0, success);
 
 	return success;
 }
@@ -27,6 +29,8 @@ boolean test_los_case(
 	float origin_lat,
 	float origin_long,
 	float origin_height,
+	float hor_var,
+	float vert_var,
 	DTMData* DTM,
 	boolean expected_result,
 	boolean* success) {
@@ -37,6 +41,8 @@ boolean test_los_case(
 		origin_lat,
 		origin_long,
 		origin_height,
+		hor_var,
+		vert_var,
 		DTM
 	);
 

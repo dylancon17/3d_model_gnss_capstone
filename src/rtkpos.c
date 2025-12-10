@@ -363,15 +363,30 @@ static double gfobs_L1L5(const obsd_t *obs, int i, int j, const double *lam)
     double pi=sdobs(obs,i,j,0)*lam[0],pj=sdobs(obs,i,j,2)*lam[2];
     return pi==0.0||pj==0.0?0.0:pi-pj;
 }
-/* single-differenced measurement error variance -----------------------------*/
+/* single-differenced measurement error variance -----------------------------
+int sat        // satellite id (index/PRN) — only used implicitly (not used inside function)
+int sys        // satellite system identifier (e.g. SYS_GPS, SYS_GLO, SYS_GAL, SYS_SBS)
+double el      // satellite elevation angle (radians)
+double bl      // baseline length (meters) — distance between rover and base
+double dt      // time offset (seconds) — used to scale clock instability error
+int f          // frequency index (integer used to select code vs phase and frequency-specific entries)
+const prcopt_t *opt // pointer to processing options struct (holds error model params)
+*/
 static double varerr(int sat, int sys, double el, double bl, double dt, int f,
-                     const prcopt_t *opt)
+                     const prcopt_t *opt, double obstruction_scaling)
 {
+    // a - range independent
+    // b - elevation dependent 
+    // c - baseline length dependent
+    // d - clock stability dependent
+
+
     double a,b,c=opt->err[3]*bl/1E4,d=CLIGHT*opt->sclkstab*dt,fact=1.0;
     double sinel=sin(el);
-    int i=sys==SYS_GLO?1:(sys==SYS_GAL?2:0),nf=NF(opt);
+    int i=sys==SYS_GLO?1:(sys==SYS_GAL?2:0),nf=NF(opt); //Map sys to an index. 0=GPS, 1=GLO, 2=GAL
     
     /* extended error model */
+    // extended reads per system per frquency error coefficients
     if (f>=nf&&opt->exterr.ena[0]) { /* code */
         a=opt->exterr.cerr[i][  (f-nf)*2];
         b=opt->exterr.cerr[i][1+(f-nf)*2];
@@ -384,12 +399,21 @@ static double varerr(int sat, int sys, double el, double bl, double dt, int f,
     }
     else { /* normal error model */
         if (f>=nf) fact=opt->eratio[f-nf];
-        if (fact<=0.0)  fact=opt->eratio[0];
-        fact*=sys==SYS_GLO?EFACT_GLO:(sys==SYS_SBS?EFACT_SBS:EFACT_GPS);
+        if (fact<=0.0)  fact=opt->eratio[0]; // Allows different scaling for code and phase
+        fact*=sys==SYS_GLO?EFACT_GLO:(sys==SYS_SBS?EFACT_SBS:EFACT_GPS); // Get a per system scaling facting
         a=fact*opt->err[1];
         b=fact*opt->err[2];
     }
-    return 2.0*(opt->ionoopt==IONOOPT_IFLC?3.0:1.0)*(a*a+b*b/sinel/sinel+c*c)+d*d;
+
+    // modified to include the rover sat scaling. Instead of 2 x A do A + A / (1-p) + d * d. One A is for base noise, one for rover noise
+    if (opt->dtm.processing_type > 2) {
+        double signal_noise = (opt->ionoopt == IONOOPT_IFLC ? 3.0 : 1.0) * (a * a + b * b / sinel / sinel + c * c);
+
+        // linearlly scale sd, square the variance resultingly
+        return (signal_noise + signal_noise * obstruction_scaling * obstruction_scaling) + d * d;
+    }
+
+    return 2.0*(opt->ionoopt==IONOOPT_IFLC?3.0:1.0)*(a*a+b*b/sinel/sinel+c*c)+d*d; 
 }
 /* baseline length -----------------------------------------------------------*/
 static double baseline(const double *ru, const double *rb, double *dr)
@@ -1036,7 +1060,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
     double bl,dr[3],posu[3],posr[3],didxi=0.0,didxj=0.0,*im;
     double *tropr,*tropu,*dtdxr,*dtdxu,*Ri,*Rj,lami,lamj,fi,fj,df,*Hi=NULL;
     int i,j,k,m,f,ff,nv=0,nb[NFREQ*4*2+2]={0},b=0,sysi,sysj,nf=NF(opt);
-    
+    double best_noise_ratio, current_noise_ratio;
     trace(3,"ddres   : dt=%.1f nx=%d ns=%d\n",dt,rtk->nx,ns);
     
     bl=baseline(x,rtk->rb,dr);
@@ -1063,11 +1087,26 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
     for (f=opt->mode>PMODE_DGPS?0:nf;f<nf*2;f++) {
         
         /* search reference satellite with highest elevation */
-        for (i=-1,j=0;j<ns;j++) {
+        for (i=-1, best_noise_ratio=0,j=0;j<ns;j++) {
             sysi=rtk->ssat[sat[j]-1].sys;
             if (!test_sys(sysi,m)) continue;
             if (!validobs(iu[j],ir[j],f,nf,y)) continue;
-            if (i<0||azel[1+iu[j]*2]>=azel[1+iu[i]*2]) i=j;
+
+            if (opt->dtm.processing_type > 4) {
+                // Pick reference satellite that minimizes noise scaling (obstruction scaling / sin (elev)). 
+                current_noise_ratio = rtk->ssat[sat[j] - 1].obstruction_scaling / sin(azel[1 + iu[j] * 2]);
+                if (i < 0 || current_noise_ratio <= best_noise_ratio) {
+                    i = j;
+                    best_noise_ratio = current_noise_ratio;
+                }
+            }
+            else {
+                // Pick reference satellite that has max elevation satellite
+                if (i < 0 || azel[1 + iu[j] * 2] >= azel[1 + iu[i] * 2]){
+                    i = j;
+                }
+            }
+
         }
         if (i<0) continue;
         
@@ -1157,8 +1196,8 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
                 continue;
             }
             /* single-differenced measurement error variances */
-            Ri[nv]=varerr(sat[i],sysi,azel[1+iu[i]*2],bl,dt,f,opt);
-            Rj[nv]=varerr(sat[j],sysj,azel[1+iu[j]*2],bl,dt,f,opt);
+            Ri[nv]=varerr(sat[i],sysi,azel[1+iu[i]*2],bl,dt,f,opt, rtk->ssat[sat[i] - 1].obstruction_scaling);
+            Rj[nv]=varerr(sat[j],sysj,azel[1+iu[j]*2],bl,dt,f,opt, rtk->ssat[sat[j] - 1].obstruction_scaling);
             
             /* set valid data flags */
             if (opt->mode>PMODE_DGPS) {
@@ -1547,14 +1586,13 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
 
-    if (rtk->opt.dtm.reject_observations) {
+    if (rtk->opt.dtm.processing_type != 0) {
         int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
         trace(2, "%i observations rejected due to no line of sight", nrejected);
     }
     else {
         trace(2, "Skipping line of sight checks");
     }
-
 
     trace(4,"x(0)="); tracemat(4,rtk->x,1,NR(opt),13,4);
     
