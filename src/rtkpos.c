@@ -406,7 +406,7 @@ static double varerr(int sat, int sys, double el, double bl, double dt, int f,
     }
 
     // modified to include the rover sat scaling. Instead of 2 x A do A + A / (1-p) + d * d. One A is for base noise, one for rover noise
-    if (opt->dtm.processing_type > 2) {
+    if (opt->DSM.processing_type > 2) {
         double signal_noise = (opt->ionoopt == IONOOPT_IFLC ? 3.0 : 1.0) * (a * a + b * b / sinel / sinel + c * c);
 
         // linearlly scale sd, square the variance resultingly
@@ -1092,7 +1092,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
             if (!test_sys(sysi,m)) continue;
             if (!validobs(iu[j],ir[j],f,nf,y)) continue;
 
-            if (opt->dtm.processing_type > 4) {
+            if (opt->DSM.processing_type > 4) {
                 // Pick reference satellite that minimizes noise scaling (obstruction scaling / sin (elev)). 
                 current_noise_ratio = rtk->ssat[sat[j] - 1].obstruction_scaling / sin(azel[1 + iu[j] * 2]);
                 if (i < 0 || current_noise_ratio <= best_noise_ratio) {
@@ -1586,7 +1586,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
 
-    if (rtk->opt.dtm.processing_type != 0) {
+    if (rtk->opt.DSM.processing_type != 0) {
         int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
         trace(2, "%i observations rejected due to no line of sight", nrejected);
     }

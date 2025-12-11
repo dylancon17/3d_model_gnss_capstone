@@ -1858,7 +1858,6 @@ extern double calc_max_height(const DSMData* DSM);
 
 extern void initialize_dsm
 (
-    file_BIN* file, /* File information structure that contains an open FILE* */
     const char* file_name, /* Name of the DSM .bin file */
     DSMData* DSM, /* Output DSM struct to fill in from the raster data */
     double E_origin_DSM, /* Input easting origin of the DSM (ex. top left location easting of the DSM) */

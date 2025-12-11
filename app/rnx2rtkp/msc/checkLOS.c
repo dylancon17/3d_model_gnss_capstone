@@ -77,7 +77,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM));
         fprintf(stderr, "Probability: %lf\n", probability_of_obstruction);
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)

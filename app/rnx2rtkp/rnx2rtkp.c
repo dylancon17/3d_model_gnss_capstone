@@ -138,7 +138,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i],"-v")&&i+1<argc) prcopt.thresar[0]=atof(argv[++i]);
         else if (!strcmp(argv[i],"-s")&&i+1<argc) strcpy(solopt.sep,argv[++i]);
         else if (!strcmp(argv[i],"-d")&&i+1<argc) solopt.timeu=atoi(argv[++i]);
-        else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.DSM.processing_type = atof(argv[++i]);
+        else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.DSM.processing_type = atoi(argv[++i]);
         else if (!strcmp(argv[i],"-b")) prcopt.soltype=1;
         else if (!strcmp(argv[i],"-c")) prcopt.soltype=2;
         else if (!strcmp(argv[i],"-i")) prcopt.modear=2;
