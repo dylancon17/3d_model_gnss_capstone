@@ -8,12 +8,12 @@ boolean test_los_case(
 	float origin_height,
 	float hor_var,
 	float vert_var,
-	DTMData* DTM,
+	DSMData* DSM,
 	boolean expected_result,
 	boolean* success);
 
 // TODO-DS as part of setting up project flow, create a trigger to run tests
-extern boolean test_los_summary(DTMData* DTM) {
+extern boolean test_los_summary(DSMData* DSM) {
 	boolean success = 1;
 
 	// TODO-TC create actual test cases
@@ -31,7 +31,7 @@ boolean test_los_case(
 	float origin_height,
 	float hor_var,
 	float vert_var,
-	DTMData* DTM,
+	DSMData* DSM,
 	boolean expected_result,
 	boolean* success) {
 
@@ -43,7 +43,7 @@ boolean test_los_case(
 		origin_height,
 		hor_var,
 		vert_var,
-		DTM
+		DSM
 	);
 
 	if (result != expected_result) {

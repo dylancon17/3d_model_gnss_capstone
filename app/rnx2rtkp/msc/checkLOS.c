@@ -1,8 +1,11 @@
-﻿#include "rtklib.h"
+﻿#define _USE_MATH_DEFINES
+
+#include "rtklib.h"
 
 #include <stdlib.h>
 
 #include <math.h>
+
 
 
 
@@ -16,8 +19,8 @@ typedef struct LineState {
 
 void step_along_line(LineState* l);
 void apply_probability(double* y, double* probability);
-void determine_DTM_height_var(double* var, struct DTMData* DTM);
-void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DTMData* DTM);
+void determine_DTM_height_var(double* var, struct DSMData* DSM);
+void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DSMData* DTM);
 void soltocov_rtk(sol_t* sol, double* P);
 
 /* los update ---------------------------------------------------
@@ -48,8 +51,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     soltocov_rtk(&(rtk->sol), P);
     covenu(pos, P, Q);
 
+    lat_long ll = { pos[0] * 180 / M_PI, pos[1] * 180 / M_PI};
+
+    int out_of_bounds = 0;
     // Set relative origin here as it is constant for the rest of the update
-    set_relative_origin(&(rtk->opt.dtm), pos[0], pos[1]);
+    // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
+    set_relative_origin(&(rtk->opt.DSM),&ll,&(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
@@ -74,14 +81,14 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         fprintf(stderr, "Probability: %lf\n", probability_of_obstruction);
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
-        if (probability_of_obstruction > rtk->opt.dtm.rejection_threshold) {
+        if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
             rej_idx[nrej++] = i;
         }
 
         double scaling = 1 / (1 - probability_of_obstruction);
-        if (scaling > rtk->opt.dtm.max_noise_scaling) 
+        if (scaling > rtk->opt.DSM.max_noise_scaling)
         {
-            scaling = rtk->opt.dtm.max_noise_scaling;
+            scaling = rtk->opt.DSM.max_noise_scaling;
         }
 
         // Save data. Warning! This will last across epochs unless overwritten. Shouldn't be an issue unless implementation changed
@@ -91,7 +98,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     //fprintf(stdout, "%d possible sats\n", *ns);
 
     // If deterministic or probabilistic rejection
-    if (rtk->opt.dtm.processing_type > 0 && rtk->opt.dtm.processing_type != 4) {
+    if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4) {
         // Remove the rejected indices
         for (i = nrej - 1; i >= 0; i--) {
             int idx = rej_idx[i];
@@ -111,7 +118,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DTMData* DTM) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM) {
     //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
     //    sat_az * 180 / 3.14,
     //    sat_elev * 180 / 3.14,
@@ -124,22 +131,22 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     double sat_vertical_slope = tanf(sat_elev);
     int origin_x = 0, origin_y = 0;
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
-    get_relative_height(DTM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
-    if (out_of_bounds != 1 && (current_DTM_height > origin_height || DTM->use_dem_height_only == 1)) {
-        origin_height = current_DTM_height + DTM->antenna_dem_offset;
-        origin_vertical_variance = DTM->vertical_point_variance + DTM->antenna_dem_offset_var;
+    get_relative_height(DSM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
+    if (out_of_bounds != 1 && (current_DTM_height > origin_height || DSM->use_dem_height_only == 1)) {
+        origin_height = current_DTM_height + DSM->antenna_dem_offset;
+        origin_vertical_variance = DSM->vertical_point_variance + DSM->antenna_dem_offset_var;
     }
 
     // Set up height checks
     double max_checked_DTM_height = origin_height;
 
     // Only search until a distance where you're guranteed to hit a building, or you've searched a ways
-    double max_distance_steps = (DTM->max_dem_height - origin_height) / sat_vertical_slope;
-    if (max_distance_steps > DTM->max_distance) {
-        max_distance_steps = DTM->max_distance;
+    double max_distance_steps = (DSM->max_dsm_height - origin_height) / sat_vertical_slope;
+    if (max_distance_steps > DSM->max_distance) {
+        max_distance_steps = DSM->max_distance;
     }
     // Scale to units of steps instead of meters
-    max_distance_steps = max_distance_steps / DTM->step_size;
+    max_distance_steps = max_distance_steps / DSM->step_size;
 
     // Draws a line from (0,0) to (E1, N1) that's the maximum distance required to check
     int E1 = (int)roundf(max_distance_steps * sinf(sat_az)); // Find distance to end point and then reduce by step size to reduce the number of required steps
@@ -160,7 +167,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         // Traverse the DTM
         step_along_line(&line);
         
-        get_relative_height(DTM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
+        get_relative_height(DSM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
 
         //fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
         //    line.E, line.N, line.d, line.dE, line.dN, line.sE, line.sN, line.err, line.e2, current_DTM_height, out_of_bounds);
@@ -186,19 +193,19 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         
         // Calculate precise distance travelled for a height check. Only done here for efficiency
         // Get the distance in meters instead of the units of steps, required for slope uints
-        line.d = sqrt(pow(line.E * DTM->step_size, 2) + pow(line.N * DTM->step_size, 2));
+        line.d = sqrt(pow(line.E * DSM->step_size, 2) + pow(line.N * DSM->step_size, 2));
         
         sat_height = sat_vertical_slope * line.d + origin_height;
 
         // Change distance units back to step size instead of meters
-        line.d = line.d / DTM->step_size; 
+        line.d = line.d / DSM->step_size; 
 
 
-        if (DTM->processing_type > 1) {
+        if (DSM->processing_type > 1) {
             //Calculate probability of obstruction
-            determine_sat_height_var(&sat_height_var, origin_horizontal_variance, origin_vertical_variance, sat_vertical_slope, DTM);
+            determine_sat_height_var(&sat_height_var, origin_horizontal_variance, origin_vertical_variance, sat_vertical_slope, DSM);
 
-            determine_DTM_height_var(&DTM_height_var, DTM);
+            determine_DTM_height_var(&DTM_height_var, DSM);
 
             y = (current_DTM_height - sat_height) / sqrt(DTM_height_var + sat_height_var);
 
@@ -271,15 +278,15 @@ void apply_probability(double* y, double* probability) {
     *probability = 1 - (1 - prob) * (1 - *probability);
 }
 
-void determine_DTM_height_var(double* var, struct DTMData* DTM) {
+void determine_DTM_height_var(double* var, struct DSMData* DSM) {
     //DTM possible error sources:
     // Height accuracy
     // Coordinate Horizontal accuracy - insignificant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so slight horizontal error doesn't matter
     // Height errros due to calling the nearest height - insignficant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so no interpolation error would be introduced anyways
-    *var = DTM->vertical_point_variance;
+    *var = DSM->vertical_point_variance;
 }
 
-void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DTMData* DTM) {
+void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope,DSMData* DSM) {
     //Formula for sat height variance: height = tan(elev) * horizontal distance traversed + origin_height
     //Possible Error Sources:
     // Elevation accuracy - function of sat err, pos err and baseline distance. Assumed to be insignificant due to extremely long baseline
@@ -291,7 +298,7 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     //  DEM Source - use determine_DTM_height_var + DEM offset var
     //  KF Source - use the estimated filter variance
     *var = origin_vertical_variance;
-    double distance_var = pow(0.34 * DTM->step_size,2) + origin_horizontal_variance;
+    double distance_var = pow(0.34 * DSM->step_size,2) + origin_horizontal_variance;
     *var = *var + pow(sat_vertical_slope, 2) * distance_var;
 
     fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
@@ -307,6 +314,6 @@ void soltocov_rtk(sol_t* sol, double* P)
     P[4] = sol->qr[1]; /* yy or nn */
     P[8] = sol->qr[2]; /* zz or uu */
     P[1] = P[3] = sol->qr[3]; /* xy or en */
-    P[5] = P[7] = sol->qr[4]; /* yz or nu */
+    P[5] = P[7] = sol->qr[4]; /* yz or nu */        
     P[2] = P[6] = sol->qr[5]; /* zx or ue */
 }

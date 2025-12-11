@@ -115,7 +115,7 @@ int main(int argc, char **argv)
         }
     }
 
-    prcopt.dtm.processing_type = 0; //Manually set DEM default
+    prcopt.DSM.processing_type = 0; //Manually set DEM default
 
 
     for (i=1,n=0;i<argc;i++) {
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i],"-v")&&i+1<argc) prcopt.thresar[0]=atof(argv[++i]);
         else if (!strcmp(argv[i],"-s")&&i+1<argc) strcpy(solopt.sep,argv[++i]);
         else if (!strcmp(argv[i],"-d")&&i+1<argc) solopt.timeu=atoi(argv[++i]);
-        else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.dtm.processing_type = atof(argv[++i]);
+        else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.DSM.processing_type = atof(argv[++i]);
         else if (!strcmp(argv[i],"-b")) prcopt.soltype=1;
         else if (!strcmp(argv[i],"-c")) prcopt.soltype=2;
         else if (!strcmp(argv[i],"-i")) prcopt.modear=2;
@@ -169,18 +169,36 @@ int main(int argc, char **argv)
         return -2;
     }
 
-    if (prcopt.dtm.processing_type != 0) {
-        /* set DEM options TODO-TC*/
-        prcopt.dtm.max_dem_height = 1400; // Max height within DEM
-        prcopt.dtm.max_distance = 2000; // Only search for buildings up to 2km away
-        prcopt.dtm.processing_type = 0; // By default don't include the DEM
-        prcopt.dtm.step_size = 5; // 5m grid spacing
-        prcopt.dtm.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
-        prcopt.dtm.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
-        prcopt.dtm.rejection_threshold = 0.5; // Reject sats with more than 50% probability of obstruction
-        prcopt.dtm.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
-        prcopt.dtm.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
-        prcopt.dtm.max_noise_scaling = 20; // Scale errors to a max of 20 times
+    /* Initialize DSM and related objects */
+    if (prcopt.DSM.processing_type != 0) {
+        /* set DEM options */
+        prcopt.DSM.max_distance = 2000; // Only search for buildings up to 2km away
+        prcopt.DSM.processing_type = 0; // By default don't include the DEM
+        prcopt.DSM.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
+        prcopt.DSM.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
+        prcopt.DSM.rejection_threshold = 0.5; // Reject sats with more than 50% probability of obstruction
+        prcopt.DSM.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
+        prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
+        prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
+
+        initialize_dsm("data.bin", &(prcopt.DSM), -5243.600, 5657585.200, 5, 220);
+
+
+        /* Calgary 114W 3TM */
+        prcopt.UTM.central_meridian = -114.0;
+        prcopt.UTM.latitude_of_origin = 0.0;
+        prcopt.UTM.scale_factor = 0.9999;
+        prcopt.UTM.false_easting = 0.0;
+        prcopt.UTM.false_northing = 0.0;
+
+        /* WGS 84 Ellipsoid */
+        prcopt.ellip.flattening = 1 / 298.257223563;
+        prcopt.ellip.semi_major_axis = 6378137.0;
+        prcopt.ellip.semi_minor_axis = -1 * (prcopt.ellip.flattening * prcopt.ellip.semi_major_axis - prcopt.ellip.semi_major_axis);
+        double a = prcopt.ellip.semi_major_axis;
+        double b = prcopt.ellip.semi_minor_axis;
+        prcopt.ellip.first_eccentricity = (a * a - b * b) / (a * a);
+        prcopt.ellip.second_eccentricity = (a * a - b * b) / (b * b);
     }
     ret=postpos(ts,te,tint,0.0,&prcopt,&solopt,&filopt,infile,n,outfile,"","");
     

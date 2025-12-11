@@ -7,6 +7,7 @@ Release_Build
 Debug_Build
 __history
 
+*.idea*
 
 .vs/
 *.obj
