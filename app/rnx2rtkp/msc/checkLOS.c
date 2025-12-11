@@ -52,7 +52,7 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
     
-        if (rtk->ssat[i - 1].obstruction_probability > rtk->opt.dtm.rejection_threshold) {
+        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
             num_expected++;
         }
     }
@@ -74,7 +74,7 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
 
-        if (rtk->ssat[i - 1].obstruction_probability > rtk->opt.dtm.rejection_threshold) {
+        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
             num_expected++;
         }
     }
@@ -149,6 +149,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
     // TODO - make a smarter observed to expected ratio using probabilities
     // TODO - use the number of tracked but obstructed satellites in the decision process as well
+    // (Use the error between probability to tracked vs not tracked) - chi square?
+    // Position with and without the algorithm - ?
     if (num_observed_that_were_expected * 2 < num_expected && num_expected > 3 && rtk->opt.dtm.processing_type) {
         // Undo any scaling
         for (i = 0;i < *ns && i < MAXOBS;i++) {
