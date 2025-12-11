@@ -20,7 +20,7 @@ void determine_DTM_height_var(double* var, struct DTMData* DTM);
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DTMData* DTM);
 void soltocov_rtk(sol_t* sol, double* P);
 
-int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q) {
+int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum) {
     double rs[6], dts[2], var, azel[2];
     int sat;
     int svh[2];
@@ -31,7 +31,7 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
     //TODO this whole section could be done better as sat positions are being calculated twice!
     // WARNING - this uses the time of reception, not time of transmission. This is incorrect! Expected error is 1-4", so likely insignificant?
-    int num_expected = 0;
+    int num_possible = 0;
 
     /* ---- GPS/GAL/BDS/QZSS/SBAS broadcast ephemerides ---- */
     for (int i = 0; i < nav->n; i++) {
@@ -52,9 +52,12 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
     
-        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
-            num_expected++;
-        }
+        num_possible++;
+        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+
+//        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
+//            num_expected++;
+//        }
     }
 
     /* ---- GLONASS broadcast ephemerides ---- */
@@ -74,12 +77,16 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
 
-        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
-            num_expected++;
-        }
+        num_possible++;
+        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+
+
+//        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
+//            num_expected++;
+//        }
     }
 
-    return num_expected;
+    return num_possible;
 }
 
 /* los update ---------------------------------------------------
@@ -113,8 +120,18 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     // Set relative origin here as it is constant for the rest of the update
     set_relative_origin(&(rtk->opt.dtm), pos[0], pos[1]);
 
-    int num_expected = calc_expected_los(rtk, nav, tor, rr, pos, Q);
-    int num_observed_that_were_expected = 0;
+    double probability_total = 0;
+
+    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total);
+
+    if (num_possible < 1) {
+        return 0;
+    }
+
+    int num_not_observed = num_possible;
+
+    double observed_probability_sum = 0;
+
     double r;
     double probability_of_obstruction = 0;
 
@@ -128,9 +145,6 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
         if (probability_of_obstruction > rtk->opt.dtm.rejection_threshold) {
             rej_idx[nrej++] = i;
         }
-        else {
-            num_observed_that_were_expected++;
-        }
 
         double scaling = 1 / (1 - probability_of_obstruction);
         if (scaling > rtk->opt.dtm.max_noise_scaling) 
@@ -141,17 +155,18 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
         // Save data. Warning! This will last across epochs unless overwritten. Shouldn't be an issue unless implementation changed
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
 
+        observed_probability_sum += probability_of_obstruction;
+        probability_total -= probability_of_obstruction;
+        num_not_observed--;
+
     }
 
-    // If we observed less than half of the theoretically visible satellites, our estimated position is likely wrong.
+    double average_probability_error = (observed_probability_sum + (num_not_observed - probability_total)) / num_possible;
+
+    // If our prediction was more than a threshold incorrect, our probability calc is likely incorrect due to an incorrect starting position
     // Therefore, don't reject deweight sats to prevent us from continuing along the wrong path
-    // Only do this if the number of expected sats is > 4 (must have 3/4 then missing), otherwise sample size is too small to intelligently tell
     // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
-    // TODO - make a smarter observed to expected ratio using probabilities
-    // TODO - use the number of tracked but obstructed satellites in the decision process as well
-    // (Use the error between probability to tracked vs not tracked) - chi square?
-    // Position with and without the algorithm - ?
-    if (num_observed_that_were_expected * 2 < num_expected && num_expected > 3 && rtk->opt.dtm.processing_type) {
+    if (average_probability_error < 0.5 && rtk->opt.dtm.processing_type > 5) {
         // Undo any scaling
         for (i = 0;i < *ns && i < MAXOBS;i++) {
             rtk->ssat[sat[i] - 1].obstruction_scaling = 1.0;
