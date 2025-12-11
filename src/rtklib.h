@@ -1755,9 +1755,6 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
 
-/* custom project functions*/
-extern boolean test_los_summary(DTMData* DTM);
-
 extern double check_los(
     double sat_az,
     double sat_elev,
