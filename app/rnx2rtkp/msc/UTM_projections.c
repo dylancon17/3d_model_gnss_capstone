@@ -2,24 +2,6 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-/*
-void make_ellipsoid
-(
-	ellipsoid* e,
-	const double semi_major_axis,
-	const double flattening
-)
-{
-	e->flattening = flattening;
-	e->semi_major_axis = semi_major_axis;
-	e->semi_minor_axis = -1 * (flattening * semi_major_axis - semi_major_axis);
-	const double a = e->semi_major_axis;
-	const double b = e->semi_minor_axis;
-	e->first_eccentricity = (a * a - b * b) / (a * a);
-	e->second_eccentricity = (a * a - b * b) / (b * b);
-}
-*/
-
 void project_latitude_longitude_to_UTM
 (
 	east_north* EN,
@@ -85,21 +67,3 @@ void project_latitude_longitude_to_UTM
 	EN->easting = proj->false_easting + proj->scale_factor * x;
 	EN->northing = proj->false_northing + proj->scale_factor * y;
 }
-
-// WGS-84 and Calgary 3TM ---------------
-
-/*
-UTM_projection Calgary_3TM_114W = {
-	-114.0,
-	0.0,
-	0.9999,
-	0.0,
-	0.0
-};
-
-ellipsoid WGS_84;
-
-void create_WGS_84_ellipsoid() {
-	return make_ellipsoid(&WGS_84, 6378137.0, 1 / 298.257223563);
-}
-	*/

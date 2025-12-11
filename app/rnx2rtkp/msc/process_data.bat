@@ -7,7 +7,7 @@ if /I "%~1"=="--help" goto :show_help
 REM ---------------- Configuration (edit paths if necessary) -----------
 set "ROOT=C:\capstone\ToShare"
 set "DATAYEAR=23"
-set "RTKLIB_EXE=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\Release\rnx2rtkp.exe"
+set "RTKLIB_EXE=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\Release\rnx2rtkp_vc.exe"
 set "RTKPLOT_EXE=C:\capstone\3d_model_gnss_capstone\app\rtkplot\rtkplot.exe"
 set "CONFIG=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\config.conf"
 set "wpaProfile=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\JustCPUrnx2rtkp.wpaProfile"
@@ -168,13 +168,13 @@ echo    Added to all output file names
 echo.
 echo Examples:
 echo   process_data.bat 1 2
-echo       -> Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
+echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
 echo.
 echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
-echo       -> Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
+echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
 echo.
 echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4
-echo       -> Runs datasets 1–6 with full processing and prefix RUN4
+echo        - Runs datasets 1 to 6 with full processing and prefix RUN4
 echo ===================================================================
 echo.
 goto :EOF

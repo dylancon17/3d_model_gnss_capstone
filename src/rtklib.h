@@ -35,8 +35,6 @@
 #include <time.h>
 #include <ctype.h>
 
-#include <stdbool.h>
-
 #include <stdint.h>
 #ifdef WIN32
 #include <winsock2.h>
@@ -1823,7 +1821,6 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
 
 
 /* custom project functions*/
-extern boolean test_los_summary(DSMData* DTM);
 
 extern double check_los(
     double sat_az,
@@ -1892,6 +1889,16 @@ extern void get_relative_height
 );
 
 extern void deallocate_dsm(const DSMData* DSM);
+
+/* UTM Projection Functions */
+
+extern void project_latitude_longitude_to_UTM
+(
+    east_north* EN,
+    const lat_long* ll,
+    const UTM_projection* proj,
+    const ellipsoid* e
+);
 
 #ifdef __cplusplus
 }
