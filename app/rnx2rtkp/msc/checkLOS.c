@@ -21,7 +21,7 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
 void soltocov_rtk(sol_t* sol, double* P);
 
 int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum) {
-    double rs[6], dts[2], var, azel[2];
+    double rs[6], dts[2], var;
     int sat;
     int svh[2];
 
