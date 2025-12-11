@@ -166,7 +166,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     // If our prediction was more than a threshold incorrect, our probability calc is likely incorrect due to an incorrect starting position
     // Therefore, don't reject deweight sats to prevent us from continuing along the wrong path
     // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
-    if (average_probability_error < 0.5 && rtk->opt.dtm.processing_type > 5) {
+    if (average_probability_error > rtk->opt.dtm.average_prob_error_max && rtk->opt.dtm.processing_type > 5) {
         // Undo any scaling
         for (i = 0;i < *ns && i < MAXOBS;i++) {
             rtk->ssat[sat[i] - 1].obstruction_scaling = 1.0;

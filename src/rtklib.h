@@ -490,6 +490,7 @@ typedef struct DTMData {
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
     int max_noise_scaling; /*Scale the noise by a maximum of n time*/
+    double average_prob_error_max; /* The maximum error that can exist in the overall probability checks*/
 } DTMData;
 
 /* type definitions ----------------------------------------------------------*/
