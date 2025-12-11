@@ -90,5 +90,8 @@
     <ClCompile Include="DSM_data.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="UTM_projections.c">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
