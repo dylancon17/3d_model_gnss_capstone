@@ -1588,8 +1588,10 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
 
     if (rtk->opt.DSM.processing_type != 0) {
         int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
+        fprintf(stdout, "%i observations rejected due to no line of sight", nrejected);
     }
     else {
+        fprintf(stdout, "Skipping line of sight checks");
     }
 
     trace(4,"x(0)="); tracemat(4,rtk->x,1,NR(opt),13,4);
