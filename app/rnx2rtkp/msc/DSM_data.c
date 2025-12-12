@@ -29,7 +29,7 @@ int read_BIN(file_BIN* file, const char* fileName)
 
     /* If file doesn't open, send an error message */
     if (!file->file_ptr) {
-        perror("Failed to open file");
+        fprintf(stdout, "Failed to open file\n");
         return 1;
     }
 
@@ -143,10 +143,10 @@ void initialize_dsm
     int n_columns /* Number of columns in the DSM grid */
 )
 {
-    file_BIN* file;
+    file_BIN file;
     /* 1. Read how many elevation samples are in the DSM raster dataset.
      *    read_BIN() returns the number of 16-bit integer compressed height values */
-    DSM->n_data_points = read_BIN(file, file_name);
+    DSM->n_data_points = read_BIN(&file, file_name);
 
     /* 2. Copy spatial metadata from the raster into the DSM struct.
      *    These metadata values are determined beforehand. */
@@ -162,7 +162,7 @@ void initialize_dsm
      *    Each height value is stored as compressed uint16_t values (from 0-65535).
      *    And then read the file to store these values from the .bin file into the heights array. */
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
-    fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file->file_ptr);
+    fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file.file_ptr);
 
     /* 5. Precompute the "first digit" values of the x/y origin.
      *    This is used to properly index through the compressed height values in heights_array */
@@ -258,7 +258,8 @@ void get_relative_height
         printf("Relative height: %f\n", *h);
     }
     else {
-        printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
+        *h = -1.0f;
+        //printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
     }
 
 }

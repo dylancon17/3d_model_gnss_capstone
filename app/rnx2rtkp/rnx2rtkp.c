@@ -116,6 +116,7 @@ int main(int argc, char **argv)
     }
 
     prcopt.DSM.processing_type = 0; //Manually set DEM default
+    prcopt.DSM.heights_array = NULL; //First set the heights array to NULL
 
 
     for (i=1,n=0;i<argc;i++) {
@@ -173,10 +174,9 @@ int main(int argc, char **argv)
     if (prcopt.DSM.processing_type != 0) {
         /* set DEM options */
         prcopt.DSM.max_distance = 2000; // Only search for buildings up to 2km away
-        prcopt.DSM.processing_type = 0; // By default don't include the DEM
         prcopt.DSM.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
         prcopt.DSM.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
-        prcopt.DSM.rejection_threshold = 0.5; // Reject sats with more than 50% probability of obstruction
+        prcopt.DSM.rejection_threshold = 0.9; // Reject sats with more than 50% probability of obstruction
         prcopt.DSM.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
@@ -201,6 +201,9 @@ int main(int argc, char **argv)
         prcopt.ellip.second_eccentricity = (a * a - b * b) / (b * b);
     }
     ret=postpos(ts,te,tint,0.0,&prcopt,&solopt,&filopt,infile,n,outfile,"","");
+
+    free(prcopt.DSM.heights_array);
+
     
     if (!ret) fprintf(stderr,"%40s\r","");
     return ret;

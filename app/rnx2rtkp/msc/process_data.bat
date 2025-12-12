@@ -133,7 +133,6 @@ for %%D in (!DATASET_LIST!) do (
 )
 
 REM Clean up and exit
-pause
 endlocal
 exit /b 0
 
