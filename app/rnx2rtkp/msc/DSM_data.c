@@ -223,7 +223,7 @@ void set_relative_origin
         printf("\nRelative origin E: %f\n", DSM->relative_origin_traverse.easting);
         printf("Relative origin N: %f\n", DSM->relative_origin_traverse.northing);
     }
-    else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS");
+    else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
 }
 
 /* get_relative_height ---------------------------------------------------
@@ -255,7 +255,7 @@ void get_relative_height
     if (*out_of_bounds == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
         *h = calculate_true_height_meters(DSM, index);
-        printf("Relative height: %f\n", *h);
+        //printf("Relative height: %f\n", *h);
     }
     else {
         *h = -1.0f;

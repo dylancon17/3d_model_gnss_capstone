@@ -34,7 +34,7 @@ void soltocov_rtk(sol_t* sol, double* P);
 *          double    *rs    I   satellite positions in ECEF
 * return : int (number of rejected sats) */
 extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
-    //fprintf(stderr, "%s\n", "LOS Update\n");
+    fprintf(stderr, "\n\n%s\n", "LOS Update\n");
 
     int i, nrej=0;
     int rej_idx[MAXOBS];
@@ -62,7 +62,11 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double r;
     double probability_of_obstruction = 0;
 
-    //fprintf(stderr, "%i %i", rtk->opt.dtm.max_distance_check, rtk->opt.dtm.reject_observations);
+    double current_DTM_height;
+
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+        return 0;
+    }
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
         r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
@@ -78,10 +82,10 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
         probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM));
-        fprintf(stderr, "Probability: %lf\n", probability_of_obstruction);
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
+
             rej_idx[nrej++] = i;
         }
 
@@ -119,11 +123,11 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
 //Assumes relative origin already set
 extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM) {
-    //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf\n",
-    //    sat_az * 180 / 3.14,
-    //    sat_elev * 180 / 3.14,
-    //    origin_lat * 180 / 3.14,
-    //    origin_long * 180 / 3.14,
+    //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf, result: ",
+    //    sat_az * 180 / M_PI,
+    //   sat_elev * 180 / M_PI,
+    //    origin_lat * 180 / M_PI,
+    //    origin_long * 180 / M_PI,
     //    origin_height);
 
     int out_of_bounds = 0;
@@ -169,15 +173,21 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         
         get_relative_height(DSM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
 
+        //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
+
         //fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
         //    line.E, line.N, line.d, line.dE, line.dN, line.sE, line.sN, line.err, line.e2, current_DTM_height, out_of_bounds);
 
         // If fully traversed DTM, LOS is clear after that point, return current probability
-        if (out_of_bounds == 1) {return probability_of_obstruction;}
+        if (out_of_bounds == 1) {
+            //fprintf(stderr, "out of bounds %lf\n", probability_of_obstruction);
+
+            return probability_of_obstruction;
+        }
 
         // Have traversed the max distance required to trraverse, LOS is clear after that point. Depends on the number of steps travelled
         if (max_distance_steps < line.d) {
-            //fprintf(stderr, "covered max distance\n");
+            //fprintf(stderr, "covered max distance %lf\n", probability_of_obstruction);
             return probability_of_obstruction;
         }
 
@@ -214,10 +224,12 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             // If hit 0.99 round up to 1.
             if (probability_of_obstruction > 0.99) {
                 probability_of_obstruction = 1.0f;
+                //fprintf(stderr, "hit max probability %lf\n", probability_of_obstruction);
+
                 return probability_of_obstruction;
             }
 
-            fprintf(stderr, "Probability Updated To: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sqrt(sat_height_var), sqrt(DTM_height_var), y);
+            //fprintf(stderr, "Probability Updated To: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sqrt(sat_height_var), sqrt(DTM_height_var), y);
 
 
             continue;
@@ -228,8 +240,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         // Boolean rejection (old)
         // Satellite is lower than DTM, LOS is obstructed
         if (sat_height < current_DTM_height) { 
-            //fprintf(stderr, "Reject sat, too low");
-            //Apply the probability here
+            //fprintf(stderr, "sat height is less than DTM height, %lf < %lf\n", sat_height, current_DTM_height);
             return 1;
         }
 
