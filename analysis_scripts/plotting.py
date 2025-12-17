@@ -270,7 +270,6 @@ gdf_truth = gpd.GeoDataFrame(
     crs="EPSG:4326"
 )
 
-# Project both to Web Mercator for basemap compatibility
 gdf_rtk = gdf_rtk.to_crs(epsg=3857)
 gdf_truth = gdf_truth.to_crs(epsg=3857)
 
@@ -308,3 +307,4 @@ plt.savefig(
     bbox_inches="tight"
 )
 plt.close()
+
