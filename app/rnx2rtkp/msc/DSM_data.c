@@ -187,9 +187,11 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @param x_steps Number of X steps from the origin of the DSM
 /// @param y_steps Number of Y steps from the origin of the DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
-int out_of_bounds_check(int x_steps, int y_steps)
+int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
 {
-    if (x_steps < 0 || y_steps < 0) return 1;
+    double max_steps_x = DSM->n_columns;
+    double max_steps_y = DSM->n_rows;
+    if (x_steps < 0 || y_steps < 0 || x_steps > max_steps_x || y_steps > max_steps_y) return 1;
     else return 0;
 }
 
@@ -250,7 +252,7 @@ void get_relative_height
 
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
 
     if (*out_of_bounds == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;

@@ -1867,7 +1867,7 @@ extern double calculate_true_height_meters(const DSMData* DSM, int index);
 
 extern steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM);
 
-extern int out_of_bounds_check(int x_steps, int y_steps);
+extern int out_of_bounds_check(int x_steps, int y_steps, const DSMData* DSM);
 
 extern void set_relative_origin
 (
