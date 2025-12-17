@@ -22,7 +22,7 @@ out_dir = sys.argv[3]
 
 os.makedirs(out_dir, exist_ok=True)
 
-print(f"\nRTKLIB file: {rtklib_file}")
+print(f"\nSolution: {rtklib_file}")
 print(f"Truth file : {truth_file}\n")
 
 # ============================
@@ -307,4 +307,5 @@ plt.savefig(
     bbox_inches="tight"
 )
 plt.close()
+
 
