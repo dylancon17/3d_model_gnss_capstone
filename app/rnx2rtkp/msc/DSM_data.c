@@ -189,6 +189,7 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
 int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
 {
+    fprintf(stdout, "Out of bounds check is now edited");
     int max_steps_x = DSM->n_columns;
     int max_steps_y = DSM->n_rows;
     if (x_steps < 0 || y_steps < 0 || x_steps > max_steps_x || y_steps > max_steps_y) return 1;
@@ -219,11 +220,9 @@ void set_relative_origin
     );
     const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y,DSM);
     if (*out_of_bounds == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
-        printf("\nRelative origin E: %f\n", DSM->relative_origin_traverse.easting);
-        printf("Relative origin N: %f\n", DSM->relative_origin_traverse.northing);
     }
     else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
 }
