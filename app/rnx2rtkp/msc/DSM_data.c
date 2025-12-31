@@ -154,6 +154,8 @@ void initialize_dsm
     DSM->origin_dsm.northing = N_origin_DSM;
     DSM->step_size = step_size;
     DSM->n_columns = n_columns;
+    DSM->tile_size_x = DSM->step_size * DSM->n_columns;
+    DSM->tile_size_y = DSM->step_size * DSM->n_rows;
 
     /* 3. Count the number of rows in the square/rectangle DSM grid. */
     DSM->n_rows = DSM->n_data_points / DSM->n_columns;
@@ -189,6 +191,8 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
 int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
 {
+    //double x_limit = DSM->origin_dsm.easting + DSM->
+
     fprintf(stdout, "Out of bounds check is now edited");
     int max_steps_x = DSM->n_columns;
     int max_steps_y = DSM->n_rows;

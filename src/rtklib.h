@@ -526,7 +526,6 @@ typedef struct DSMData {
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
                          currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection*/
     double rejection_threshold;
-    int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
@@ -539,6 +538,9 @@ typedef struct DSMData {
     int n_rows; /* Number of rows in the elevation (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_columns; /* Number of columns in the (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_data_points; /* Number of data points in the dataset (this value should equal to n_rows x n_columns) */
+    int step_size; /* Spacing between raster points, ex. 5m*/
+    int tile_size_x;
+    int tile_size_y;
     uint16_t* heights_array; /* Data member array to hold the compressed height values. */
 
     /* "First digit" value example: The number 5243.6 would have the first digit (the one's place and the first decimal place) to be 3.6.
