@@ -189,15 +189,27 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @param x_steps Number of X steps from the origin of the DSM
 /// @param y_steps Number of Y steps from the origin of the DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
-int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
+int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM, east_north* traverse)
 {
-    //double x_limit = DSM->origin_dsm.easting + DSM->
+    double x_limit = DSM->origin_dsm.easting + (DSM->tile_size_x * DSM->n_columns - 1);
+    double y_limit = DSM->origin_dsm.northing - (DSM->tile_size_y * DSM->n_rows - 1);
 
+    if (traverse->easting < DSM->origin_dsm.easting) return 1;
+    else if (traverse->easting > x_limit) return 1;
+
+    else if (traverse->northing > DSM->origin_dsm.northing) return 1;
+    else if (traverse->northing < y_limit) return 1;
+
+    else return 0;
+
+
+    /*
     fprintf(stdout, "Out of bounds check is now edited");
     int max_steps_x = DSM->n_columns;
     int max_steps_y = DSM->n_rows;
     if (x_steps < 0 || y_steps < 0 || x_steps > max_steps_x || y_steps > max_steps_y) return 1;
     else return 0;
+    */
 }
 
 /* set_relative_origin ---------------------------------------------------
@@ -224,7 +236,7 @@ void set_relative_origin
     );
     const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y,DSM);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, &DSM, &DSM->relative_origin_traverse);
     if (*out_of_bounds == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
@@ -249,13 +261,13 @@ void get_relative_height
 )
 {
     const double traverse_E = DSM->relative_origin_traverse.easting + (*steps_E) * (double)DSM->step_size;
-    const double traverse_N = DSM->relative_origin_traverse.northing + (*steps_N) * DSM->step_size;
+    const double traverse_N = DSM->relative_origin_traverse.northing + (*steps_N) * (double)DSM->step_size;
 
     east_north traverse = { traverse_E,traverse_N };
 
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM, &traverse);
 
     if (*out_of_bounds == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
