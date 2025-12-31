@@ -1830,7 +1830,7 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
 
-/* custom project functions*/
+/* ------------ custom project functions ------------ */
 
 extern double check_los(
     double sat_az,
@@ -1852,6 +1852,17 @@ extern int los_update(
     const double* rs);
 
 /* DSM functions */
+
+extern void initialize_tiles_dataset
+(
+    TilesDataset* td,
+    int num_tiles_x, 
+    int num_tiles_y, 
+    int tiles_dimension_x, 
+    int tiles_dimension_y, 
+    double top_left_tile_origin_x, 
+    double top_left_tile_origin_y
+);
 
 extern int read_BIN(file_BIN* file, const char* fileName);
 

@@ -5,6 +5,27 @@
 #include <string.h>
 #include <math.h>
 
+
+void initialize_tiles_dataset
+(
+    TilesDataset* td,
+    int num_tiles_x, 
+    int num_tiles_y, 
+    int tiles_dimension_x, 
+    int tiles_dimension_y, 
+    double top_left_tile_origin_x, 
+    double top_left_tile_origin_y)
+{
+    td->num_tiles_x = num_tiles_x;
+    td->num_tiles_y = num_tiles_y;
+    td->tiles_dimension_x = tiles_dimension_x;
+    td->tiles_dimension_y = tiles_dimension_y;
+    td->top_left_tile_origin.easting = top_left_tile_origin_x;
+    td->top_left_tile_origin.northing = top_left_tile_origin_y;
+}
+
+
+
 /// <summary>
 /// Opens a .bin DSM file, determines its size (in bytes), and computes how many uint16_t elevation samples it contains.
 /// </summary>
@@ -191,17 +212,16 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
 int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
 {
-    double x_limit = tiles_dataset->top_left_tile_origin.easting + (tiles_dataset->tiles_dimension_x * tiles_dataset->num_tiles_x - 1)
-    double y_limit 
-    //double y_limit = DSM->origin_dsm.northing - (DSM->tile_size_y * DSM->n_rows - 1);
+    double x_limit = tiles_dataset->top_left_tile_origin.easting + (tiles_dataset->tiles_dimension_x * tiles_dataset->num_tiles_x - 1);
+    double y_limit = tiles_dataset->top_left_tile_origin.northing - (tiles_dataset->tiles_dimension_y * tiles_dataset->num_tiles_y - 1);
 
-    if (traverse->easting < DSM->origin_dsm.easting) return 1;
+    if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
     else if (traverse->easting > x_limit) return 1;
 
-    else if (traverse->northing > DSM->origin_dsm.northing) return 1;
+    else if (traverse->northing > tiles_dataset->top_left_tile_origin.northing) return 1;
     else if (traverse->northing < y_limit) return 1;
 
-    else return 0;
+    else return 0; 
 
 
     /*
