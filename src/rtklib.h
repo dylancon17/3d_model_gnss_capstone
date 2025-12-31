@@ -552,6 +552,14 @@ typedef struct DSMData {
 
 } DSMData;
 
+typedef struct TilesDataset {
+    int num_tiles_x;
+    int num_tiles_y;
+    int tiles_dimension_x;
+    int tiles_dimension_y;
+    east_north top_left_tile_origin;
+} TilesDataset;
+
 // WGS-84
 extern ellipsoid WGS_84;
 
@@ -1869,7 +1877,7 @@ extern double calculate_true_height_meters(const DSMData* DSM, int index);
 
 extern steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM);
 
-extern int out_of_bounds_check(int x_steps, int y_steps, const DSMData* DSM, const east_north* traverse);
+extern int out_of_bounds_check(const east_north* traverse, const TilesDataset* tiles_dataset);
 
 extern void set_relative_origin
 (

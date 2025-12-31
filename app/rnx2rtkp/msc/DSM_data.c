@@ -189,10 +189,11 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @param x_steps Number of X steps from the origin of the DSM
 /// @param y_steps Number of Y steps from the origin of the DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
-int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM, east_north* traverse)
+int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
 {
-    double x_limit = DSM->origin_dsm.easting + (DSM->tile_size_x * DSM->n_columns - 1);
-    double y_limit = DSM->origin_dsm.northing - (DSM->tile_size_y * DSM->n_rows - 1);
+    double x_limit = tiles_dataset->top_left_tile_origin.easting + (tiles_dataset->tiles_dimension_x * tiles_dataset->num_tiles_x - 1)
+    double y_limit 
+    //double y_limit = DSM->origin_dsm.northing - (DSM->tile_size_y * DSM->n_rows - 1);
 
     if (traverse->easting < DSM->origin_dsm.easting) return 1;
     else if (traverse->easting > x_limit) return 1;
