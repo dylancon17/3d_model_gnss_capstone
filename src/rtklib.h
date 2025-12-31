@@ -1892,7 +1892,8 @@ extern int out_of_bounds_check(const east_north* traverse, const TilesDataset* t
 
 extern void set_relative_origin
 (
-    struct DSMData* DSM,
+    DSMData* DSM,
+    const TilesDataset* tiles_dataset,
     const lat_long* relative_origin_degrees,
     const UTM_projection* proj,
     const ellipsoid* e,
@@ -1902,7 +1903,8 @@ extern void set_relative_origin
 
 extern void get_relative_height
 (
-    const struct DSMData* DSM,
+    const DSMData* DSM,
+    const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
     double* h,

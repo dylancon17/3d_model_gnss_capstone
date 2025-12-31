@@ -222,15 +222,6 @@ int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
     else if (traverse->northing < y_limit) return 1;
 
     else return 0; 
-
-
-    /*
-    fprintf(stdout, "Out of bounds check is now edited");
-    int max_steps_x = DSM->n_columns;
-    int max_steps_y = DSM->n_rows;
-    if (x_steps < 0 || y_steps < 0 || x_steps > max_steps_x || y_steps > max_steps_y) return 1;
-    else return 0;
-    */
 }
 
 /* set_relative_origin ---------------------------------------------------
@@ -241,7 +232,8 @@ int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
 * return : void (even if out of bounds, that will be handled in get relative height call, but we can change this if you need)*/
 void set_relative_origin
 (
-    struct DSMData* DSM,
+    DSMData* DSM,
+    const TilesDataset* tiles_dataset,
     const lat_long* relative_origin_degrees,
     const UTM_projection* proj,
     const ellipsoid* e,
@@ -257,7 +249,7 @@ void set_relative_origin
     );
     const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, &DSM, &DSM->relative_origin_traverse);
+    *out_of_bounds = out_of_bounds_check(&DSM->relative_origin_traverse, tiles_dataset);
     if (*out_of_bounds == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
@@ -275,6 +267,7 @@ void set_relative_origin
 void get_relative_height
 (
     const DSMData* DSM,
+    const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
     double* h,
@@ -288,7 +281,7 @@ void get_relative_height
 
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM, &traverse);
+    *out_of_bounds = out_of_bounds_check(&traverse, tiles_dataset);
 
     if (*out_of_bounds == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
