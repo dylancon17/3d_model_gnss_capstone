@@ -130,6 +130,23 @@ for %%D in (!DATASET_LIST!) do (
     )
 
     REM End of per-dataset processing
+
+    REM ------------------ Run Python analysis / plotting ------------------
+    if /I "!ARG_ANALYZE!"=="ANALYZE" (
+
+        set "PLOT_SCRIPT=C:\capstone\3d_model_gnss_capstone\analysis_scripts\plotting.py"
+        set "TRUTH_FILE=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_truth.txt"
+        set "PLOT_OUTDIR=!OUTDIR!\plot"
+
+        if not exist "!PLOT_OUTDIR!" (
+            mkdir "!PLOT_OUTDIR!" >nul 2>&1
+        )
+
+	echo.
+        echo Running plotting script for dataset !SPECIFICDATASET!:
+        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!TRUTH_FILE!" "!PLOT_OUTDIR!"
+	echo.
+    )
 )
 
 REM Clean up and exit
@@ -178,4 +195,3 @@ echo       -> Runs datasets 1–6 with full processing and prefix RUN4
 echo ===================================================================
 echo.
 goto :EOF
-
