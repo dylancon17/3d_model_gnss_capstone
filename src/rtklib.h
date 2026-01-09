@@ -481,7 +481,8 @@ typedef struct DTMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection*/
+                         6 = do observation deweighting, rejection, reference satellite selection and incorrect position update stopping based on probability threshold
+                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection >5 for observed to expected check*/
     double rejection_threshold;
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
@@ -489,6 +490,7 @@ typedef struct DTMData {
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
     int max_noise_scaling; /*Scale the noise by a maximum of n time*/
+    double average_prob_error_max; /* The maximum error that can exist in the overall probability checks*/
 } DTMData;
 
 /* type definitions ----------------------------------------------------------*/
@@ -1132,6 +1134,7 @@ typedef struct {        /* satellite status type */
     gtime_t pt[2][NFREQ]; /* previous carrier-phase time */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
     double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
+    double obstruction_probability; /* probability of a building obstruction */
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */
@@ -1753,9 +1756,6 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
 
-/* custom project functions*/
-extern boolean test_los_summary(DTMData* DTM);
-
 extern double check_los(
     double sat_az,
     double sat_elev,
@@ -1769,6 +1769,8 @@ extern double check_los(
 extern int los_update(
     rtk_t* rtk,
     const obsd_t* obs,
+    const nav_t* nav, 
+    gtime_t tor,
     int* sat,
     int* iu,
     int* ir,

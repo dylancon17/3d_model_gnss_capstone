@@ -167,7 +167,7 @@ echo    2 = probability-threshold observation rejection
 echo    3 = deweighting + rejection (probability threshold)
 echo    4 = deweighting only
 echo    5 = deweighting + rejection + reference satellite selection
-echo.
+echo    6 = deweighting + rejection + reference satellite selection + observed to expected stopping check
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots
 echo    NOPLOT     = do not open RTKLIB plots

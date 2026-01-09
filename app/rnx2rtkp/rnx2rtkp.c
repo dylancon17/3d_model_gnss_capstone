@@ -181,6 +181,7 @@ int main(int argc, char **argv)
         prcopt.dtm.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
         prcopt.dtm.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.dtm.max_noise_scaling = 20; // Scale errors to a max of 20 times
+        prcopt.dtm.average_prob_error_max = 0.75;
     }
     ret=postpos(ts,te,tint,0.0,&prcopt,&solopt,&filopt,infile,n,outfile,"","");
     

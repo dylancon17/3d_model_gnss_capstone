@@ -20,6 +20,75 @@ void determine_DTM_height_var(double* var, struct DTMData* DTM);
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DTMData* DTM);
 void soltocov_rtk(sol_t* sol, double* P);
 
+int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum) {
+    double rs[6], dts[2], var;
+    int sat;
+    int svh[2];
+
+    double r;
+
+    double elev[3], azel[2];
+
+    //TODO this whole section could be done better as sat positions are being calculated twice!
+    // WARNING - this uses the time of reception, not time of transmission. This is incorrect! Expected error is 1-4", so likely insignificant?
+    int num_possible = 0;
+
+    /* ---- GPS/GAL/BDS/QZSS/SBAS broadcast ephemerides ---- */
+    for (int i = 0; i < nav->n; i++) {
+        eph_t* e = &nav->eph[i];
+        sat = e->sat;
+
+
+        // Get sat position
+        if (!satpos(tor, tor, sat, EPHOPT_BRDC, nav, rs, dts, &var, svh)) continue;
+
+        r = geodist(rs + i * 6, rr, elev); //TODO how is rs indexed
+        /* geodist failure check */
+        if (r <= 0) {
+            continue;
+        }
+
+        satazel(pos, elev, azel);
+
+        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+    
+        num_possible++;
+        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+
+//        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
+//            num_expected++;
+//        }
+    }
+
+    /* ---- GLONASS broadcast ephemerides ---- */
+    for (int i = 0; i < nav->ng; i++) {
+        geph_t* g = &nav->geph[i];
+        sat = g->sat;
+
+        if (!satpos(tor, tor, sat, EPHOPT_BRDC, nav, rs, dts, &var, svh)) continue;
+
+        r = geodist(rs + i * 6, rr, elev); //TODO how is rs indexed
+        /* geodist failure check */
+        if (r <= 0) {
+            continue;
+        }
+
+        satazel(pos, elev, azel);
+
+        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+
+        num_possible++;
+        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+
+
+//        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
+//            num_expected++;
+//        }
+    }
+
+    return num_possible;
+}
+
 /* los update ---------------------------------------------------
 * check and update observations based off of line of sight
 * args   : rtl_t     *rtk   I   rtk object. Assumed that position is propagated and initialized. Includes link to DEM
@@ -30,7 +99,7 @@ void soltocov_rtk(sol_t* sol, double* P);
 *          int       *ns    I   number of common satellites
 *          double    *rs    I   satellite positions in ECEF
 * return : int (number of rejected sats) */
-extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
+extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t tor, int* sat, int* iu, int* ir, int* ns, const double* rs) {
     //fprintf(stderr, "%s\n", "LOS Update\n");
 
     int i, nrej=0;
@@ -51,27 +120,26 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     // Set relative origin here as it is constant for the rest of the update
     set_relative_origin(&(rtk->opt.dtm), pos[0], pos[1]);
 
-    double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
+    double probability_total = 0;
+
+    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total);
+
+    if (num_possible < 1) {
+        return 0;
+    }
+
+    int num_not_observed = num_possible;
+
+    double observed_probability_sum = 0;
+
     double r;
     double probability_of_obstruction = 0;
 
     //fprintf(stderr, "%i %i", rtk->opt.dtm.max_distance_check, rtk->opt.dtm.reject_observations);
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
-        r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
-            /* geodist failure check */
-        if (r <= 0) {
-            /* Bad geometry → reject satellite */
-            rej_idx[nrej++] = i;
-            // Reset scaling just in case...
-            rtk->ssat[sat[i] - 1].obstruction_scaling = 1;
-            continue;
-        }
-
-        satazel(pos, e, azel);
-        //fprintf(stderr, "%d", sat[i]);
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
-        fprintf(stderr, "Probability: %lf\n", probability_of_obstruction);
+        
+        probability_of_obstruction = rtk->ssat[sat[i]-1].obstruction_probability;
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.dtm.rejection_threshold) {
@@ -86,9 +154,26 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         // Save data. Warning! This will last across epochs unless overwritten. Shouldn't be an issue unless implementation changed
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
+
+        observed_probability_sum += probability_of_obstruction;
+        probability_total -= probability_of_obstruction;
+        num_not_observed--;
+
     }
 
-    //fprintf(stdout, "%d possible sats\n", *ns);
+    double average_probability_error = (observed_probability_sum + (num_not_observed - probability_total)) / num_possible;
+
+    // If our prediction was more than a threshold incorrect, our probability calc is likely incorrect due to an incorrect starting position
+    // Therefore, don't reject deweight sats to prevent us from continuing along the wrong path
+    // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
+    if (average_probability_error > rtk->opt.dtm.average_prob_error_max && rtk->opt.dtm.processing_type > 5) {
+        // Undo any scaling
+        for (i = 0;i < *ns && i < MAXOBS;i++) {
+            rtk->ssat[sat[i] - 1].obstruction_scaling = 1.0;
+        }
+        return 0;
+    }
+
 
     // If deterministic or probabilistic rejection
     if (rtk->opt.dtm.processing_type > 0 && rtk->opt.dtm.processing_type != 4) {
