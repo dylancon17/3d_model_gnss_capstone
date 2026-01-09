@@ -1605,8 +1605,11 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     
     /* add 2 iterations for baseline-constraint moving-base */
     niter=opt->niter+(opt->mode==PMODE_MOVEB&&opt->baseline[0]>0.0?2:0);
-    
+
+    // TODO make sure niter = 1 and set rtk->rr here using truth position
     for (i=0;i<niter;i++) {
+
+        
         /* undifferenced residuals for rover */
         if (!zdres(0,obs,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
             errmsg(rtk,"rover initial position error\n");
