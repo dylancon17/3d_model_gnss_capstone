@@ -518,13 +518,14 @@ typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
+                         -1 = Calculate true pseudorange errors
                          0 = don't do anything with the DEM. 
                          1 = do boolean observation rejection. 
                          2 = do observation rejection based on probability threshold. 
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection*/
+                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output*/
     double rejection_threshold;
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
@@ -555,6 +556,13 @@ extern ellipsoid WGS_84;
 
 // Calgary 3TM projection 114 degrees W
 extern UTM_projection Calgary_3TM_114W;
+
+typedef struct {
+    FILE* fp;
+    int     week;
+    double  tow;
+    double  rr[3];   /* ECEF truth position */
+} truth_t;
 
 /* type definitions ----------------------------------------------------------*/
 
@@ -1223,6 +1231,7 @@ typedef struct {        /* RTK control/result type */
     int neb;            /* bytes in error message buffer */
     char errbuf[MAXERRMSG]; /* error message buffer */
     prcopt_t opt;       /* processing options */
+    truth_t truth;
 } rtk_t;
 
 typedef struct {        /* receiver raw data control type */
