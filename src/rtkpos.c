@@ -1070,6 +1070,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
     Ri=mat(ns*nf*2+2,1); Rj=mat(ns*nf*2+2,1); im=mat(ns,1);
     tropu=mat(ns,1); tropr=mat(ns,1); dtdxu=mat(ns,3); dtdxr=mat(ns,3);
     
+    // Residuals get reset here
     for (i=0;i<MAXSAT;i++) for (j=0;j<NFREQ;j++) {
         rtk->ssat[i].resp[j]=rtk->ssat[i].resc[j]=0.0;
     }
@@ -1183,6 +1184,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
                 
                 v[nv]-=gloicbcorr(sat[i],sat[j],&rtk->opt,lami,lamj,f);
             }
+            // Residuals get saved here
             if (f<nf) rtk->ssat[sat[j]-1].resc[f   ]=v[nv];
             else      rtk->ssat[sat[j]-1].resp[f-nf]=v[nv];
             
@@ -1606,7 +1608,6 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* add 2 iterations for baseline-constraint moving-base */
     niter=opt->niter+(opt->mode==PMODE_MOVEB&&opt->baseline[0]>0.0?2:0);
 
-    // TODO make sure niter = 1 and set rtk->rr here using truth position
     for (i=0;i<niter;i++) {
 
         
@@ -1631,11 +1632,26 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         }
         trace(4,"x(%d)=",i+1); tracemat(4,xp,1,NR(opt),13,4);
     }
+    double xp_save[3];
+
+    if (rtk->opt.dtm.processing_type < 0) {
+
+        /* save estimated rover position */
+        memcpy(xp_save, xp, 3 * sizeof(double));
+
+        /* overwrite rover position with truth (ECEF) */
+        xp[0] = rtk->truth.rr[0];
+        xp[1] = rtk->truth.rr[1];
+        xp[2] = rtk->truth.rr[2];
+    }
+
     if (stat!=SOLQ_NONE&&zdres(0,obs,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
         
+        // Residuals reupdated here
         /* post-fit residuals for float solution */
         nv=ddres(rtk,nav,dt,xp,Pp,sat,y,e,azel,iu,ir,ns,v,NULL,R,vflg);
         
+        //No modifications to residuals
         /* validation of float solution */
         if (valpos(rtk,v,R,vflg,nv,4.0)) {
             
@@ -1656,22 +1672,29 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         }
         else stat=SOLQ_NONE;
     }
+
+    if (rtk->opt.dtm.processing_type < 0) {
+        //Reset the rover position to not use the truth to just let RTK run normally
+        memcpy(xp, xp_save, 3 * sizeof(double));
+    }
+
+    //Explicity don't do ambiguity resolution when calculating true pseudorange error, maybe overkill?
     /* resolve integer ambiguity by WL-NL */
-    if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_WLNL) {
+    if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_WLNL&&rtk->opt.dtm.processing_type>=0) {
         
         if (resamb_WLNL(rtk,obs,sat,iu,ir,ns,nav,azel)) {
             stat=SOLQ_FIX;
         }
     }
     /* resolve integer ambiguity by TCAR */
-    else if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_TCAR) {
+    else if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_TCAR&&rtk->opt.dtm.processing_type>=0) {
         
         if (resamb_TCAR(rtk,obs,sat,iu,ir,ns,nav,azel)) {
             stat=SOLQ_FIX;
         }
     }
     /* resolve integer ambiguity by LAMBDA */
-    else if (stat!=SOLQ_NONE&&resamb_LAMBDA(rtk,bias,xa)>1) {
+    else if (stat!=SOLQ_NONE&&resamb_LAMBDA(rtk,bias,xa)>1&&rtk->opt.dtm.processing_type >= 0) {
         
         if (zdres(0,obs,nu,rs,dts,svh,nav,xa,opt,0,y,e,azel)) {
             
