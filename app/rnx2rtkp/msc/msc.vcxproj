@@ -121,6 +121,7 @@
     </ClCompile>
     <ClCompile Include="custom_tests.c" />
     <ClCompile Include="demdata.c" />
+    <ClCompile Include="truth.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

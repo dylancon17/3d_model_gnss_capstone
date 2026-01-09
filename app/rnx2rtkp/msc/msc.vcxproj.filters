@@ -90,5 +90,8 @@
     <ClCompile Include="demdata.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="truth.c">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
