@@ -1909,6 +1909,10 @@ extern void project_latitude_longitude_to_UTM
     const ellipsoid* e
 );
 
+extern int truth_open(rtk_t* rtk, const char* file);
+
+extern int truth_read(rtk_t* rtk);
+
 #ifdef __cplusplus
 }
 #endif
