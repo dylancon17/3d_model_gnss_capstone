@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     }
 
     /* Initialize DSM and related objects */
-    if (prcopt.DSM.processing_type != 0) {
+    if (prcopt.DSM.processing_type == 0) {
         /* set DEM options */
         prcopt.DSM.max_distance = 2000; // Only search for buildings up to 2km away
         prcopt.DSM.antenna_dem_offset = 2; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
