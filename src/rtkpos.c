@@ -1563,6 +1563,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     for (i=0;i<MAXSAT;i++) {
         rtk->ssat[i].sys=satsys(i+1,NULL);
         for (j=0;j<NFREQ;j++) rtk->ssat[i].vsat[j]=rtk->ssat[i].snr[j]=0;
+        rtk->ssat[i].obstruction_scaling = 1;
     }
     /* satellite positions/clocks */
     satposs(time,obs,n,nav,opt->sateph,rs,dts,var,svh);
@@ -1634,7 +1635,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     }
     double xp_save[3];
 
-    if (rtk->opt.dtm.processing_type < 0) {
+    if (rtk->opt.DSM.processing_type < 0) {
 
         /* save estimated rover position */
         memcpy(xp_save, xp, 3 * sizeof(double));
@@ -1673,28 +1674,28 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         else stat=SOLQ_NONE;
     }
 
-    if (rtk->opt.dtm.processing_type < 0) {
+    if (rtk->opt.DSM.processing_type < 0) {
         //Reset the rover position to not use the truth to just let RTK run normally
         memcpy(xp, xp_save, 3 * sizeof(double));
     }
 
     //Explicity don't do ambiguity resolution when calculating true pseudorange error, maybe overkill?
     /* resolve integer ambiguity by WL-NL */
-    if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_WLNL&&rtk->opt.dtm.processing_type>=0) {
+    if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_WLNL&&rtk->opt.DSM.processing_type>=0) {
         
         if (resamb_WLNL(rtk,obs,sat,iu,ir,ns,nav,azel)) {
             stat=SOLQ_FIX;
         }
     }
     /* resolve integer ambiguity by TCAR */
-    else if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_TCAR&&rtk->opt.dtm.processing_type>=0) {
+    else if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_TCAR&&rtk->opt.DSM.processing_type>=0) {
         
         if (resamb_TCAR(rtk,obs,sat,iu,ir,ns,nav,azel)) {
             stat=SOLQ_FIX;
         }
     }
     /* resolve integer ambiguity by LAMBDA */
-    else if (stat!=SOLQ_NONE&&resamb_LAMBDA(rtk,bias,xa)>1&&rtk->opt.dtm.processing_type >= 0) {
+    else if (stat!=SOLQ_NONE&&resamb_LAMBDA(rtk,bias,xa)>1&&rtk->opt.DSM.processing_type >= 0) {
         
         if (zdres(0,obs,nu,rs,dts,svh,nav,xa,opt,0,y,e,azel)) {
             
