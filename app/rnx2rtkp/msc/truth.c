@@ -2,8 +2,8 @@
 
 #include <stdlib.h>
 
-extern int truth_open(rtk_t* rtk, const char* file);
-extern int truth_read(rtk_t* rtk);
+int truth_open(rtk_t* rtk, const char* file);
+int truth_read(rtk_t* rtk);
 
 int truth_open(rtk_t* rtk, const char* file)
 {
@@ -12,6 +12,8 @@ int truth_open(rtk_t* rtk, const char* file)
 
     if (!(rtk->truth.fp = fopen(file, "r"))) {
         trace(1, "truth file open error: %s\n", file);
+        fprintf(stderr, "Truth file open error\n");
+
         return 0;
     }
 
@@ -30,28 +32,31 @@ int truth_open(rtk_t* rtk, const char* file)
 int truth_read(rtk_t* rtk)
 {
     char line[1024];
-    double x, y, z, tow;
-    int week;
+    double x, y, z, tow, week;
 
-    if (!rtk->truth.fp) return 0;
+    if (!rtk->truth.fp) {
+        fprintf(stderr, "No file\n");
 
+        return 0;
+    }
     while (fgets(line, sizeof(line), rtk->truth.fp)) {
+        fprintf(stderr, "Scanning line\n");
 
         /* parse only required fields */
         if (sscanf(line,
-            "%*[^,],%*[^,],%d,%lf,%lf,%lf,%lf",
-            &week, &tow, &x, &y, &z) < 5) {
-            continue;
+            "%*[^,],%*[^,],%lf,%lf,%lf,%lf,%lf",
+            &week, &tow, &x, &y, &z) == 5)
+        {
+            rtk->truth.week = (int)week;
+            rtk->truth.tow = tow;
+            rtk->truth.rr[0] = x;
+            rtk->truth.rr[1] = y;
+            rtk->truth.rr[2] = z;
+            return 1;
         }
-
-        rtk->truth.week = week;
-        rtk->truth.tow = tow;
-        rtk->truth.rr[0] = x;
-        rtk->truth.rr[1] = y;
-        rtk->truth.rr[2] = z;
-
-        return 1;
     }
+
+    fprintf(stderr, "Done scanning\n");
 
     return 0;
 }
