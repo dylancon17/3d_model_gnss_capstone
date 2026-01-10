@@ -333,9 +333,7 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
 
 
     int read_success = 0;
-    fprintf(stderr, "Reading prcopt...\n");
     if (popt->DSM.processing_type < 0) {
-        fprintf(stderr, "Opening truth...\n");
 
         if (!truth_open(&rtk, "C:\\capstone\\ToShare\\5\\5_truth.txt")) {
             fprintf(stderr, "Truth failed to open");
@@ -343,8 +341,6 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
         }
         else {
             read_success = truth_read(&rtk); /* prime first truth record */
-            fprintf(stderr, "First line of truth read a %d\n", read_success);
-
         }
     }
 
@@ -353,7 +349,6 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
     int process_state = 0; // 0 = process, 1 = skip this rover epoch due to lack of truth, 2 = end of truth data, exit code
     
     while ((nobs=inputobs(obs,rtk.sol.stat,popt))>=0) {
-        fprintf(stderr, "New Epoch\n");
 
         /* exclude satellites */
         for (i=n=0;i<nobs;i++) {
@@ -377,14 +372,12 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
 
                 // If rover ahead of truth advance truth
                 if (dt > 0.01) {
-                    fprintf(stderr, "Moving truth forward\n");
                     read_success = truth_read(&rtk);
                     continue;
                 }
 
                 // If truth ahead of rover advance rover
                 if (dt < -0.01) {
-
                     process_state = 1;
                     break;
                 }
@@ -398,17 +391,12 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
         }
 
         if (process_state == 2) {
-            fprintf(stderr, "Truth complete\n");
             break;
         }
         
         if (process_state == 1) {
-            fprintf(stderr, "Moving rover forward\n");
             continue;
         }
-
-        fprintf(stderr, "Match, solving epoch");
-
 
         if (!rtkpos(&rtk,obs,n,&navs)) continue;
         

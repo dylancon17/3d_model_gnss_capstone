@@ -17,7 +17,7 @@ int truth_open(rtk_t* rtk, const char* file)
         return 0;
     }
 
-    /* skip header lines (1–59) */
+    /* skip header lines (1ï¿½59) */
     for (i = 0; i < 59; i++) {
         if (!fgets(line, sizeof(line), rtk->truth.fp)) {
             fclose(rtk->truth.fp);

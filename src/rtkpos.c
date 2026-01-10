@@ -365,11 +365,11 @@ static double gfobs_L1L5(const obsd_t *obs, int i, int j, const double *lam)
     return pi==0.0||pj==0.0?0.0:pi-pj;
 }
 /* single-differenced measurement error variance -----------------------------
-int sat        // satellite id (index/PRN) — only used implicitly (not used inside function)
+int sat        // satellite id (index/PRN) ï¿½ only used implicitly (not used inside function)
 int sys        // satellite system identifier (e.g. SYS_GPS, SYS_GLO, SYS_GAL, SYS_SBS)
 double el      // satellite elevation angle (radians)
-double bl      // baseline length (meters) — distance between rover and base
-double dt      // time offset (seconds) — used to scale clock instability error
+double bl      // baseline length (meters) ï¿½ distance between rover and base
+double dt      // time offset (seconds) ï¿½ used to scale clock instability error
 int f          // frequency index (integer used to select code vs phase and frequency-specific entries)
 const prcopt_t *opt // pointer to processing options struct (holds error model params)
 */
