@@ -187,6 +187,7 @@ sat_error_prob = sol_stats.merge(
 
 # Remove zero-probability entries (temporary until DEM of full city)
 sat_error_prob = sat_error_prob[sat_error_prob["prob_sol"] > 0.0]
+sat_error_prob = sat_error_prob[sat_error_prob["resp_truth"] != 0.0]
 
 
 # ============================
@@ -375,33 +376,41 @@ plt.savefig(os.path.join(out_dir, "Carrier Phase Errors vs Obstruction Probabili
 plt.close()
 plt.figure()
 
-plt.hist2d(
+counts, xedges, yedges, im = plt.hist2d(
     sat_error_prob["prob_sol"],
     abs(sat_error_prob["resp_truth"]),
-    bins=[
-        20,                    # probability bins
-        int(300 / 10)           # 10 m bins up to 300 m
-    ],
-    range=[
-        [0.0, 1.0],
-        [0.0, 300.0]
-    ],
-    norm=LogNorm()              # <-- log-scaled color density
+    bins=[20, int(300 / 10)],     # probability bins, 2 m bins up to 100 m
+    range=[[0.0, 1.0], [0.0, 300.0]],
+    norm=LogNorm()
 )
 
 plt.colorbar(label="Count (log scale)")
+
+# Compute bin centers
+xcenters = 0.5 * (xedges[:-1] + xedges[1:])
+ycenters = 0.5 * (yedges[:-1] + yedges[1:])
+
+# Annotate each bin with count
+for i, x in enumerate(xcenters):
+    for j, y in enumerate(ycenters):
+        count = counts[i, j]
+        if count > 0:  # avoid cluttering empty bins
+            plt.text(
+                x, y,
+                f"{int(count)}",
+                color="white",
+                ha="center",
+                va="center",
+                fontsize=5
+            )
 
 plt.xlabel("Probability of Obstruction")
 plt.ylabel("True Double Differenced Pseudorange Error (m)")
 plt.title("Pseudorange Errors at Estimated Probability Levels")
 plt.grid()
-
-plt.savefig(
-    os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Heatmap (Log).png"),
-    dpi=300,
-    bbox_inches="tight"
-)
+plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"),dpi=300,bbox_inches="tight")
 plt.close()
+
 
 # Probability Histogram
 plt.figure()
