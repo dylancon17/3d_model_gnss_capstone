@@ -34,7 +34,7 @@ void soltocov_rtk(sol_t* sol, double* P);
 *          double    *rs    I   satellite positions in ECEF
 * return : int (number of rejected sats) */
 extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
-    fprintf(stderr, "\n\n%s\n", "LOS Update\n");
+    fprintf(stderr, "%s", "LOS Update\n");
 
     int i, nrej=0;
     int rej_idx[MAXOBS];
@@ -69,19 +69,27 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     }
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
+        fprintf(stderr, "Checking satellite %d\n", i);
+
         r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
+
             /* geodist failure check */
         if (r <= 0) {
             /* Bad geometry → reject satellite */
             rej_idx[nrej++] = i;
             // Reset scaling just in case...
             rtk->ssat[sat[i] - 1].obstruction_scaling = 1;
+            fprintf(stderr, "Geodist Failed %d\n", i);
+
             continue;
         }
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
+        fprintf(stderr, "Requesting probability: ");
+
         probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM));
+        fprintf(stderr, "%lf\n", probability_of_obstruction);
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
@@ -95,7 +103,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             scaling = rtk->opt.DSM.max_noise_scaling;
         }
 
-        // Save data. Warning! This will last across epochs unless overwritten. Shouldn't be an issue unless implementation changed
+        // Save data. Warning! This will last across epochs unless overwritten (actually ssat is reset every epoch). Shouldn't be an issue unless implementation changed
+        fprintf(stderr, "%lf", scaling);
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
     }
 

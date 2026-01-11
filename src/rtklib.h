@@ -564,12 +564,6 @@ typedef struct {
     double  rr[3];   /* ECEF truth position */
 } truth_t;
 
-typedef struct {
-    FILE* fp;
-    int     week;
-    double  tow;
-    double  rr[3];   /* ECEF truth position */
-} truth_t;
 
 /* type definitions ----------------------------------------------------------*/
 

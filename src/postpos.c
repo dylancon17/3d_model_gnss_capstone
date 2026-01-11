@@ -387,15 +387,13 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
                 break;
             }
 
+            if (process_state == 2) {
+                break;
+            }
 
-        }
-
-        if (process_state == 2) {
-            break;
-        }
-        
-        if (process_state == 1) {
-            continue;
+            if (process_state == 1) {
+                continue;
+            }
         }
 
         if (!rtkpos(&rtk,obs,n,&navs)) continue;
