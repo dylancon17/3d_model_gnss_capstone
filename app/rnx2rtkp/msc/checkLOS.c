@@ -34,7 +34,7 @@ void soltocov_rtk(sol_t* sol, double* P);
 *          double    *rs    I   satellite positions in ECEF
 * return : int (number of rejected sats) */
 extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
-    fprintf(stderr, "%s", "LOS Update\n");
+    //fprintf(stderr, "%s", "LOS Update\n");
 
     int i, nrej=0;
     int rej_idx[MAXOBS];
@@ -69,7 +69,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     }
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
-        fprintf(stderr, "Checking satellite %d\n", i);
+        //fprintf(stderr, "Checking satellite %d\n", i);
 
         r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
 
@@ -79,17 +79,17 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             rej_idx[nrej++] = i;
             // Reset scaling just in case...
             rtk->ssat[sat[i] - 1].obstruction_scaling = 1;
-            fprintf(stderr, "Geodist Failed %d\n", i);
+            //fprintf(stderr, "Geodist Failed %d\n", i);
 
             continue;
         }
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
-        fprintf(stderr, "Requesting probability: ");
+        //fprintf(stderr, "Requesting probability: ");
 
         probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM));
-        fprintf(stderr, "%lf\n", probability_of_obstruction);
+        //fprintf(stderr, "%lf\n", probability_of_obstruction);
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
@@ -104,7 +104,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
 
         // Save data. Warning! This will last across epochs unless overwritten (actually ssat is reset every epoch). Shouldn't be an issue unless implementation changed
-        fprintf(stderr, "%lf", scaling);
+        //fprintf(stderr, "%lf", scaling);
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
         rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
 
@@ -323,7 +323,7 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     double distance_var = pow(0.34 * DSM->step_size,2) + origin_horizontal_variance;
     *var = *var + pow(sat_vertical_slope, 2) * distance_var;
 
-    fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
+    //fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
 
 
     return;
