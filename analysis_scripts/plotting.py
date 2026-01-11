@@ -7,18 +7,21 @@ import os
 import geopandas as gpd
 import contextily as ctx
 from shapely.geometry import Point
+from matplotlib.colors import LogNorm
 
 # ============================
 # COMMAND LINE ARGUMENTS
 # ============================
-if len(sys.argv) != 4:
+if len(sys.argv) != 6:
     print("\nUsage:")
-    print("  python plots.py <rtklib_output.pos> <truth_output.txt> <output_dir>\n")
+    print("  python plots.py <rtklib_output.pos> <rtklib_output.pos.stat> <truth_output.txt> <truth_residuals.pos.stat><output_dir>\n")
     sys.exit(1)
 
 rtklib_file = sys.argv[1]
-truth_file = sys.argv[2]
-out_dir = sys.argv[3]
+rtklib_stats = sys.argv[2]
+truth_file = sys.argv[3]
+truth_stats = sys.argv[4]
+out_dir = sys.argv[5]
 
 os.makedirs(out_dir, exist_ok=True)
 
@@ -47,6 +50,88 @@ rtk.columns = [
 
 # Relative time (seconds from start)
 rtk["t"] = rtk["GPSTime"] - rtk["GPSTime"].iloc[0]
+
+
+# ============================
+# LOAD RTKLIB $SAT STATS FILE
+# ============================
+sat_rows = []
+
+with open(rtklib_stats, "r") as f:
+    for line in f:
+        if not line.startswith("$SAT"):
+            continue
+
+        parts = line.strip().split(",")
+
+        sat_rows.append(parts[1:])  # drop "$SAT"
+
+sat_cols = [
+    "week",   # GPS week
+    "tow",    # GPS time of week (s)
+    "sat",    # satellite ID (e.g., G06, R21)
+    "frq",    # frequency index
+    "az",     # azimuth (deg)
+    "el",     # elevation (deg)
+    "resp",   # pseudorange residual (m)
+    "resc",   # carrier-phase residual (m)
+    "vsat",   # valid data flag
+    "snr",    # signal strength (dB-Hz)
+    "fix",    # ambiguity flag
+    "slip",   # cycle slip flag
+    "lock",   # carrier lock count
+    "outc",   # outage count
+    "slipc",  # cycle slip count
+    "rejc",   # reject count
+    "scal",   # observation weight scaling
+    "prob"    # obstruction probability
+]
+
+sol_stats = pd.DataFrame(sat_rows, columns=sat_cols)
+
+# Columns that should be numeric
+numeric_cols = [
+    "week", "tow", "frq",
+    "az", "el",
+    "resp", "resc",
+    "vsat", "snr", "fix", "slip",
+    "lock", "outc", "slipc", "rejc",
+    "scal", "prob"
+]
+
+sol_stats[numeric_cols] = sol_stats[numeric_cols].apply(
+    pd.to_numeric, errors="coerce"
+)
+
+# Relative time in seconds from first epoch
+sol_stats["t"] = sol_stats["tow"] - sol_stats["tow"].iloc[0]
+
+
+
+# ============================
+# LOAD RTKLIB $SAT STATS FILE FOR TRUTH
+# ============================
+truth_stat_rows = []
+
+with open(truth_stats, "r") as f:
+    for line in f:
+        if not line.startswith("$SAT"):
+            continue
+
+        parts = line.strip().split(",")
+
+        truth_stat_rows.append(parts[1:])  # drop "$SAT"
+
+truth_stats = pd.DataFrame(truth_stat_rows, columns=sat_cols)
+
+truth_stats[numeric_cols] = truth_stats[numeric_cols].apply(
+    pd.to_numeric, errors="coerce"
+)
+
+# Relative time in seconds from first epoch
+truth_stats["t"] = truth_stats["tow"] - truth_stats["tow"].iloc[0]
+
+
 
 # ============================
 # LOAD TRUTH FILE (NovAtel-style CSV)
@@ -79,6 +164,7 @@ truth = truth.dropna(subset=["GPSTime", "Latitude", "Longitude", "H-Ell"])
 # Truth relative time
 truth["t"] = truth["GPSTime"] - truth["GPSTime"].iloc[0]
 
+
 # ============================
 # INTERPOLATE TRUTH TO RTK TIME
 # ============================
@@ -87,6 +173,21 @@ truth_interp["t"] = rtk["t"]
 truth_interp["Lat_deg"]  = np.interp(rtk["t"], truth["t"], truth["Latitude"])
 truth_interp["Lon_deg"]  = np.interp(rtk["t"], truth["t"], truth["Longitude"])
 truth_interp["Height_m"] = np.interp(rtk["t"], truth["t"], truth["H-Ell"])
+
+
+# ============================
+# ALIGN SOLUTION STATS with TRUTH STATS
+# ============================
+sat_error_prob = sol_stats.merge(
+    truth_stats,
+    on=["tow", "sat"],
+    how="inner",
+    suffixes=("_sol", "_truth")
+)
+
+# Remove zero-probability entries (temporary until DEM of full city)
+sat_error_prob = sat_error_prob[sat_error_prob["prob_sol"] > 0.0]
+
 
 # ============================
 # COORDINATE TRANSFORM SETUP
@@ -252,6 +353,66 @@ plt.title("Satellite Count vs Time")
 plt.grid()
 plt.savefig(os.path.join(out_dir, "Satellite Count vs Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
+
+# Sat prob vs pseudorange error
+plt.figure()
+plt.scatter(sat_error_prob["prob_sol"], abs(sat_error_prob["resp_truth"]), s=8, alpha=0.6)
+plt.xlabel("Probability of Obstruction")
+plt.ylabel("True Double Differenced Pseudorange Error (m)")
+plt.title("Pseudorange Errors at Estimated Probability Levels")
+plt.grid()
+plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability.png"),dpi=300,bbox_inches="tight")
+plt.close()
+
+# Sat prob vs carrier phase error heatmap
+plt.figure()
+plt.scatter(sat_error_prob["prob_sol"], abs(sat_error_prob["resc_truth"]), s=8, alpha=0.6)
+plt.xlabel("Probability of Obstruction")
+plt.ylabel("True Double Differenced Carrier Phase Error (m)")
+plt.title("Carrier Phase Errors at Estimated Probability Levels")
+plt.grid()
+plt.savefig(os.path.join(out_dir, "Carrier Phase Errors vs Obstruction Probability Heatmap.png"),dpi=300,bbox_inches="tight")
+plt.close()
+plt.figure()
+
+plt.hist2d(
+    sat_error_prob["prob_sol"],
+    abs(sat_error_prob["resp_truth"]),
+    bins=[
+        20,                    # probability bins
+        int(300 / 10)           # 10 m bins up to 300 m
+    ],
+    range=[
+        [0.0, 1.0],
+        [0.0, 300.0]
+    ],
+    norm=LogNorm()              # <-- log-scaled color density
+)
+
+plt.colorbar(label="Count (log scale)")
+
+plt.xlabel("Probability of Obstruction")
+plt.ylabel("True Double Differenced Pseudorange Error (m)")
+plt.title("Pseudorange Errors at Estimated Probability Levels")
+plt.grid()
+
+plt.savefig(
+    os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Heatmap (Log).png"),
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.close()
+
+# Probability Histogram
+plt.figure()
+plt.hist(sat_error_prob["prob_sol"],bins=20,range=(0.0, 1.0))
+plt.xlabel("Probability of Obstruction")
+plt.ylabel("Count")
+plt.title("Distribution of Estimated Obstruction Probability")
+plt.grid()
+plt.savefig(os.path.join(out_dir, "Obstruction Probability Histogram.png"),dpi=300,bbox_inches="tight")
+plt.close()
+
 
 plt.show()
 
