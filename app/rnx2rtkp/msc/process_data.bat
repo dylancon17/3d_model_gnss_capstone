@@ -136,6 +136,8 @@ for %%D in (!DATASET_LIST!) do (
 
         set "PLOT_SCRIPT=C:\capstone\3d_model_gnss_capstone\analysis_scripts\plotting.py"
         set "TRUTH_FILE=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_truth.txt"
+        set "TRUTH_STAT=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_dd_residuals_truth.pos.stat"
+
         set "PLOT_OUTDIR=!OUTDIR!\plot"
 
         if not exist "!PLOT_OUTDIR!" (
@@ -144,7 +146,7 @@ for %%D in (!DATASET_LIST!) do (
 
 	echo.
         echo Running plotting script for dataset !SPECIFICDATASET!:
-        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!TRUTH_FILE!" "!PLOT_OUTDIR!"
+        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
 	echo.
     )
 )
