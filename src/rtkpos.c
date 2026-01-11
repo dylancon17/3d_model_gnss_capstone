@@ -171,7 +171,9 @@ static gtime_t time_stat={0};    /* rtk status file time */
 *          outc     : data outage count
 *          slipc    : cycle-slip count
 *          rejc     : data reject (outlier) count
+*          scal     : Weight scaling of observations due to obstruction probability
 *          prob     : probability of obstruction [0-1]
+*          
 *
 *-----------------------------------------------------------------------------*/
 extern int rtkopenstat(const char *file, int level)
@@ -322,11 +324,11 @@ static void outsolstat(rtk_t *rtk)
         if (!ssat->vs) continue;
         satno2id(i+1,id);
         for (j=0;j<nfreq;j++) {
-            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%.4f\n",
+            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%.4f,%.4f\n",
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp [j],ssat->resc[j],  ssat->vsat[j],ssat->snr[j]*0.25,
                     ssat->fix  [j],ssat->slip[j]&3,ssat->lock[j],ssat->outc[j],
-                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling);
+                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability);
         }
     }
 }
@@ -1590,13 +1592,35 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
 
+    double rr_save[3];
+
+
     if (rtk->opt.DSM.processing_type != 0) {
+        if (rtk->opt.DSM.processing_type < -1) {
+
+            /* save estimated rover position */
+            memcpy(rr_save, rtk->sol.rr, 3 * sizeof(double));
+
+            /* overwrite rover position with truth (ECEF) */
+            rtk->sol.rr[0] = rtk->truth.rr[0];
+            rtk->sol.rr[1] = rtk->truth.rr[1];
+            rtk->sol.rr[2] = rtk->truth.rr[2];
+        }
+
         int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
         fprintf(stdout, "%i observations rejected due to no line of sight", nrejected);
+
+
+        if (rtk->opt.DSM.processing_type < -1) {
+            //Reset the rover position to not use the truth to just let RTK run normally
+            memcpy(rtk->sol.rr, rr_save, 3 * sizeof(double));
+        }
     }
     else {
         fprintf(stdout, "Skipping line of sight checks");
     }
+
+
 
     trace(4,"x(0)="); tracemat(4,rtk->x,1,NR(opt),13,4);
     

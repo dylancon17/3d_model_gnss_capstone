@@ -143,6 +143,8 @@ echo Usage:
 echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
 echo.
 echo DEM Options:
+echo	-2 = no DEM processing, calculate true signal errors and obstruction probability using truth position (must also change line 338 in postpos.c)
+echo	-1 = no DEM processing, calculate true signal errors using truth position (must also change line 338 in postpos.c)
 echo    0 = no DEM processing
 echo    1 = boolean observation rejection
 echo    2 = probability-threshold observation rejection

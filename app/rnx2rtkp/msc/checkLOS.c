@@ -106,6 +106,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         // Save data. Warning! This will last across epochs unless overwritten (actually ssat is reset every epoch). Shouldn't be an issue unless implementation changed
         fprintf(stderr, "%lf", scaling);
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
+        rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
+
     }
 
     //fprintf(stdout, "%d possible sats\n", *ns);
@@ -220,7 +222,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         line.d = line.d / DSM->step_size; 
 
 
-        if (DSM->processing_type > 1) {
+        if (DSM->processing_type > 1 || DSM->processing_type < -1) {
             //Calculate probability of obstruction
             determine_sat_height_var(&sat_height_var, origin_horizontal_variance, origin_vertical_variance, sat_vertical_slope, DSM);
 
