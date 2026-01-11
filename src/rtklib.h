@@ -518,6 +518,7 @@ typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
+                         -2 = Calculate true pseudorange and probabilities
                          -1 = Calculate true pseudorange errors
                          0 = don't do anything with the DEM. 
                          1 = do boolean observation rejection. 
@@ -525,7 +526,7 @@ typedef struct DSMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output*/
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs*/
     double rejection_threshold;
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
