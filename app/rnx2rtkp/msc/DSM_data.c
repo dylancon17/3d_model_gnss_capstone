@@ -16,14 +16,15 @@ void initialize_tiles_dataset
     double top_left_tile_origin_x, 
     double top_left_tile_origin_y)
 {
+    printf("\ninitilize tiles dataset started.");
     td->num_tiles_x = num_tiles_x;
     td->num_tiles_y = num_tiles_y;
     td->tiles_dimension_x = tiles_dimension_x;
     td->tiles_dimension_y = tiles_dimension_y;
     td->top_left_tile_origin.easting = top_left_tile_origin_x;
     td->top_left_tile_origin.northing = top_left_tile_origin_y;
+    printf("\ninitilize tiles dataset complete.");
 }
-
 
 
 /// <summary>

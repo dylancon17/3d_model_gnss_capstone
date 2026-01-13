@@ -1114,9 +1114,10 @@ typedef struct {        /* processing options type */
     int  syncsol;       /* solution sync mode (0:off,1:on) */
     double odisp[2][6*11]; /* ocean tide loading parameters {rov,base} */
     exterr_t exterr;    /* extended receiver error model */
-    struct DSMData DSM;     /* The DEM related data*/
+    DSMData DSM;     /* The DEM related data*/
     UTM_projection UTM;
     ellipsoid ellip;
+    TilesDataset tiles_dataset;
 } prcopt_t;
 
 typedef struct {        /* solution options type */
