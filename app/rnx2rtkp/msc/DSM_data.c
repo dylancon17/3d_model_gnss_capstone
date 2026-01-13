@@ -5,27 +5,6 @@
 #include <string.h>
 #include <math.h>
 
-
-void initialize_tiles_dataset
-(
-    TilesDataset* td,
-    int num_tiles_x, 
-    int num_tiles_y, 
-    int tiles_dimension_x, 
-    int tiles_dimension_y, 
-    double top_left_tile_origin_x, 
-    double top_left_tile_origin_y)
-{
-    td->num_tiles_x = num_tiles_x;
-    td->num_tiles_y = num_tiles_y;
-    td->tiles_dimension_x = tiles_dimension_x;
-    td->tiles_dimension_y = tiles_dimension_y;
-    td->top_left_tile_origin.easting = top_left_tile_origin_x;
-    td->top_left_tile_origin.northing = top_left_tile_origin_y;
-}
-
-
-
 /// <summary>
 /// Opens a .bin DSM file, determines its size (in bytes), and computes how many uint16_t elevation samples it contains.
 /// </summary>
@@ -175,8 +154,6 @@ void initialize_dsm
     DSM->origin_dsm.northing = N_origin_DSM;
     DSM->step_size = step_size;
     DSM->n_columns = n_columns;
-    DSM->tile_size_x = DSM->step_size * DSM->n_columns;
-    DSM->tile_size_y = DSM->step_size * DSM->n_rows;
 
     /* 3. Count the number of rows in the square/rectangle DSM grid. */
     DSM->n_rows = DSM->n_data_points / DSM->n_columns;
@@ -200,7 +177,7 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 {
     const int steps_from_DSM_origin_E = (int)((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
     const int steps_from_DSM_origin_N = (int)(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
-    steps_XY steps; 
+    steps_XY steps;
     steps.steps_X = steps_from_DSM_origin_E;
     steps.steps_Y = steps_from_DSM_origin_N;
     return steps;
@@ -210,18 +187,13 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @param x_steps Number of X steps from the origin of the DSM
 /// @param y_steps Number of Y steps from the origin of the DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
-int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
+int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
 {
-    double x_limit = tiles_dataset->top_left_tile_origin.easting + (tiles_dataset->tiles_dimension_x * tiles_dataset->num_tiles_x - 1);
-    double y_limit = tiles_dataset->top_left_tile_origin.northing - (tiles_dataset->tiles_dimension_y * tiles_dataset->num_tiles_y - 1);
-
-    if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
-    else if (traverse->easting > x_limit) return 1;
-
-    else if (traverse->northing > tiles_dataset->top_left_tile_origin.northing) return 1;
-    else if (traverse->northing < y_limit) return 1;
-
-    else return 0; 
+    fprintf(stdout, "Out of bounds check is now edited");
+    int max_steps_x = DSM->n_columns;
+    int max_steps_y = DSM->n_rows;
+    if (x_steps < 0 || y_steps < 0 || x_steps > max_steps_x || y_steps > max_steps_y) return 1;
+    else return 0;
 }
 
 /* set_relative_origin ---------------------------------------------------
@@ -232,8 +204,7 @@ int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
 * return : void (even if out of bounds, that will be handled in get relative height call, but we can change this if you need)*/
 void set_relative_origin
 (
-    DSMData* DSM,
-    const TilesDataset* tiles_dataset,
+    struct DSMData* DSM,
     const lat_long* relative_origin_degrees,
     const UTM_projection* proj,
     const ellipsoid* e,
@@ -249,7 +220,7 @@ void set_relative_origin
     );
     const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(&DSM->relative_origin_traverse, tiles_dataset);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y,DSM);
     if (*out_of_bounds == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
@@ -267,7 +238,6 @@ void set_relative_origin
 void get_relative_height
 (
     const DSMData* DSM,
-    const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
     double* h,
@@ -275,13 +245,13 @@ void get_relative_height
 )
 {
     const double traverse_E = DSM->relative_origin_traverse.easting + (*steps_E) * (double)DSM->step_size;
-    const double traverse_N = DSM->relative_origin_traverse.northing + (*steps_N) * (double)DSM->step_size;
+    const double traverse_N = DSM->relative_origin_traverse.northing + (*steps_N) * DSM->step_size;
 
     east_north traverse = { traverse_E,traverse_N };
 
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check(&traverse, tiles_dataset);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
 
     if (*out_of_bounds == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;

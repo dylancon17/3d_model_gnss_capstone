@@ -526,6 +526,7 @@ typedef struct DSMData {
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
                          currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection*/
     double rejection_threshold;
+    int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
     boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
@@ -538,9 +539,6 @@ typedef struct DSMData {
     int n_rows; /* Number of rows in the elevation (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_columns; /* Number of columns in the (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_data_points; /* Number of data points in the dataset (this value should equal to n_rows x n_columns) */
-    int step_size; /* Spacing between raster points, ex. 5m*/
-    int tile_size_x;
-    int tile_size_y;
     uint16_t* heights_array; /* Data member array to hold the compressed height values. */
 
     /* "First digit" value example: The number 5243.6 would have the first digit (the one's place and the first decimal place) to be 3.6.
@@ -551,14 +549,6 @@ typedef struct DSMData {
     ellipsoid ellipsoid_dsm; /* Ellipsoid of the coordinate system of the digital surface model */
 
 } DSMData;
-
-typedef struct TilesDataset {
-    int num_tiles_x;
-    int num_tiles_y;
-    int tiles_dimension_x;
-    int tiles_dimension_y;
-    east_north top_left_tile_origin;
-} TilesDataset;
 
 // WGS-84
 extern ellipsoid WGS_84;
@@ -1830,7 +1820,7 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
 
-/* ------------ custom project functions ------------ */
+/* custom project functions*/
 
 extern double check_los(
     double sat_az,
@@ -1852,17 +1842,6 @@ extern int los_update(
     const double* rs);
 
 /* DSM functions */
-
-extern void initialize_tiles_dataset
-(
-    TilesDataset* td,
-    int num_tiles_x, 
-    int num_tiles_y, 
-    int tiles_dimension_x, 
-    int tiles_dimension_y, 
-    double top_left_tile_origin_x, 
-    double top_left_tile_origin_y
-);
 
 extern int read_BIN(file_BIN* file, const char* fileName);
 
@@ -1888,12 +1867,11 @@ extern double calculate_true_height_meters(const DSMData* DSM, int index);
 
 extern steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM);
 
-extern int out_of_bounds_check(const east_north* traverse, const TilesDataset* tiles_dataset);
+extern int out_of_bounds_check(int x_steps, int y_steps, const DSMData* DSM);
 
 extern void set_relative_origin
 (
-    DSMData* DSM,
-    const TilesDataset* tiles_dataset,
+    struct DSMData* DSM,
     const lat_long* relative_origin_degrees,
     const UTM_projection* proj,
     const ellipsoid* e,
@@ -1903,8 +1881,7 @@ extern void set_relative_origin
 
 extern void get_relative_height
 (
-    const DSMData* DSM,
-    const TilesDataset* tiles_dataset,
+    const struct DSMData* DSM,
     const int* steps_E,
     const int* steps_N,
     double* h,
