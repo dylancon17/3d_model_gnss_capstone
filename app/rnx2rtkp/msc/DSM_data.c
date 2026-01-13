@@ -200,7 +200,7 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 {
     const int steps_from_DSM_origin_E = (int)((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
     const int steps_from_DSM_origin_N = (int)(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
-    steps_XY steps;
+    steps_XY steps; 
     steps.steps_X = steps_from_DSM_origin_E;
     steps.steps_Y = steps_from_DSM_origin_N;
     return steps;
