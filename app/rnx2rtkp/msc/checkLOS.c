@@ -56,7 +56,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     int out_of_bounds = 0;
     // Set relative origin here as it is constant for the rest of the update
     // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
-    set_relative_origin(&(rtk->opt.DSM),&ll,&(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+    set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
@@ -81,7 +81,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         satazel(pos, e, azel);
         //fprintf(stderr, "%d", sat[i]);
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM));
+        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset));
 
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
@@ -122,7 +122,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, DSMData* DSM, TilesDataset* tiles_dataset) {
     //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf, result: ",
     //    sat_az * 180 / M_PI,
     //   sat_elev * 180 / M_PI,
@@ -135,7 +135,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     double sat_vertical_slope = tanf(sat_elev);
     int origin_x = 0, origin_y = 0;
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
-    get_relative_height(DSM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
+    get_relative_height(DSM, tiles_dataset, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
     if (out_of_bounds != 1 && (current_DTM_height > origin_height || DSM->use_dem_height_only == 1)) {
         origin_height = current_DTM_height + DSM->antenna_dem_offset;
         origin_vertical_variance = DSM->vertical_point_variance + DSM->antenna_dem_offset_var;
@@ -171,7 +171,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         // Traverse the DTM
         step_along_line(&line);
         
-        get_relative_height(DSM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
+        get_relative_height(DSM, tiles_dataset, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
 
         //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
 

@@ -1841,7 +1841,9 @@ extern double check_los(
     double origin_height,
     double origin_horizontal_variance,
     double origin_vertical_variance,
-    struct DSMData* DTM);
+    DSMData* DTM,
+    TilesDataset* tiles_dataset
+);
 
 extern int los_update(
     rtk_t* rtk,

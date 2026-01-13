@@ -133,7 +133,6 @@ double calc_max_height(const DSMData* DSM) {
         }
     }
     double max_height_true = calculate_true_height_meters(DSM, max_height_index);
-    printf("Max height: %f\n", max_height_true);
     return max_height_true;
 }
 

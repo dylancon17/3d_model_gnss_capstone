@@ -181,7 +181,6 @@ int main(int argc, char **argv)
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
         
-        printf("\ntest");
         initialize_tiles_dataset(&(prcopt.tiles_dataset), 7, 8, 5000, 5000, -22000.00, 5673000.00);
         initialize_dsm("C:\\capstone\\dsm_tiles\\data.bin", &(prcopt.DSM), -5243.600, 5657585.200, 5, 220);
 
