@@ -557,6 +557,8 @@ typedef struct TilesDataset {
     int num_tiles_y;
     int tiles_dimension_x;
     int tiles_dimension_y;
+    double x_limit;
+    double y_limit;
     east_north top_left_tile_origin;
 } TilesDataset;
 
@@ -1876,6 +1878,8 @@ extern double rounding_to_first_digit(double input, double first_digit, int step
 extern east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM);
 
 extern double calc_max_height(const DSMData* DSM);
+
+east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset);
 
 extern void initialize_dsm
 (
