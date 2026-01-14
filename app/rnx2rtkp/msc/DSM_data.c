@@ -267,8 +267,9 @@ void set_relative_origin
     );
     const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
 
+    *out_of_bounds = out_of_bounds_check_tiles(steps.steps_X, steps.steps_Y, DSM);
+    int out_of_bounds_tiles_dataset = out_of_bounds_check(&DSM->relative_origin_traverse, tiles_dataset);
 
-    *out_of_bounds = out_of_bounds_check(&DSM->relative_origin_traverse, tiles_dataset);
     if (*out_of_bounds == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
