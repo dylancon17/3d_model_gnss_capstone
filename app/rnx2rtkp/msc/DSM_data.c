@@ -140,7 +140,11 @@ double calc_max_height(const DSMData* DSM) {
 east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset) {
     double tile_origin_easting = rounding_to_first_digit(input->easting, 0, tiles_dataset->tiles_dimension_x);
     double tile_origin_northing = rounding_to_first_digit(input->northing, 0, tiles_dataset->tiles_dimension_y);
+
+    if (tile_origin_easting > tiles_dataset->x_limit - tiles_dataset->tiles_dimension_x) { tile_origin_easting -= tiles_dataset->tiles_dimension_x; }
+    if (tile_origin_northing < tiles_dataset->y_limit + tiles_dataset->tiles_dimension_y) { tile_origin_northing += tiles_dataset->tiles_dimension_y; }
     east_north tile_origin = { tile_origin_easting, tile_origin_northing };
+
     return tile_origin;
 }
 
@@ -172,6 +176,7 @@ void initialize_dsm
     int n_columns /* Number of columns in the DSM grid */
 )
 {
+    printf("\nInitializing dsm\n");
     file_BIN file;
     /* 1. Read how many elevation samples are in the DSM raster dataset.
      *    read_BIN() returns the number of 16-bit integer compressed height values */
@@ -202,6 +207,7 @@ void initialize_dsm
 
     /* 6. Calculate the maximum height in the dataset. */
     DSM->max_dsm_height = calc_max_height(DSM);
+    printf("\Initialization complete\n");
 }
 
 steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM)
@@ -220,7 +226,6 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
 int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
 {
-
     if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
     else if (traverse->easting > tiles_dataset->x_limit) return 1;
 
@@ -263,6 +268,16 @@ void set_relative_origin
     else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
 
     printf("Completed setting relative origin\n");
+
+    printf("\nCheckpoint\n");
+
+    double test_input_x = 12000.0;
+    double test_input_y = 5635000.0;
+    east_north test_input = { test_input_x, test_input_y };
+    east_north test_output = round_to_tile_origin(&test_input, tiles_dataset);
+
+    printf("\ntest output x: %f\n", test_output.easting);
+    printf("\ntest output y: %f\n", test_output.northing);
 }
 
 /* get_relative_height ---------------------------------------------------
