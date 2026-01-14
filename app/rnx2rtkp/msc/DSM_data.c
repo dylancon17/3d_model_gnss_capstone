@@ -5,7 +5,6 @@
 #include <string.h>
 #include <math.h>
 
-
 void initialize_tiles_dataset
 (
     TilesDataset* td,
@@ -235,6 +234,14 @@ int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
     else return 0; 
 }
 
+int out_of_bounds_check_tiles(int x_steps, int y_steps, DSMData* DSM)
+{
+    int max_steps_x = DSM->n_columns;
+    int max_steps_y = DSM->n_rows;
+    if (x_steps < 0 || y_steps < 0 || x_steps > max_steps_x || y_steps > max_steps_y) return 1;
+    else return 0;
+}
+
 /* set_relative_origin ---------------------------------------------------
 * set an origin to traverse along the DSM from
 * args   : DSM       *DSM      I   DTM Object, see rtklib.h for definition and rnx2rtkp.c for initial setup
@@ -315,7 +322,6 @@ void get_relative_height
     snprintf(string, sizeof(string), "%.6f", rounded.easting);
     printf("string: %s\n", string);
     */
-
 
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
     printf("\nSteps calculated\n");
