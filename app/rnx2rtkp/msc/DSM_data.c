@@ -270,16 +270,11 @@ void set_relative_origin
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
-    if (*out_of_bounds == 0 || out_of_bounds_tiles_dataset == 0) {
+    if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
-    if (out_of_bounds_tiles_dataset == 1) { ;}
-
-    else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
-
-    printf("Completed setting relative origin\n");
-
-    printf("\nCheckpoint\n");
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\N"); }
+    else if (out_of_bounds_tiles_dataset == 1) { printf("\nWARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
 
     double test_input_x = 12000.0;
     double test_input_y = 5635000.0;
