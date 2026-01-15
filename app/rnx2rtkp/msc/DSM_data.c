@@ -96,7 +96,7 @@ east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
 double calculate_true_height_meters(const DSMData* DSM, const int index)
 {
     const double val = (double)(DSM->heights_array[index]);
-    const double height = val / 100 + 1020;
+    const double height = val / 100 + 1020 - 16.7;
     return height;
 }
 
@@ -224,7 +224,7 @@ void set_relative_origin
     if (*out_of_bounds == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
-    else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
+    //else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
 }
 
 /* get_relative_height ---------------------------------------------------
