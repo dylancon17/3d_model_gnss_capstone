@@ -193,7 +193,7 @@ void initialize_dsm
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     int n_samples = open_BIN(&file,file_name);
     if (n_samples < 0) {
-        fprintf(stderr, "Failed to open DSM file\n");
+        fprintf(stderr, "\nFailed to open DSM file\n");
     }
 
     DSM->n_data_points = n_samples;
@@ -243,7 +243,7 @@ void initialize_dsm
         return 1;
     }
 
-    printf("\nDouble as string: %s\n", buffer);
+    //printf("\nDouble as string: %s\n", buffer);
 
     char result[64];
 
@@ -251,16 +251,7 @@ void initialize_dsm
     const char* b = "123";
 
     snprintf(result, sizeof(result), "%s_%s", a, b);
-    printf("\nAdding strings together: %s\n", result);
-
-    printf("\nPress 'q' to continue...\n");
-
-    int ch;
-    do {
-        ch = _getch();   // no Enter required, no echo
-    } while (ch != 'q');
-
-    printf("\nContinuing...\n");
+    //printf("\nAdding strings together: %s\n", result);
 
     printf("\nEnded playground\n");
 
@@ -323,6 +314,7 @@ void set_relative_origin
     int* out_of_bounds
 )
 {
+    printf("\nSetting relative origin\n");
     project_latitude_longitude_to_UTM
     (
         &DSM->relative_origin_traverse,
@@ -366,18 +358,9 @@ void set_relative_origin
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
-        printf("new_file_name: %s",new_file_name);
+        printf("new_file_name: %s\n",new_file_name);
         free(DSM->heights_array);
         initialize_dsm(new_file_name, &(DSM), traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
-
-        printf("\nPress 'c' to continue...\n");
-
-        int ch;
-        do {
-            ch = _getch();   // no Enter required, no echo
-        } while (ch != 'c');
-
-        printf("\nContinuing...\n");
     }
     else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
 
@@ -446,7 +429,7 @@ void get_relative_height
         printf("Adding strings together: %s", result);
         */
 
-        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS for retrieving relative height\n"); 
         return;
 
         /*
