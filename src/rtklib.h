@@ -1871,7 +1871,7 @@ extern void initialize_tiles_dataset
 
 extern int read_BIN(file_BIN* file, const char* fileName);
 
-extern double retrieve_first_digit_decimal(double num);
+extern double retrieve_anchor_decimal(double num);
 
 extern double round_to_anchor_step(double input, double anchor, int step_size);
 

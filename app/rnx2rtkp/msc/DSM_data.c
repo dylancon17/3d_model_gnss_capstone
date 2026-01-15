@@ -78,7 +78,7 @@ int read_BIN(file_BIN* file, const char* fileName)
 /// </summary>
 /// <param name="num"></param>
 /// <returns></returns>
-double retrieve_first_digit_decimal(const double num)
+double retrieve_anchor_decimal(const double num)
 {
     double num_subtract;
     if (num < 0) num_subtract = floor(-1 * num / 10) * -10;
@@ -99,7 +99,6 @@ double retrieve_first_digit_decimal(const double num)
 /// <returns>test</returns>
 double round_to_anchor_step(const double input, const double anchor, const int step_size)
 {
-    if (input < 0) return (step_size * round((input - anchor) / step_size) + anchor); // needs to fix
     return step_size * round((input - anchor) / step_size) + anchor;
 }
 
@@ -140,7 +139,7 @@ double calc_max_height(const DSMData* DSM) {
 }
 
 east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset) {
-    double tile_origin_easting = round_to_anchor_step(input->easting, 3000, tiles_dataset->tiles_dimension_x);
+    double tile_origin_easting = round_to_anchor_step(input->easting, -2000, tiles_dataset->tiles_dimension_x);
     double tile_origin_northing = round_to_anchor_step(input->northing, 3000, tiles_dataset->tiles_dimension_y);
 
     if (tile_origin_easting > tiles_dataset->x_limit - tiles_dataset->tiles_dimension_x) { tile_origin_easting -= tiles_dataset->tiles_dimension_x; }
@@ -186,8 +185,8 @@ void initialize_dsm
 
     /* 5. Precompute the "first digit" values of the x/y origin.
      *    This is used to properly index through the compressed height values in heights_array */
-    DSM->first_digit.easting = retrieve_first_digit_decimal(DSM->origin_dsm.easting);
-    DSM->first_digit.northing = retrieve_first_digit_decimal(DSM->origin_dsm.northing);
+    DSM->first_digit.easting = retrieve_anchor_decimal(DSM->origin_dsm.easting);
+    DSM->first_digit.northing = retrieve_anchor_decimal(DSM->origin_dsm.northing);
 
     /* 6. Calculate the maximum height in the dataset. */
     DSM->max_dsm_height = calc_max_height(DSM);
@@ -204,7 +203,7 @@ void initialize_dsm
         return 1;
     }
 
-    printf("Double as string: %s\n", buffer);
+    printf("\nDouble as string: %s\n", buffer);
 
     char result[64];
 
@@ -232,7 +231,7 @@ void initialize_dsm
     printf("\nRounded northing: %f\n", rounded.northing);
     */
 
-    printf("\Initialization complete\n");
+    printf("\nInitialization complete\n");
 }
 
 steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM)
@@ -319,14 +318,14 @@ void set_relative_origin
         }
 
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";
-        char new_file[100];
+        char new_file_name[100];
         char file_extension[100] = ".bin";
 
-        if (snprintf(new_file, sizeof(new_file), "%s_%s_%s%s", file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
+        if (snprintf(new_file_name, sizeof(new_file_name), "%s_%s_%s%s", file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
-        printf("new_file: %s",new_file);
+        printf("new_file_name: %s",new_file_name);
         printf("\nPress 'c' to continue...\n");
 
         int ch;
