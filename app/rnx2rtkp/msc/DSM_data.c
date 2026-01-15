@@ -407,6 +407,10 @@ void set_relative_origin
             return 1;
         }
         //printf("\nnew_file_name: %s\n", new_file_name);
+
+        char new_file_name_test[100] = retrive_new_file_name(&traverse_to_tile_origin, &file_path, &file_prefix, &file_extension);
+        printf("\nnew_file_name_test: %s\n", new_file_name);
+
         printf("Press any key to continue...\n");
         _getch();
         printf("\nRe-initializing DSM\n");
