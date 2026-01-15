@@ -172,6 +172,7 @@ void initialize_dsm
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     DSM->n_data_points = read_BIN(&file, file_name);
+    rewind(file.file_ptr);
     printf("\nFile read successfully");
 
     /* Copy spatial metadata from the raster into the DSM struct. These metadata values are determined beforehand. */
@@ -185,7 +186,10 @@ void initialize_dsm
 
     /* Allocate memory into the DSM height array to fit the size of the .bin file. */
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
-    fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file.file_ptr);
+    size_t n = fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file.file_ptr);
+    if (n != DSM->n_data_points) {
+        perror("fread failed");
+    }
 
     /* Precompute the anchor decimal values of the x/y origin. */
     DSM->first_digit.easting = retrieve_anchor_decimal(DSM->origin_dsm.easting);
@@ -233,6 +237,9 @@ void initialize_dsm
     printf("\nRounded easting: %f\n", rounded.easting);
     printf("\nRounded northing: %f\n", rounded.northing);
     */
+
+    fclose(file.file_ptr);
+    file.file_ptr = NULL;
 
     printf("\nInitialization complete\n");
 }
