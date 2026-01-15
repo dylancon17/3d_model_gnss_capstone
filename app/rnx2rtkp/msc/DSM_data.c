@@ -50,6 +50,10 @@ int read_BIN(file_BIN* file, const char* fileName)
     // Open the .bin file in binary read mode ("rb").
     // "r" = read, "b" = binary (no newline translation).
     // ----------------------------------------------------------- */
+    if (file->file_ptr != NULL) { 
+        rewind(file->file_ptr); 
+        printf("\nFile pointer has been reset.\n");
+    }
     file->file_ptr = fopen(fileName, "rb");
 
     /* If file doesn't open, send an error message */
@@ -317,17 +321,18 @@ void set_relative_origin
             return 1;
         }
 
+        char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";
         char new_file_name[100];
         char file_extension[100] = ".bin";
 
-        if (snprintf(new_file_name, sizeof(new_file_name), "%s_%s_%s%s", file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
+        if (snprintf(new_file_name, sizeof(new_file_name), "%s%s_%s_%s%s", file_path, file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
         printf("new_file_name: %s",new_file_name);
         free(DSM->heights_array);
-        initialize_dsm("C:\\capstone\\dsm_tiles\\data.bin", &(DSM), traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
+        initialize_dsm(new_file_name, &(DSM), traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
 
         printf("\nPress 'c' to continue...\n");
 
