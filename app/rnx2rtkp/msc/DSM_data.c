@@ -362,7 +362,7 @@ void set_relative_origin
         char new_file_name[100];
         char file_extension[100] = ".bin";
 
-        if (snprintf(new_file_name, sizeof(new_file_name), "%s%s_%s_%s%s", file_path, file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
+        if (snprintf(new_file_name, sizeof(new_file_name), "%s%s_%sE_%sN%s", file_path, file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
@@ -446,7 +446,10 @@ void get_relative_height
         printf("Adding strings together: %s", result);
         */
 
-        //printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+        return;
+
+        /*
         char traverse_E_char[100];
         char traverse_N_char[100];
         if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%.6f", traverse_E) < 0) {
@@ -460,6 +463,7 @@ void get_relative_height
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
+        */
 
 
     }
