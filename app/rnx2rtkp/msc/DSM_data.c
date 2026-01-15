@@ -171,6 +171,21 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
 
     if (tile_origin_easting > tiles_dataset->x_limit - tiles_dataset->tiles_dimension_x) { tile_origin_easting -= tiles_dataset->tiles_dimension_x; }
     if (tile_origin_northing < tiles_dataset->y_limit + tiles_dataset->tiles_dimension_y) { tile_origin_northing += tiles_dataset->tiles_dimension_y; }
+
+    if (input->easting > tile_origin_easting && input->northing > tile_origin_northing) {
+        tile_origin_northing += tiles_dataset->tiles_dimension_y;
+    }
+    else if (input->easting < tile_origin_easting && input->northing > tile_origin_northing) {
+        tile_origin_easting -= tiles_dataset->tiles_dimension_x;
+        tile_origin_northing += tiles_dataset->tiles_dimension_y;
+    }
+    else if (input->easting < tile_origin_easting && input->northing < tile_origin_northing) {
+        tile_origin_easting -= tiles_dataset->tiles_dimension_x;
+    }
+    else if (input->easting > tile_origin_easting && input->northing < tile_origin_northing) {
+        return;
+    }
+
     east_north tile_origin = { tile_origin_easting, tile_origin_northing };
 
     return tile_origin;
@@ -348,21 +363,6 @@ void set_relative_origin
         east_north traverse_coords = { traverse_E,traverse_N };
         east_north traverse_to_tile_origin = round_to_tile_origin(&traverse_coords, tiles_dataset);
 
-        if (traverse_coords.easting > traverse_to_tile_origin.easting && traverse_coords.northing > traverse_to_tile_origin.northing) {
-            traverse_to_tile_origin.northing += tiles_dataset->tiles_dimension_y;
-        }
-        else if (traverse_coords.easting < traverse_to_tile_origin.easting && traverse_coords.northing > traverse_to_tile_origin.northing) {
-            traverse_to_tile_origin.easting -= tiles_dataset->tiles_dimension_x;
-            traverse_to_tile_origin.northing += tiles_dataset->tiles_dimension_y;
-        }
-        else if (traverse_coords.easting < traverse_to_tile_origin.easting && traverse_coords.northing < traverse_to_tile_origin.northing) {
-            traverse_to_tile_origin.easting -= tiles_dataset->tiles_dimension_x;
-        }
-        else if (traverse_coords.easting > traverse_to_tile_origin.easting && traverse_coords.northing < traverse_to_tile_origin.northing) {
-            return;
-        }
-
-
         char traverse_E_char[100];
         char traverse_N_char[100];
         if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%d", (int)round(traverse_to_tile_origin.easting)) < 0) {
@@ -476,7 +476,7 @@ void get_relative_height
 
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
-        printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
+        printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
         printf("Press any key to continue...\n");
         _getch();
         *h = -1.0f;
