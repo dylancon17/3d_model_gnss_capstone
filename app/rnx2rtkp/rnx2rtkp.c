@@ -179,7 +179,7 @@ int main(int argc, char **argv)
         prcopt.UTM.scale_factor = 0.9999;
         prcopt.UTM.false_easting = 0.0;
         prcopt.UTM.false_northing = 0.0;
-
+        
         /* WGS 84 Ellipsoid */
         prcopt.ellip.flattening = 1 / 298.257223563;
         prcopt.ellip.semi_major_axis = 6378137.0;

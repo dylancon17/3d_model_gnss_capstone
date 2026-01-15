@@ -1893,7 +1893,7 @@ extern void initialize_dsm
 
 extern double calculate_true_height_meters(const DSMData* DSM, int index);
 
-extern steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM);
+extern steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM);
 
 extern int out_of_bounds_check_tiles_dataset(const east_north* traverse, const TilesDataset* tiles_dataset);
 

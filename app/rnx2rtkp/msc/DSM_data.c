@@ -50,7 +50,11 @@ int read_BIN(file_BIN* file, const char* fileName)
     // Open the .bin file in binary read mode ("rb").
     // "r" = read, "b" = binary (no newline translation).
     // ----------------------------------------------------------- */
+
+    printf("\nReading .bin file\n");
+
     if (file->file_ptr != NULL) { 
+        printf("\nFile is not null\n");
         rewind(file->file_ptr); 
         printf("\nFile pointer has been reset.\n");
     }
@@ -61,6 +65,7 @@ int read_BIN(file_BIN* file, const char* fileName)
         fprintf(stdout, "Failed to open file\n");
         return 1;
     }
+    else { printf("\nFile opened successfully\n"); }
 
     /* Move the file pointer to the end so we can measure the total size of the file (in bytes) */
     fseek(file->file_ptr, 0, SEEK_END);
@@ -165,34 +170,28 @@ void initialize_dsm
 {
     printf("\nInitializing dsm\n");
     file_BIN file;
-    /* 1. Read how many elevation samples are in the DSM raster dataset.
-     *    read_BIN() returns the number of 16-bit integer compressed height values */
+    /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     DSM->n_data_points = read_BIN(&file, file_name);
+    printf("\nFile read successfully");
 
-    /* 2. Copy spatial metadata from the raster into the DSM struct.
-     *    These metadata values are determined beforehand. */
+    /* Copy spatial metadata from the raster into the DSM struct. These metadata values are determined beforehand. */
     DSM->origin_dsm.easting = E_origin_DSM;
     DSM->origin_dsm.northing = N_origin_DSM;
     DSM->step_size = step_size;
     DSM->n_columns = n_columns;
+    DSM->n_rows = DSM->n_data_points / DSM->n_columns;
     DSM->tile_size_x = DSM->step_size * DSM->n_columns;
     DSM->tile_size_y = DSM->step_size * DSM->n_rows;
 
-    /* 3. Count the number of rows in the square/rectangle DSM grid. */
-    DSM->n_rows = DSM->n_data_points / DSM->n_columns;
-
-    /* 4. Allocate memory into the DSM height array to fit the size of the .bin file.
-     *    Each height value is stored as compressed uint16_t values (from 0-65535).
-     *    And then read the file to store these values from the .bin file into the heights array. */
+    /* Allocate memory into the DSM height array to fit the size of the .bin file. */
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
     fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file.file_ptr);
 
-    /* 5. Precompute the "first digit" values of the x/y origin.
-     *    This is used to properly index through the compressed height values in heights_array */
+    /* Precompute the anchor decimal values of the x/y origin. */
     DSM->first_digit.easting = retrieve_anchor_decimal(DSM->origin_dsm.easting);
     DSM->first_digit.northing = retrieve_anchor_decimal(DSM->origin_dsm.northing);
 
-    /* 6. Calculate the maximum height in the dataset. */
+    /* Calculate the maximum height in the dataset. */
     DSM->max_dsm_height = calc_max_height(DSM);
 
 
@@ -238,7 +237,7 @@ void initialize_dsm
     printf("\nInitialization complete\n");
 }
 
-steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM)
+steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM)
 {
     const int steps_from_DSM_origin_E = (int)((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
     const int steps_from_DSM_origin_N = (int)(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
@@ -294,7 +293,7 @@ void set_relative_origin
         proj,
         e
     );
-    const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
+    const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
@@ -314,7 +313,7 @@ void set_relative_origin
         char traverse_N_char[100];
         if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%d", (int)round(traverse_to_tile_origin.easting)) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
-            return 1;
+            return 1; 
         }
         if (snprintf(traverse_N_char, sizeof(traverse_N_char), "%d", (int)round(traverse_to_tile_origin.northing)) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
@@ -388,7 +387,7 @@ void get_relative_height
     printf("\nRounded northing: %f\n", rounded.northing);
     */
 
-    const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
+    const steps_XY steps = calculate_steps_from_tile_corner(&traverse, DSM);
 
     *out_of_bounds = out_of_bounds_check_tiles_dataset(&traverse, tiles_dataset);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
