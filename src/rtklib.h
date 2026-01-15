@@ -1895,9 +1895,9 @@ extern double calculate_true_height_meters(const DSMData* DSM, int index);
 
 extern steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM);
 
-extern int out_of_bounds_check(const east_north* traverse, const TilesDataset* tiles_dataset);
+extern int out_of_bounds_check_tiles_dataset(const east_north* traverse, const TilesDataset* tiles_dataset);
 
-extern int out_of_bounds_check_tiles(int x_steps, int y_steps, DSMData* DSM);
+extern int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM);
 
 extern void set_relative_origin
 (

@@ -223,7 +223,7 @@ steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM
 /// @param x_steps Number of X steps from the origin of the DSM
 /// @param y_steps Number of Y steps from the origin of the DSM
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
-int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
+int out_of_bounds_check_tiles_dataset(east_north* traverse, TilesDataset* tiles_dataset)
 {
     if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
     else if (traverse->easting > tiles_dataset->x_limit) return 1;
@@ -234,7 +234,7 @@ int out_of_bounds_check(east_north* traverse, TilesDataset* tiles_dataset)
     else return 0; 
 }
 
-int out_of_bounds_check_tiles(int x_steps, int y_steps, DSMData* DSM)
+int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
 {
     int max_steps_x = DSM->n_columns;
     int max_steps_y = DSM->n_rows;
@@ -267,12 +267,14 @@ void set_relative_origin
     );
     const steps_XY steps = calculate_steps_from_origin(&DSM->relative_origin_traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check_tiles(steps.steps_X, steps.steps_Y, DSM);
-    int out_of_bounds_tiles_dataset = out_of_bounds_check(&DSM->relative_origin_traverse, tiles_dataset);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
+    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
-    if (*out_of_bounds == 0) {
+    if (*out_of_bounds == 0 || out_of_bounds_tiles_dataset == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
+    if (out_of_bounds_tiles_dataset == 1) { ;}
+
     else printf("WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM BOUNDS\n");
 
     printf("Completed setting relative origin\n");
@@ -327,7 +329,7 @@ void get_relative_height
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
     printf("\nSteps calculated\n");
 
-    *out_of_bounds = out_of_bounds_check(&traverse, tiles_dataset);
+    *out_of_bounds = out_of_bounds_check_tiles_dataset(&traverse, tiles_dataset);
     printf("\nOut of bounds calculated\n");
 
     if (*out_of_bounds == 0) {
