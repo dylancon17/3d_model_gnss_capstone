@@ -194,7 +194,7 @@ void initialize_dsm
 
     // PLAYGROUND =========================
     printf("\nStarted playground\n");
-    double num = 123.856789;
+    double num = -123.856789;
     char buffer[100]; // Enough space for the converted string
 
     // Convert double to string with 6 decimal places
@@ -346,6 +346,17 @@ void get_relative_height
         printf("\nRelative height calculated: %f\n", *h);
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
+
+        /*
+        char result[64];
+
+        const char* a = "abc";
+        const char* b = "123";
+
+        snprintf(result, sizeof(result), "%s_%s", a, b);
+        printf("Adding strings together: %s", result);
+        */
+
         printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
         char traverse_E_char[100];
         char traverse_N_char[100];
@@ -353,6 +364,15 @@ void get_relative_height
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
+
+        char file_prefix[100] = "DSM_CGY_5x5km_res1m";
+        char new_file[100];
+        if (snprintf(new_file, sizeof(new_file), "%s_%s_%s", file_prefix, traverse_E_char, traverse_N_char) < 0) {
+            fprintf(stderr, "Error converting double to string.\n");
+            return 1;
+        }
+
+
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
