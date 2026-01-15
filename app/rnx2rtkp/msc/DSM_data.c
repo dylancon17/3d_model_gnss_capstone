@@ -280,6 +280,13 @@ steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
 int out_of_bounds_check_tiles_dataset(east_north* traverse, TilesDataset* tiles_dataset)
 {
+    printf("\ntop_left_tile_origin.easting: %f\n", tiles_dataset->top_left_tile_origin.easting);
+    printf("\ntop_left_tile_origin.northing: %f\n", tiles_dataset->top_left_tile_origin.northing);
+
+    printf("\nx_limit: %f\n", tiles_dataset->x_limit);
+    printf("\ny_limit: %f\n", tiles_dataset->y_limit);
+
+
     if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
     else if (traverse->easting > tiles_dataset->x_limit) return 1;
 
@@ -317,7 +324,7 @@ void set_relative_origin
         e
     );
     printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
-    printf("\nRelative origin northing: %f", DSM->relative_origin_traverse.northing);
+    printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
 
     const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
 
@@ -328,6 +335,9 @@ void set_relative_origin
     printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
+        printf("\nCoordinate is within the tile bounds. Computing to be continued.\n");
+        printf("Press any key to continue...\n");
+        _getch();
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) {
@@ -337,6 +347,21 @@ void set_relative_origin
 
         east_north traverse_coords = { traverse_E,traverse_N };
         east_north traverse_to_tile_origin = round_to_tile_origin(&traverse_coords, tiles_dataset);
+
+        if (traverse_coords.easting > traverse_to_tile_origin.easting && traverse_coords.northing > traverse_to_tile_origin.northing) {
+            traverse_to_tile_origin.northing += tiles_dataset->tiles_dimension_y;
+        }
+        else if (traverse_coords.easting < traverse_to_tile_origin.easting && traverse_coords.northing > traverse_to_tile_origin.northing) {
+            traverse_to_tile_origin.easting -= tiles_dataset->tiles_dimension_x;
+            traverse_to_tile_origin.northing += tiles_dataset->tiles_dimension_y;
+        }
+        else if (traverse_coords.easting < traverse_to_tile_origin.easting && traverse_coords.northing < traverse_to_tile_origin.northing) {
+            traverse_to_tile_origin.easting -= tiles_dataset->tiles_dimension_x;
+        }
+        else if (traverse_coords.easting > traverse_to_tile_origin.easting && traverse_coords.northing < traverse_to_tile_origin.northing) {
+            return;
+        }
+
 
         char traverse_E_char[100];
         char traverse_N_char[100];
@@ -358,15 +383,21 @@ void set_relative_origin
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
-        printf("\nnew_file_name: %s\n", new_file_name);
+        //printf("\nnew_file_name: %s\n", new_file_name);
         printf("Press any key to continue...\n");
         _getch();
         printf("\nRe-initializing DSM\n");
         initialize_dsm(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
     }
-    else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
+    else if (out_of_bounds_tiles_dataset == 1) { 
+        printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n");
+        printf("Press any key to continue...\n");
+        _getch();
+    }
     else if (*out_of_bounds != 0 && *out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
         printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
+        printf("Press any key to continue...\n");
+        _getch();
     }
 }
 
@@ -381,6 +412,7 @@ void get_relative_height
     int* out_of_bounds
 )
 {
+    printf("\nComputing relative height\n");
     const double traverse_E = DSM->relative_origin_traverse.easting + (*steps_E) * (double)DSM->step_size;
     const double traverse_N = DSM->relative_origin_traverse.northing + (*steps_N) * (double)DSM->step_size;
 
@@ -401,6 +433,9 @@ void get_relative_height
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
+        printf("\nCoordinate is within bounds. Computing relative height.\n");
+        printf("Press any key to continue...\n");
+        _getch();
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
         *h = calculate_true_height_meters(DSM, index);
         //printf("\nRelative height calculated: %f\n", *h);
@@ -418,6 +453,8 @@ void get_relative_height
         */
 
         printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS for retrieving relative height\n"); 
+        printf("Press any key to continue...\n");
+        _getch();
         return;
 
         /*
@@ -440,6 +477,8 @@ void get_relative_height
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
+        printf("Press any key to continue...\n");
+        _getch();
         *h = -1.0f;
     }
 }
