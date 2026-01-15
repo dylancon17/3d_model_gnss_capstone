@@ -324,11 +324,11 @@ static void outsolstat(rtk_t *rtk)
         if (!ssat->vs) continue;
         satno2id(i+1,id);
         for (j=0;j<nfreq;j++) {
-            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%.4f,%.4f\n",
+            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%lf,%lf,%d\n",
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp [j],ssat->resc[j],  ssat->vsat[j],ssat->snr[j]*0.25,
                     ssat->fix  [j],ssat->slip[j]&3,ssat->lock[j],ssat->outc[j],
-                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability);
+                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i);
         }
     }
 }
@@ -1096,7 +1096,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
             if (!test_sys(sysi,m)) continue;
             if (!validobs(iu[j],ir[j],f,nf,y)) continue;
 
-            if (opt->DSM.processing_type > 4) {
+            if (opt->DSM.processing_type > 4 || opt->DSM.processing_type < -2) {
                 // Pick reference satellite that minimizes noise scaling (obstruction scaling / sin (elev)). 
                 current_noise_ratio = rtk->ssat[sat[j] - 1].obstruction_scaling / sin(azel[1 + iu[j] * 2]);
                 if (i < 0 || current_noise_ratio <= best_noise_ratio) {
@@ -1566,6 +1566,8 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         rtk->ssat[i].sys=satsys(i+1,NULL);
         for (j=0;j<NFREQ;j++) rtk->ssat[i].vsat[j]=rtk->ssat[i].snr[j]=0;
         rtk->ssat[i].obstruction_scaling = 1.0;
+        rtk->ssat[i].obstruction_probability = -1.0;
+
     }
     /* satellite positions/clocks */
     satposs(time,obs,n,nav,opt->sateph,rs,dts,var,svh);
@@ -1605,6 +1607,14 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
             rtk->sol.rr[0] = rtk->truth.rr[0];
             rtk->sol.rr[1] = rtk->truth.rr[1];
             rtk->sol.rr[2] = rtk->truth.rr[2];
+
+            rtk->sol.qr[0] = 1.0;
+            rtk->sol.qr[1] = 1.0;
+            rtk->sol.qr[2] = 1.0;
+
+            rtk->sol.qr[3] = 0.1;
+            rtk->sol.qr[4] = 0.1;
+            rtk->sol.qr[5] = 0.1;
         }
 
         int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
