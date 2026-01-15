@@ -328,6 +328,7 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
     solstatic=sopt->solstatic&&
               (popt->mode==PMODE_STATIC||popt->mode==PMODE_PPP_STATIC);
     
+    fprintf(stderr, "Initializing RTK Engine\n");
     rtkinit(&rtk,popt);
     rtcm_path[0]='\0';
 
