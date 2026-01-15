@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <conio.h>
 
 //NOTE: PLAYGROUND IS IN LINE 195
 
@@ -96,10 +97,10 @@ double retrieve_first_digit_decimal(const double num)
 /// <param name="first_digit"></param>
 /// <param name="step_size"></param>
 /// <returns>test</returns>
-double rounding_to_first_digit(const double input, const double first_digit, const int step_size)
+double round_to_anchor_step(const double input, const double anchor, const int step_size)
 {
-    if (input < 0) return -1 * (step_size * round((-1 * input - first_digit) / step_size) + first_digit);
-    return step_size * round((input - first_digit) / step_size) + first_digit;
+    if (input < 0) return (step_size * round((input - anchor) / step_size) + anchor); // needs to fix
+    return step_size * round((input - anchor) / step_size) + anchor;
 }
 
 /// <summary>
@@ -111,8 +112,8 @@ double rounding_to_first_digit(const double input, const double first_digit, con
 east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
 {
     east_north closest_EN;
-    closest_EN.easting = rounding_to_first_digit(EN->easting, DSM->first_digit.easting, DSM->step_size);
-    closest_EN.northing = rounding_to_first_digit(EN->northing, DSM->first_digit.northing, DSM->step_size);
+    closest_EN.easting = round_to_anchor_step(EN->easting, DSM->first_digit.easting, DSM->step_size);
+    closest_EN.northing = round_to_anchor_step(EN->northing, DSM->first_digit.northing, DSM->step_size);
 
     return closest_EN;
 }
@@ -139,8 +140,8 @@ double calc_max_height(const DSMData* DSM) {
 }
 
 east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset) {
-    double tile_origin_easting = rounding_to_first_digit(input->easting, 0, tiles_dataset->tiles_dimension_x);
-    double tile_origin_northing = rounding_to_first_digit(input->northing, 0, tiles_dataset->tiles_dimension_y);
+    double tile_origin_easting = round_to_anchor_step(input->easting, 3000, tiles_dataset->tiles_dimension_x);
+    double tile_origin_northing = round_to_anchor_step(input->northing, 3000, tiles_dataset->tiles_dimension_y);
 
     if (tile_origin_easting > tiles_dataset->x_limit - tiles_dataset->tiles_dimension_x) { tile_origin_easting -= tiles_dataset->tiles_dimension_x; }
     if (tile_origin_northing < tiles_dataset->y_limit + tiles_dataset->tiles_dimension_y) { tile_origin_northing += tiles_dataset->tiles_dimension_y; }
@@ -211,7 +212,16 @@ void initialize_dsm
     const char* b = "123";
 
     snprintf(result, sizeof(result), "%s_%s", a, b);
-    printf("Adding strings together: %s", result);
+    printf("\nAdding strings together: %s\n", result);
+
+    printf("\nPress 'q' to continue...\n");
+
+    int ch;
+    do {
+        ch = _getch();   // no Enter required, no echo
+    } while (ch != 'q');
+
+    printf("\nContinuing...\n");
 
     printf("\nEnded playground\n");
 
@@ -289,7 +299,43 @@ void set_relative_origin
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
-    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); }
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
+        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+        double traverse_E = get_closest_coordinate(&DSM->relative_origin_traverse, DSM).easting;
+        double traverse_N = get_closest_coordinate(&DSM->relative_origin_traverse, DSM).northing;
+
+        east_north traverse_coords = { traverse_E,traverse_N };
+        east_north traverse_to_tile_origin = round_to_tile_origin(&traverse_coords, tiles_dataset);
+
+        char traverse_E_char[100];
+        char traverse_N_char[100];
+        if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%d", (int)round(traverse_to_tile_origin.easting)) < 0) {
+            fprintf(stderr, "Error converting double to string.\n");
+            return 1;
+        }
+        if (snprintf(traverse_N_char, sizeof(traverse_N_char), "%d", (int)round(traverse_to_tile_origin.northing)) < 0) {
+            fprintf(stderr, "Error converting double to string.\n");
+            return 1;
+        }
+
+        char file_prefix[100] = "DSM_CGY_5x5km_res1m";
+        char new_file[100];
+        char file_extension[100] = ".bin";
+
+        if (snprintf(new_file, sizeof(new_file), "%s_%s_%s%s", file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
+            fprintf(stderr, "Error converting double to string.\n");
+            return 1;
+        }
+        printf("new_file: %s",new_file);
+        printf("\nPress 'c' to continue...\n");
+
+        int ch;
+        do {
+            ch = _getch();   // no Enter required, no echo
+        } while (ch != 'c');
+
+        printf("\nContinuing...\n");
+    }
     else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
 
     /*
@@ -343,7 +389,7 @@ void get_relative_height
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
         *h = calculate_true_height_meters(DSM, index);
-        printf("\nRelative height calculated: %f\n", *h);
+        //printf("\nRelative height calculated: %f\n", *h);
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
 
@@ -357,7 +403,7 @@ void get_relative_height
         printf("Adding strings together: %s", result);
         */
 
-        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+        //printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
         char traverse_E_char[100];
         char traverse_N_char[100];
         if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%.6f", traverse_E) < 0) {

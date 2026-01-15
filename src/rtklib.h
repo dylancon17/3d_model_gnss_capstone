@@ -1873,7 +1873,7 @@ extern int read_BIN(file_BIN* file, const char* fileName);
 
 extern double retrieve_first_digit_decimal(double num);
 
-extern double rounding_to_first_digit(double input, double first_digit, int step_size);
+extern double round_to_anchor_step(double input, double anchor, int step_size);
 
 extern east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM);
 
