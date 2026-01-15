@@ -29,14 +29,34 @@ void initialize_tiles_dataset
     td->y_limit = td->top_left_tile_origin.northing - (td->tiles_dimension_y * td->num_tiles_y);
 }
 
+int open_BIN(file_BIN* file, const char* fileName)
+{
 
-/// <summary>
-/// Opens a .bin DSM file, determines its size (in bytes), and computes how many uint16_t elevation samples it contains.
-/// </summary>
-/// <param name="file">FILE struct pointer</param>
-/// <param name="fileName">Name of the .bin file</param>
-/// <returns>It returns the number of elevation samples in the .bin file.</returns>
-///
+    //Set file to be empty
+    memset(file, 0, size(*file));
+    file->file_ptr = fopen(fileName, "rb");
+    if (!file->file_ptr) {
+        perror("\nOpening file unsuccessful\n");
+        return -1;
+    }
+
+    strcpy(file->file_name, fileName);
+
+    fseek(file->file_ptr, 0, SEEK_END);
+    file->file_size = ftell(file->file_ptr);
+    rewind(file->file_ptr);
+
+    return (int)(file->file_size / sizeof(uint16_t)); // Return the number of data points in the .bin file
+}
+
+int read_BIN_data(file_BIN* file, uint16_t* buffer, int n) 
+{
+    if (!file || !file->file_ptr || !buffer) return -1;
+
+    size_t read = fread(buffer, sizeof(uint16_t), n, file->file_ptr);
+    return (read == (size_t)n) ? 0 : -1;
+}
+
 int read_BIN(file_BIN* file, const char* fileName)
 {
 
@@ -171,9 +191,12 @@ void initialize_dsm
     printf("\nInitializing dsm\n");
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
-    DSM->n_data_points = read_BIN(&file, file_name);
-    rewind(file.file_ptr);
-    printf("\nFile read successfully");
+    int n_samples = open_BIN(&file,file_name);
+    if (n_samples < 0) {
+        fprintf(stderr, "Failed to open DSM file\n");
+    }
+
+    DSM->n_data_points = n_samples;
 
     /* Copy spatial metadata from the raster into the DSM struct. These metadata values are determined beforehand. */
     DSM->origin_dsm.easting = E_origin_DSM;
@@ -186,9 +209,17 @@ void initialize_dsm
 
     /* Allocate memory into the DSM height array to fit the size of the .bin file. */
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
-    size_t n = fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file.file_ptr);
-    if (n != DSM->n_data_points) {
-        perror("fread failed");
+    if (!DSM->heights_array) {
+        perror("\nmalloc failed\n");
+        fclose(file.file_ptr);
+        return;
+    }
+
+    if (read_BIN_data(&file, DSM->heights_array, (size_t)DSM->n_data_points) != 0) {
+        fprintf(stderr, "Failed to read DSM raster data\n");
+        free(DSM->heights_array);
+        fclose(file.file_ptr);
+        return;
     }
 
     /* Precompute the anchor decimal values of the x/y origin. */
@@ -198,6 +229,8 @@ void initialize_dsm
     /* Calculate the maximum height in the dataset. */
     DSM->max_dsm_height = calc_max_height(DSM);
 
+    fclose(file.file_ptr);
+    file.file_ptr = NULL;
 
     // PLAYGROUND =========================
     printf("\nStarted playground\n");
@@ -237,9 +270,6 @@ void initialize_dsm
     printf("\nRounded easting: %f\n", rounded.easting);
     printf("\nRounded northing: %f\n", rounded.northing);
     */
-
-    fclose(file.file_ptr);
-    file.file_ptr = NULL;
 
     printf("\nInitialization complete\n");
 }

@@ -1869,6 +1869,10 @@ extern void initialize_tiles_dataset
     double top_left_tile_origin_y
 );
 
+extern int open_BIN(file_BIN* file, const char* fileName);
+
+extern int read_BIN_data();
+
 extern int read_BIN(file_BIN* file, const char* fileName);
 
 extern double retrieve_anchor_decimal(double num);
