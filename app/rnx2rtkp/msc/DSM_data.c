@@ -33,7 +33,7 @@ int open_BIN(file_BIN* file, const char* fileName)
 {
 
     //Set file to be empty
-    memset(file, 0, size(*file));
+    memset(file, 0, sizeof(*file));
     file->file_ptr = fopen(fileName, "rb");
     if (!file->file_ptr) {
         perror("\nOpening file unsuccessful\n");
