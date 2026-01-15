@@ -10,14 +10,22 @@ void project_latitude_longitude_to_UTM
 	const ellipsoid* e
 )
 {
-	const double a = e->semi_major_axis;
 
+	const double a = e->semi_major_axis;
 	const double lat = ll->latitude * M_PI / 180;
 	const double lon = ll->longitude * M_PI / 180;
 	const double W = sqrt(1 - e->first_eccentricity * sin(lat) * sin(lat));
 	const double N = a / W;
 	const double eta_squared = e->second_eccentricity * cos(lat) * cos(lat);
 	const double delta_lon = lon - proj->central_meridian * M_PI / 180;
+
+	printf("\n Latitude: %f\n", ll->latitude);
+	printf("\n Longitude: %f\n", ll->longitude);
+	printf("\n W: %f\n", W);
+	printf("\n N: %f\n", N);
+	printf("\n eta_squared: %f\n", eta_squared);
+	printf("\n delta_lon: %f\n", delta_lon);
+	printf("\n first_eccentricity: %f\n", e->first_eccentricity);
 
 	/* Series expansion parameters for y-coordinate projection S(lat) --------------------------
 	   A, B, C, D, and E are ellipsoid-specific coefficients */
@@ -66,4 +74,8 @@ void project_latitude_longitude_to_UTM
 
 	EN->easting = proj->false_easting + proj->scale_factor * x;
 	EN->northing = proj->false_northing + proj->scale_factor * y;
+
+	printf("\n scale_factor: %f\n", proj->scale_factor);
+	printf("\n x: %f\n", x);
+	printf("\n y: %f\n", y);
 }

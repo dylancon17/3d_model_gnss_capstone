@@ -6,8 +6,6 @@
 #include <math.h>
 #include <conio.h>
 
-//NOTE: PLAYGROUND IS IN LINE 195
-
 void initialize_tiles_dataset
 (
     TilesDataset* td,
@@ -189,6 +187,7 @@ void initialize_dsm
 )
 {
     printf("\nInitializing dsm\n");
+    printf("\nOpening file name %s\n", file_name);
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     int n_samples = open_BIN(&file,file_name);
@@ -298,12 +297,7 @@ int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
     else return 0;
 }
 
-/* set_relative_origin ---------------------------------------------------
-* set an origin to traverse along the DSM from
-* args   : DSM       *DSM      I   DTM Object, see rtklib.h for definition and rnx2rtkp.c for initial setup
-*          double    latitude  I   latitude in degrees
-*          double    longitude I   longitude in degrees
-* return : void (even if out of bounds, that will be handled in get relative height call, but we can change this if you need)*/
+/* set_relative_origin ---------------------------------------------------*/
 void set_relative_origin
 (
     DSMData* DSM,
@@ -322,13 +316,16 @@ void set_relative_origin
         proj,
         e
     );
+    printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
+    printf("\nRelative origin northing: %f", DSM->relative_origin_traverse.northing);
+
     const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
     printf("\nout_of_bounds: %d\n",*out_of_bounds);
-    printf("out_of_bounds_tiles_dataset: %d\n",out_of_bounds_check_tiles_dataset);
+    printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
@@ -361,34 +358,19 @@ void set_relative_origin
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
-        printf("new_file_name: %s\n", new_file_name);
-        free(DSM->heights_array);
-        initialize_dsm(new_file_name, &(DSM), traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
+        printf("\nnew_file_name: %s\n", new_file_name);
+        printf("Press any key to continue...\n");
+        _getch();
+        printf("\nRe-initializing DSM\n");
+        initialize_dsm(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
     }
     else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
-    else if (out_of_bounds != 0 && out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
+    else if (*out_of_bounds != 0 && *out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
         printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
     }
-
-    /*
-    double test_input_x = 12000.0;
-    double test_input_y = 5635000.0;
-    east_north test_input = { test_input_x, test_input_y };
-    east_north test_output = round_to_tile_origin(&test_input, tiles_dataset);
-
-    printf("\ntest output x: %f\n", test_output.easting);
-    printf("\ntest output y: %f\n", test_output.northing);
-    */
 }
 
-/* get_relative_height ---------------------------------------------------
-* Report height for a location with respect to the relative origin
-* args   : DSM       *DSM           I   DSM Object, see rtklib.h for definition and rnx2rtkp.c for initial setup
-*          int       *E             I   The number of steps East to take (distance = E * step_size) (negative indicates West)
-*          int       *N             I   The number of steps North to take (distance = N * step_size) (negative indicates South)
-*          double    *h             I   The height of the DSM at that point
-*          int       *out_of_bounds I   1 if there is not DSM data at that point (h will not looked at if this is 1)
-* return : void (data returned by setting h and out_of_bounds)*/
+/* get_relative_height ---------------------------------------------------*/
 void get_relative_height
 (
     const DSMData* DSM,

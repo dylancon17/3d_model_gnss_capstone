@@ -52,6 +52,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     covenu(pos, P, Q);
 
     lat_long ll = { pos[0] * 180 / M_PI, pos[1] * 180 / M_PI};
+    printf("\nRelative origin latitude: %f\n", ll.latitude);
+    printf("\nRelative origin longitude: %f\n", ll.longitude);
 
     int out_of_bounds = 0;
     // Set relative origin here as it is constant for the rest of the update
