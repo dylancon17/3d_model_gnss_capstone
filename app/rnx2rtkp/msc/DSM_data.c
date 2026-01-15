@@ -183,7 +183,7 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
         tile_origin_easting -= tiles_dataset->tiles_dimension_x;
     }
     else if (input->easting > tile_origin_easting && input->northing < tile_origin_northing) {
-        return;
+        //Do nothing
     }
 
     east_north tile_origin = { tile_origin_easting, tile_origin_northing };
@@ -191,25 +191,39 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
     return tile_origin;
 }
 
-extern char retrive_new_file_name(const east_north* tile_origin_coords, const char* file_path, const char* file_prefix, const char* file_extension) 
+void retrieve_new_file_name
+(
+    char* new_file_name, 
+    size_t new_file_name_size,
+    const east_north* tile_origin_coords, 
+    const char* file_path, 
+    const char* file_prefix, 
+    const char* file_extension) 
 {
     char tile_origin_coords_char_E[100];
     char tile_origin_coords_char_N[100];
 
     if (snprintf(tile_origin_coords_char_E, sizeof(tile_origin_coords_char_E), "%d", (int)round(tile_origin_coords->easting)) < 0) {
         fprintf(stderr, "Error converting double to string.\n");
-        return 1;
+        return;
     }
     if (snprintf(tile_origin_coords_char_N, sizeof(tile_origin_coords_char_N), "%d", (int)round(tile_origin_coords->northing)) < 0) {
         fprintf(stderr, "Error converting double to string.\n");
-        return 1;
+        return;
     }
 
-    char new_file_name[100];
-
-    if (snprintf(new_file_name, sizeof(new_file_name), "%s%s_%sE_%sN%s", *file_path, *file_prefix, tile_origin_coords_char_E, tile_origin_coords_char_N, *file_extension) < 0) {
+    if (snprintf(
+            new_file_name, 
+            new_file_name_size, 
+            "%s%s_%sE_%sN%s", 
+            file_path, 
+            file_prefix, 
+            tile_origin_coords_char_E, 
+            tile_origin_coords_char_N, 
+            file_extension) < 0) 
+    {
         fprintf(stderr, "Error converting double to string.\n");
-        return 1;
+        return;
     }
     printf("\nnew_file_name: %s\n", new_file_name);
 }
@@ -408,8 +422,9 @@ void set_relative_origin
         }
         //printf("\nnew_file_name: %s\n", new_file_name);
 
-        char new_file_name_test[100] = retrive_new_file_name(&traverse_to_tile_origin, &file_path, &file_prefix, &file_extension);
-        printf("\nnew_file_name_test: %s\n", new_file_name);
+        char new_file_name_test[100];
+        retrieve_new_file_name(new_file_name_test, sizeof(new_file_name_test), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
+        printf("\nnew_file_name_test: %s\n", new_file_name_test);
 
         printf("Press any key to continue...\n");
         _getch();
