@@ -84,7 +84,8 @@ sat_cols = [
     "slipc",  # cycle slip count
     "rejc",   # reject count
     "scal",   # observation weight scaling
-    "prob"    # obstruction probability
+    "prob",    # obstruction probability
+    "idx" # Index
 ]
 
 sol_stats = pd.DataFrame(sat_rows, columns=sat_cols)
@@ -96,40 +97,60 @@ numeric_cols = [
     "resp", "resc",
     "vsat", "snr", "fix", "slip",
     "lock", "outc", "slipc", "rejc",
-    "scal", "prob"
+    "scal", "prob", "idx"
 ]
 
 sol_stats[numeric_cols] = sol_stats[numeric_cols].apply(
     pd.to_numeric, errors="coerce"
 )
 
+sol_stats = sol_stats.drop(
+    columns=["vsat", "snr", "fix", "slip", "lock", "outc", "slipc", "rejc", "scal"]
+)
+
+# sol_stats = sol_stats[sol_stats["tow"] == 160782.0]
+
+
 # Relative time in seconds from first epoch
 sol_stats["t"] = sol_stats["tow"] - sol_stats["tow"].iloc[0]
 
+sol_stats["resp"] = abs(sol_stats["resp"])
+sol_stats["resc"] = abs(sol_stats["resc"])
 
 
-# ============================
-# LOAD RTKLIB $SAT STATS FILE FOR TRUTH
-# ============================
-truth_stat_rows = []
+# Remove zero-probability entries (temporary until DEM of full city)
+sol_stats = sol_stats[sol_stats["prob"] >= 0.0] 
 
-with open(truth_stats, "r") as f:
-    for line in f:
-        if not line.startswith("$SAT"):
-            continue
+# sol_stats = sol_stats[sol_stats["resp"] != 0.0]
+# Assign the base the minimum residual across the other satellites, as it can't be better than that
+sat_sys = sol_stats["sat"].str[0]
 
-        parts = line.strip().split(",")
-
-        truth_stat_rows.append(parts[1:])  # drop "$SAT"
-
-truth_stats = pd.DataFrame(truth_stat_rows, columns=sat_cols)
-
-truth_stats[numeric_cols] = truth_stats[numeric_cols].apply(
-    pd.to_numeric, errors="coerce"
+# Compute per-(tow, sat_sys) minimum non-zero resp
+group_min = (
+    sol_stats["resp"]
+    .where(sol_stats["resp"] != 0)
+    .groupby([sol_stats["tow"], sat_sys])
+    .transform("min")
 )
 
-# Relative time in seconds from first epoch
-truth_stats["t"] = truth_stats["tow"] - truth_stats["tow"].iloc[0]
+# Replace zeros with group minimum
+mask = sol_stats["resp"] == 0
+sol_stats.loc[mask, "resp"] = group_min[mask]
+
+# Compute per-(tow, sat_sys) minimum non-zero resc
+group_min = (
+    sol_stats["resc"]
+    .where(sol_stats["resc"] != 0)
+    .groupby([sol_stats["tow"], sat_sys])
+    .transform("min")
+)
+
+# Replace zeros with group minimum
+mask = sol_stats["resc"] == 0
+sol_stats.loc[mask, "resc"] = group_min[mask]
+
+
+print(sol_stats)
 
 
 
@@ -173,21 +194,6 @@ truth_interp["t"] = rtk["t"]
 truth_interp["Lat_deg"]  = np.interp(rtk["t"], truth["t"], truth["Latitude"])
 truth_interp["Lon_deg"]  = np.interp(rtk["t"], truth["t"], truth["Longitude"])
 truth_interp["Height_m"] = np.interp(rtk["t"], truth["t"], truth["H-Ell"])
-
-
-# ============================
-# ALIGN SOLUTION STATS with TRUTH STATS
-# ============================
-sat_error_prob = sol_stats.merge(
-    truth_stats,
-    on=["tow", "sat"],
-    how="inner",
-    suffixes=("_sol", "_truth")
-)
-
-# Remove zero-probability entries (temporary until DEM of full city)
-sat_error_prob = sat_error_prob[sat_error_prob["prob_sol"] > 0.0]
-sat_error_prob = sat_error_prob[sat_error_prob["resp_truth"] != 0.0]
 
 
 # ============================
@@ -356,29 +362,44 @@ plt.savefig(os.path.join(out_dir, "Satellite Count vs Time.png"), dpi=300, bbox_
 plt.close()
 
 # Sat prob vs pseudorange error
+
+sol_stats_primary = sol_stats[sol_stats["frq"] == 1]
+sol_stats_secondary = sol_stats[sol_stats["frq"] == 2]
+
 plt.figure()
-plt.scatter(sat_error_prob["prob_sol"], abs(sat_error_prob["resp_truth"]), s=8, alpha=0.6)
+plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resp"]), s=8, alpha=0.6, label="Primary Frequency")
+plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resp"]), s=8, alpha=0.6, label="Secondary Frequency")
 plt.xlabel("Probability of Obstruction")
 plt.ylabel("True Double Differenced Pseudorange Error (m)")
 plt.title("Pseudorange Errors at Estimated Probability Levels")
 plt.grid()
-plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability.png"),dpi=300,bbox_inches="tight")
+plt.legend()
+plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Pseudorange_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
 plt.close()
+
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None) # Useful for long strings in columns
 
 # Sat prob vs carrier phase error heatmap
 plt.figure()
-plt.scatter(sat_error_prob["prob_sol"], abs(sat_error_prob["resc_truth"]), s=8, alpha=0.6)
+plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resc"]), s=8, alpha=0.6, label="Primary Frequency")
+plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resc"]), s=8, alpha=0.6, label="Secondary Frequency")
 plt.xlabel("Probability of Obstruction")
 plt.ylabel("True Double Differenced Carrier Phase Error (m)")
 plt.title("Carrier Phase Errors at Estimated Probability Levels")
 plt.grid()
-plt.savefig(os.path.join(out_dir, "Carrier Phase Errors vs Obstruction Probability Heatmap.png"),dpi=300,bbox_inches="tight")
+plt.legend()
+plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Carrier_Phase_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
 plt.close()
-plt.figure()
 
+
+
+plt.figure()
 counts, xedges, yedges, im = plt.hist2d(
-    sat_error_prob["prob_sol"],
-    abs(sat_error_prob["resp_truth"]),
+    sol_stats["prob"],
+    abs(sol_stats["resp"]),
     bins=[20, int(300 / 10)],     # probability bins, 2 m bins up to 100 m
     range=[[0.0, 1.0], [0.0, 300.0]],
     norm=LogNorm()
@@ -406,7 +427,7 @@ for i, x in enumerate(xcenters):
 
 plt.xlabel("Probability of Obstruction")
 plt.ylabel("True Double Differenced Pseudorange Error (m)")
-plt.title("Pseudorange Errors at Estimated Probability Levels")
+plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
 plt.grid()
 plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"),dpi=300,bbox_inches="tight")
 plt.close()
@@ -414,7 +435,7 @@ plt.close()
 
 # Probability Histogram
 plt.figure()
-plt.hist(sat_error_prob["prob_sol"],bins=20,range=(0.0, 1.0))
+plt.hist(sol_stats["prob"],bins=20,range=(0.0, 1.0))
 plt.xlabel("Probability of Obstruction")
 plt.ylabel("Count")
 plt.title("Distribution of Estimated Obstruction Probability")
