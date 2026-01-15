@@ -327,6 +327,8 @@ void set_relative_origin
         }
         printf("new_file_name: %s",new_file_name);
         free(DSM->heights_array);
+        initialize_dsm("C:\\capstone\\dsm_tiles\\data.bin", &(DSM), traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
+
         printf("\nPress 'c' to continue...\n");
 
         int ch;
