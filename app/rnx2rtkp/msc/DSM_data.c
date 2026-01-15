@@ -191,6 +191,29 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
     return tile_origin;
 }
 
+extern char retrive_new_file_name(const east_north* tile_origin_coords, const char* file_path, const char* file_prefix, const char* file_extension) 
+{
+    char tile_origin_coords_char_E[100];
+    char tile_origin_coords_char_N[100];
+
+    if (snprintf(tile_origin_coords_char_E, sizeof(tile_origin_coords_char_E), "%d", (int)round(tile_origin_coords->easting)) < 0) {
+        fprintf(stderr, "Error converting double to string.\n");
+        return 1;
+    }
+    if (snprintf(tile_origin_coords_char_N, sizeof(tile_origin_coords_char_N), "%d", (int)round(tile_origin_coords->northing)) < 0) {
+        fprintf(stderr, "Error converting double to string.\n");
+        return 1;
+    }
+
+    char new_file_name[100];
+
+    if (snprintf(new_file_name, sizeof(new_file_name), "%s%s_%sE_%sN%s", *file_path, *file_prefix, tile_origin_coords_char_E, tile_origin_coords_char_N, *file_extension) < 0) {
+        fprintf(stderr, "Error converting double to string.\n");
+        return 1;
+    }
+    printf("\nnew_file_name: %s\n", new_file_name);
+}
+
 void initialize_dsm
 (
     const char* file_name, /* Name of the DSM .bin file */
