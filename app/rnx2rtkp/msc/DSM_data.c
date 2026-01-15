@@ -194,16 +194,24 @@ void initialize_dsm
 
     // PLAYGROUND =========================
     printf("\nStarted playground\n");
-    double num = 123.456789;
-    char buffer[50]; // Enough space for the converted string
+    double num = 123.856789;
+    char buffer[100]; // Enough space for the converted string
 
     // Convert double to string with 6 decimal places
-    if (snprintf(buffer, sizeof(buffer), "%.6f", num) < 0) {
+    if (snprintf(buffer, sizeof(buffer), "%d", (int)round(num)) < 0) {
         fprintf(stderr, "Error converting double to string.\n");
         return 1;
     }
 
     printf("Double as string: %s\n", buffer);
+
+    char result[64];
+
+    const char* a = "abc";
+    const char* b = "123";
+
+    snprintf(result, sizeof(result), "%s_%s", a, b);
+    printf("Adding strings together: %s", result);
 
     printf("\nEnded playground\n");
 
@@ -213,10 +221,6 @@ void initialize_dsm
     printf("\nRounded easting: %f\n", rounded.easting);
     printf("\nRounded northing: %f\n", rounded.northing);
     */
-
-    
-
-    
 
     printf("\Initialization complete\n");
 }
@@ -285,7 +289,7 @@ void set_relative_origin
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
-    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\N"); }
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); }
     else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
 
     /*
@@ -341,7 +345,15 @@ void get_relative_height
         *h = calculate_true_height_meters(DSM, index);
         printf("\nRelative height calculated: %f\n", *h);
     }
-    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\N"); }
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
+        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+        char traverse_E_char[100];
+        char traverse_N_char[100];
+        if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%.6f", traverse_E) < 0) {
+            fprintf(stderr, "Error converting double to string.\n");
+            return 1;
+        }
+    }
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
         *h = -1.0f;
