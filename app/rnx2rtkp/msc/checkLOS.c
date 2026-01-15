@@ -36,6 +36,8 @@ void soltocov_rtk(sol_t* sol, double* P);
 extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
     //fprintf(stderr, "%s", "LOS Update\n");
 
+
+
     int i, nrej=0;
     int rej_idx[MAXOBS];
     const double *rr = rtk->sol.rr; // TODO add filtering for if the estimated position is poor
@@ -68,7 +70,23 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         return 0;
     }
 
+    gtime_t obs_time, point_time;
+    int debug = 0;
+    if (*ns > 0) {
+        obs_time = obs[0].time;
+        /* get current truth time */
+        point_time = gpst2time(2258, 160782);
+        if (abs(timediff(obs_time, point_time)) < 0.1) {
+            debug = 1;
+        }
+    }
+    else {
+        return 0;
+    }
+
     for (i = 0;i < *ns && i < MAXOBS;i++) {
+
+
         //fprintf(stderr, "Checking satellite %d\n", i);
 
         r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
@@ -81,23 +99,40 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             rtk->ssat[sat[i] - 1].obstruction_scaling = 1;
             //fprintf(stderr, "Geodist Failed %d\n", i);
 
+            fprintf(stderr, "Geodist Check Failed");
+
             continue;
         }
 
         satazel(pos, e, azel);
-        //fprintf(stderr, "%d", sat[i]);
-        //fprintf(stderr, "Requesting probability: ");
-
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM));
-        //fprintf(stderr, "%lf\n", probability_of_obstruction);
-
+        
+        if (debug) {
+            fprintf(stderr, "Requesting probability: %d\n", sat[i]);
+        }
+        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), debug);
+        if (debug) {
+            fprintf(stderr, "%lf\n", probability_of_obstruction);
+        }
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
 
             rej_idx[nrej++] = i;
         }
+        if (debug) {
+            fprintf(stderr, "Setting ssat at index %d with probability: %lf\n", sat[i] - 1, probability_of_obstruction);
+        }
 
-        double scaling = 1 / (1 - probability_of_obstruction);
+        rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
+
+        if (probability_of_obstruction == 1.0) { // Avoid a divide by 0 error
+            probability_of_obstruction = 0.999;
+        }
+
+        if (probability_of_obstruction < 0.0) { // Handles uninitilized case by setting no scaling
+            probability_of_obstruction == 0.0;
+        }
+
+        double scaling = 1.0 / (1.0 - probability_of_obstruction); // TODO divide by 0 risk here
         if (scaling > rtk->opt.DSM.max_noise_scaling)
         {
             scaling = rtk->opt.DSM.max_noise_scaling;
@@ -105,8 +140,10 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         // Save data. Warning! This will last across epochs unless overwritten (actually ssat is reset every epoch). Shouldn't be an issue unless implementation changed
         //fprintf(stderr, "%lf", scaling);
+        if (debug) {
+            fprintf(stderr, "Setting ssat at index %d with scaling: %lf\n", sat[i] - 1, scaling);
+        }
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
-        rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
 
     }
 
@@ -133,13 +170,17 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM) {
-    //fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf, result: ",
-    //    sat_az * 180 / M_PI,
-    //   sat_elev * 180 / M_PI,
-    //    origin_lat * 180 / M_PI,
-    //    origin_long * 180 / M_PI,
-    //    origin_height);
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, int debug) {
+    if (debug) {
+        fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
+            sat_az * 180 / M_PI,
+            sat_elev * 180 / M_PI,
+            origin_lat * 180 / M_PI,
+            origin_long * 180 / M_PI,
+            origin_height,
+            origin_horizontal_variance,
+            origin_vertical_variance);
+    }
 
     int out_of_bounds = 0;
     double current_DTM_height = 0, sat_height = 0;
@@ -147,11 +188,33 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     int origin_x = 0, origin_y = 0;
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
     get_relative_height(DSM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
-    if (out_of_bounds != 1 && (current_DTM_height > origin_height || DSM->use_dem_height_only == 1)) {
-        origin_height = current_DTM_height + DSM->antenna_dem_offset;
-        origin_vertical_variance = DSM->vertical_point_variance + DSM->antenna_dem_offset_var;
+
+    double probability_of_obstruction = -1; // -1 = uninitialized - otherwise a range of 0-1
+
+    if (out_of_bounds) {
+        return probability_of_obstruction; //-1
     }
 
+    if (debug) {
+        fprintf(stderr, "Origin Height: %lf, DEM Height: %lf, Out of Bounds %d",
+            origin_height,
+            current_DTM_height,
+            out_of_bounds);
+    }
+
+
+    if (out_of_bounds != 1 && (current_DTM_height > origin_height || DSM->use_dem_height_only == 1) && DSM->use_dem_height_only != 2) {
+        origin_height = current_DTM_height + DSM->antenna_dem_offset;
+        origin_vertical_variance = DSM->vertical_point_variance + DSM->antenna_dem_offset_var;
+        if (debug) {
+            fprintf(stderr, ", Using DTM Height\n");
+        }
+    }
+    else {
+        if (debug) {
+            fprintf(stderr, ", Using GPS Height\n");
+        }
+    }
     // Set up height checks
     double max_checked_DTM_height = origin_height;
 
@@ -173,7 +236,6 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     int dN = -abs(N1), sN = 0 < N1 ? 1 : -1; // Defines directions of steps
     LineState line = {0, 0, 0, dE, dN, sE, sN, dE + dN, 0};
 
-    double probability_of_obstruction = 0;
     double DTM_height_var = 0;
     double sat_height_var = 0;
     double y = 0;
@@ -185,25 +247,38 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         get_relative_height(DSM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
 
         //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
-
-        //fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
-        //    line.E, line.N, line.d, line.dE, line.dN, line.sE, line.sN, line.err, line.e2, current_DTM_height, out_of_bounds);
-
+        if (debug) {
+            fprintf(stderr, "Line State: E: %d N: %d d: %lf dE: %d dN: %d sE: %d sN: %d err: %d e2: %d Height Comparison: %lf Boundary: %d\n",
+                line.E, line.N, line.d, line.dE, line.dN, line.sE, line.sN, line.err, line.e2, current_DTM_height, out_of_bounds);
+        }
         // If fully traversed DTM, LOS is clear after that point, return current probability
         if (out_of_bounds == 1) {
-            //fprintf(stderr, "out of bounds %lf\n", probability_of_obstruction);
-
+            if (debug) {
+                fprintf(stderr, "out of bounds %lf\n", probability_of_obstruction);
+            }
             return probability_of_obstruction;
         }
 
         // Have traversed the max distance required to trraverse, LOS is clear after that point. Depends on the number of steps travelled
         if (max_distance_steps < line.d) {
-            //fprintf(stderr, "covered max distance %lf\n", probability_of_obstruction);
+            if (probability_of_obstruction < 0.0) { // If uninitialized, initialize
+                probability_of_obstruction = 0.0;
+            }
+            
+            if (debug) {
+                fprintf(stderr, "covered max distance %lf\n", probability_of_obstruction);
+            }
             return probability_of_obstruction;
         }
 
         // If a higher height has already been checked, it's not needed to check it again, it's assumed to be low probability of obstruction. NOTE - this is a simplification for efficiency purposes. It also means only one probability per building is estiimated (assuming the building height is ~ constant)
         if (current_DTM_height <= max_checked_DTM_height) {
+            if (probability_of_obstruction < 0.0) { // If uninitialized, initilize
+                probability_of_obstruction = 0.0;
+            }
+            if (debug) {
+                fprintf(stderr, "Skipping Check as Max Checked is Higher %lf\n", max_checked_DTM_height);
+            }
             continue;
         }
         
@@ -232,16 +307,18 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
             apply_probability(&y, &probability_of_obstruction);
 
+            if (debug) {
+                fprintf(stderr, "Probability Updated To: %lf, Sat Height: %lf, DTM Height: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sat_height, current_DTM_height, sqrt(sat_height_var), sqrt(DTM_height_var), y);
+            }
+
             // If hit 0.99 round up to 1.
             if (probability_of_obstruction > 0.99) {
                 probability_of_obstruction = 1.0f;
-                //fprintf(stderr, "hit max probability %lf\n", probability_of_obstruction);
-
+                if (debug) {
+                    fprintf(stderr, "hit max probability %lf\n", probability_of_obstruction);
+                }
                 return probability_of_obstruction;
             }
-
-            //fprintf(stderr, "Probability Updated To: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sqrt(sat_height_var), sqrt(DTM_height_var), y);
-
 
             continue;
         }
@@ -291,7 +368,7 @@ void apply_probability(double* y, double* probability) {
     double prob = 0.5 * erfc(-*y / sqrt(2.0)); // CDF approximation
 
     // If probability has not yet been set
-    if (*probability == 0.0f) {
+    if (*probability <= 0.0) { // Handles uninitialized and 0 case (though 0 technically handled farther down)
         *probability = prob;
         return;
     }
