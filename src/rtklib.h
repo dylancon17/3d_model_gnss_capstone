@@ -518,6 +518,7 @@ typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
+                         -3 = Calculate true pseduorange and probability and use reference satellite selection based on probability threshold
                          -2 = Calculate true pseudorange and probabilities
                          -1 = Calculate true pseudorange errors
                          0 = don't do anything with the DEM. 
@@ -531,7 +532,7 @@ typedef struct DSMData {
     int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
-    boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
+    int use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
     int max_noise_scaling; /*Scale the noise by a maximum of n time*/
 
@@ -1842,7 +1843,8 @@ extern double check_los(
     double origin_height,
     double origin_horizontal_variance,
     double origin_vertical_variance,
-    struct DSMData* DTM);
+    struct DSMData* DTM,
+    int debug);
 
 extern int los_update(
     rtk_t* rtk,
