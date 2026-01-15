@@ -326,6 +326,7 @@ void set_relative_origin
             return 1;
         }
         printf("new_file_name: %s",new_file_name);
+        free(DSM->heights_array);
         printf("\nPress 'c' to continue...\n");
 
         int ch;
