@@ -327,11 +327,14 @@ void set_relative_origin
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
+    printf("\nout_of_bounds: %d\n",*out_of_bounds);
+    printf("out_of_bounds_tiles_dataset: %d\n",out_of_bounds_check_tiles_dataset);
+
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
-    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
-        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n"); 
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) {
+        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n");
         double traverse_E = get_closest_coordinate(&DSM->relative_origin_traverse, DSM).easting;
         double traverse_N = get_closest_coordinate(&DSM->relative_origin_traverse, DSM).northing;
 
@@ -342,7 +345,7 @@ void set_relative_origin
         char traverse_N_char[100];
         if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%d", (int)round(traverse_to_tile_origin.easting)) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
-            return 1; 
+            return 1;
         }
         if (snprintf(traverse_N_char, sizeof(traverse_N_char), "%d", (int)round(traverse_to_tile_origin.northing)) < 0) {
             fprintf(stderr, "Error converting double to string.\n");
@@ -358,11 +361,14 @@ void set_relative_origin
             fprintf(stderr, "Error converting double to string.\n");
             return 1;
         }
-        printf("new_file_name: %s\n",new_file_name);
+        printf("new_file_name: %s\n", new_file_name);
         free(DSM->heights_array);
         initialize_dsm(new_file_name, &(DSM), traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
     }
     else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
+    else if (out_of_bounds != 0 && out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
+        printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
+    }
 
     /*
     double test_input_x = 12000.0;
