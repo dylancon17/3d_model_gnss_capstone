@@ -5,6 +5,8 @@
 #include <string.h>
 #include <math.h>
 
+//NOTE: PLAYGROUND IS IN LINE 195
+
 void initialize_tiles_dataset
 (
     TilesDataset* td,
@@ -147,24 +149,6 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
     return tile_origin;
 }
 
-/// <summary>
-/// This function is used to populate the DSM struct and to load values into it from an opened .bin file.
-/// </summary>
-/// <param name="file">File information structure that contains an open FILE*</param>
-/// <param name="file_name">Name of the DSM .bin file</param>
-/// <param name="E_origin_DSM">Input easting origin of the DSM (ex. top left location easting of the DSM)</param>
-/// <param name="N_origin_DSM">Input northing origin of the DSM (ex. top left location northing of the DSM)</param>
-/// <param name="step_size">DSM raster spatial resolution (ex. 5m spatial resolution)</param>
-/// <param name="n_columns">Number of columns in the DSM grid</param>
-/// <param name="DSM">Output DSM struct to fill in from the raster data</param>
-/// 
-/*
-file_BIN f;
-DSM DSM;
-create_WGS_84_ellipsoid();
-initialize_dsm(&f, "data.bin", &DSM, -5243.600, 5657585.200, 5, 220);
-*/
-/// 
 void initialize_dsm
 (
     const char* file_name, /* Name of the DSM .bin file */
@@ -206,6 +190,34 @@ void initialize_dsm
 
     /* 6. Calculate the maximum height in the dataset. */
     DSM->max_dsm_height = calc_max_height(DSM);
+
+
+    // PLAYGROUND =========================
+    printf("\nStarted playground\n");
+    double num = 123.456789;
+    char buffer[50]; // Enough space for the converted string
+
+    // Convert double to string with 6 decimal places
+    if (snprintf(buffer, sizeof(buffer), "%.6f", num) < 0) {
+        fprintf(stderr, "Error converting double to string.\n");
+        return 1;
+    }
+
+    printf("Double as string: %s\n", buffer);
+
+    printf("\nEnded playground\n");
+
+    /*
+    printf("\nTraverse easting: %f\n", traverse.easting);
+    printf("\nTraverse northing: %f\n", traverse.northing);
+    printf("\nRounded easting: %f\n", rounded.easting);
+    printf("\nRounded northing: %f\n", rounded.northing);
+    */
+
+    
+
+    
+
     printf("\Initialization complete\n");
 }
 
@@ -274,8 +286,9 @@ void set_relative_origin
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\N"); }
-    else if (out_of_bounds_tiles_dataset == 1) { printf("\nWARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
+    else if (out_of_bounds_tiles_dataset == 1) { printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n"); }
 
+    /*
     double test_input_x = 12000.0;
     double test_input_y = 5635000.0;
     east_north test_input = { test_input_x, test_input_y };
@@ -283,6 +296,7 @@ void set_relative_origin
 
     printf("\ntest output x: %f\n", test_output.easting);
     printf("\ntest output y: %f\n", test_output.northing);
+    */
 }
 
 /* get_relative_height ---------------------------------------------------
@@ -310,34 +324,28 @@ void get_relative_height
 
     east_north rounded = round_to_tile_origin(&traverse, tiles_dataset);
 
+    /*
     printf("\nTraverse easting: %f\n", traverse.easting);
     printf("\nTraverse northing: %f\n", traverse.northing);
     printf("\nRounded easting: %f\n", rounded.easting);
     printf("\nRounded northing: %f\n", rounded.northing);
-
-    /*
-    char string;
-    snprintf(string, sizeof(string), "%.6f", rounded.easting);
-    printf("string: %s\n", string);
     */
 
     const steps_XY steps = calculate_steps_from_origin(&traverse, DSM);
-    printf("\nSteps calculated\n");
 
     *out_of_bounds = out_of_bounds_check_tiles_dataset(&traverse, tiles_dataset);
-    printf("\nOut of bounds calculated\n");
+    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
-    if (*out_of_bounds == 0) {
+    if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
-        printf("\nIndex calculated\n");
         *h = calculate_true_height_meters(DSM, index);
-        printf("\nRelative height: %f\n", *h);
+        printf("\nRelative height calculated: %f\n", *h);
     }
-    else {
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\N"); }
+    else if (out_of_bounds_tiles_dataset == 1) { 
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height");
         *h = -1.0f;
     }
-
 }
 
 void deallocate_dsm(const DSMData* DSM) {
