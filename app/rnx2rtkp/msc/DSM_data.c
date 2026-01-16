@@ -393,11 +393,8 @@ void set_relative_origin
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) {
         printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n");
-        double traverse_E = get_closest_coordinate(&DSM->relative_origin_traverse, DSM).easting;
-        double traverse_N = get_closest_coordinate(&DSM->relative_origin_traverse, DSM).northing;
 
-        east_north traverse_coords = { traverse_E,traverse_N };
-        east_north traverse_to_tile_origin = round_to_tile_origin(&traverse_coords, tiles_dataset);
+        east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse, tiles_dataset);
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";
@@ -413,7 +410,7 @@ void set_relative_origin
         initialize_dsm(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
-        printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n");
+        printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n") ;
         printf("Press any key to continue...\n");
         _getch();
     }
