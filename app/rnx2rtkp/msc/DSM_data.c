@@ -225,7 +225,6 @@ void retrieve_new_file_name
         fprintf(stderr, "Error converting double to string.\n");
         return;
     }
-    printf("\nnew_file_name: %s\n", new_file_name);
 }
 
 void initialize_dsm
@@ -400,31 +399,13 @@ void set_relative_origin
         east_north traverse_coords = { traverse_E,traverse_N };
         east_north traverse_to_tile_origin = round_to_tile_origin(&traverse_coords, tiles_dataset);
 
-        char traverse_E_char[100];
-        char traverse_N_char[100];
-        if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%d", (int)round(traverse_to_tile_origin.easting)) < 0) {
-            fprintf(stderr, "Error converting double to string.\n");
-            return 1;
-        }
-        if (snprintf(traverse_N_char, sizeof(traverse_N_char), "%d", (int)round(traverse_to_tile_origin.northing)) < 0) {
-            fprintf(stderr, "Error converting double to string.\n");
-            return 1;
-        }
-
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";
-        char new_file_name[100];
         char file_extension[100] = ".bin";
 
-        if (snprintf(new_file_name, sizeof(new_file_name), "%s%s_%sE_%sN%s", file_path, file_prefix, traverse_E_char, traverse_N_char, file_extension) < 0) {
-            fprintf(stderr, "Error converting double to string.\n");
-            return 1;
-        }
-        //printf("\nnew_file_name: %s\n", new_file_name);
-
-        char new_file_name_test[100];
-        retrieve_new_file_name(new_file_name_test, sizeof(new_file_name_test), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
-        printf("\nnew_file_name_test: %s\n", new_file_name_test);
+        char new_file_name[100];
+        retrieve_new_file_name(new_file_name, sizeof(new_file_name), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
+        printf("\nnew_file_name: %s\n", new_file_name);
 
         printf("Press any key to continue...\n");
         _getch();
