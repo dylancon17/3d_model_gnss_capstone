@@ -438,18 +438,9 @@ void get_relative_height
 
     east_north traverse = { traverse_E,traverse_N };
 
-    east_north rounded = round_to_tile_origin(&traverse, tiles_dataset);
-
-    /*
-    printf("\nTraverse easting: %f\n", traverse.easting);
-    printf("\nTraverse northing: %f\n", traverse.northing);
-    printf("\nRounded easting: %f\n", rounded.easting);
-    printf("\nRounded northing: %f\n", rounded.northing);
-    */
-
     const steps_XY steps = calculate_steps_from_tile_corner(&traverse, DSM);
 
-    *out_of_bounds = out_of_bounds_check_tiles_dataset(&traverse, tiles_dataset);
+    *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
@@ -461,39 +452,23 @@ void get_relative_height
         //printf("\nRelative height calculated: %f\n", *h);
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
-
-        /*
-        char result[64];
-
-        const char* a = "abc";
-        const char* b = "123";
-
-        snprintf(result, sizeof(result), "%s_%s", a, b);
-        printf("Adding strings together: %s", result);
-        */
-
         printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS for retrieving relative height\n"); 
+
+        east_north relative_point_to_tile_origin = round_to_tile_origin(&traverse, tiles_dataset);
+
+        char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
+        char file_prefix[100] = "DSM_CGY_5x5km_res1m";
+        char file_extension[100] = ".bin";
+
+        char new_file_name[100];
+        retrieve_new_file_name(new_file_name, sizeof(new_file_name), &relative_point_to_tile_origin, file_path, file_prefix, file_extension);
+        printf("\nnew_file_name: %s\n", new_file_name);
+
         printf("Press any key to continue...\n");
         _getch();
-        return;
 
-        /*
-        char traverse_E_char[100];
-        char traverse_N_char[100];
-        if (snprintf(traverse_E_char, sizeof(traverse_E_char), "%.6f", traverse_E) < 0) {
-            fprintf(stderr, "Error converting double to string.\n");
-            return 1;
-        }
-
-        char file_prefix[100] = "DSM_CGY_5x5km_res1m";
-        char new_file[100];
-        if (snprintf(new_file, sizeof(new_file), "%s_%s_%s", file_prefix, traverse_E_char, traverse_N_char) < 0) {
-            fprintf(stderr, "Error converting double to string.\n");
-            return 1;
-        }
-        */
-
-
+        printf("\nRe-initializing DSM\n");
+        initialize_dsm(new_file_name, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
