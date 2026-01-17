@@ -180,7 +180,7 @@ int main(int argc, char **argv)
         prcopt.DSM.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
-
+        prcopt.DSM.building_height_margin = 1;
         initialize_dsm("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
 
 

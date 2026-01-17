@@ -190,6 +190,11 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
     get_relative_height(DSM, &origin_x, &origin_y, &distance, &current_DTM_height, &out_of_bounds);
 
+    double current_building_height = current_DTM_height;
+    int current_plane_checked = 1; //Don't check starting plane
+    double height_to_check = current_DTM_height;
+    double change_in_height_var = 0;
+
     double probability_of_obstruction = -1; // -1 = uninitialized - otherwise a range of 0-1
 
     if (out_of_bounds) {
@@ -218,7 +223,6 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     }
     // Set up height checks
     double max_checked_DTM_height = origin_height;
-
     // Only search until a distance where you're guranteed to hit a building, or you've searched a ways
     double max_distance_steps = (DSM->max_dsm_height - origin_height) / sat_vertical_slope;
     if (max_distance_steps > DSM->max_distance) {
@@ -265,26 +269,43 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             if (probability_of_obstruction < 0.0) { // If uninitialized, initialize
                 probability_of_obstruction = 0.0;
             }
-            
+
             if (debug) {
                 fprintf(stderr, "covered max distance %lf\n", probability_of_obstruction);
             }
             return probability_of_obstruction;
         }
-
-        // If a higher height has already been checked, it's not needed to check it again, it's assumed to be low probability of obstruction. NOTE - this is a simplification for efficiency purposes. It also means only one probability per building is estiimated (assuming the building height is ~ constant)
-        if (current_DTM_height <= max_checked_DTM_height) {
-            if (probability_of_obstruction < 0.0) { // If uninitialized, initilize
-                probability_of_obstruction = 0.0;
-            }
-            if (debug) {
-                fprintf(stderr, "Skipping Check as Max Checked is Higher %lf\n", max_checked_DTM_height);
-            }
-            continue;
-        }
         
-        //Else, onto the new max height checked
-        max_checked_DTM_height = current_DTM_height;
+        
+        if (DSM->processing_type == 1) {
+            // If a higher height has already been checked, it's not needed to check it again, it's assumed to be low probability of obstruction. NOTE - this is a simplification for efficiency purposes. It also means only one probability per building is estiimated (assuming the building height is ~ constant)
+            if (current_DTM_height <= max_checked_DTM_height + 2) {
+                if (probability_of_obstruction < 0.0) { // If uninitialized, initilize
+                    probability_of_obstruction = 0.0;
+                }
+                if (debug) {
+                    fprintf(stderr, "Skipping Check as Max Checked is Higher %lf\n", max_checked_DTM_height);
+                }
+                continue;
+            }
+        }
+
+        //Height not changing
+        if (DSM->processing_type > 1 || DSM->processing_type < -1) {
+            if (current_DTM_height > current_building_height - DSM->building_height_margin && current_DTM_height < current_building_height + DSM->building_height_margin) {
+                if (current_plane_checked != 0) { // If already checked at this height don't check again
+                    continue;
+                }
+                height_to_check = current_building_height; // Check the front plane of the building
+                current_plane_checked == 1; //Will check plane below
+            }
+            else { // Height did change
+                height_to_check = (current_building_height + current_DTM_height) / 2; //Interpolate between the heights
+                current_building_height = current_DTM_height; //Set the next building as the new height
+                current_plane_checked; //Reset that height to check
+            }
+        }
+
 
         // Check the height of the satellite based on the distance travelled along the satellite line
         
@@ -298,13 +319,28 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         line.d = line.d / DSM->step_size; 
 
 
+        if (DSM->processing_type == 1) {
+            // if processing_type == 1 
+
+            // Boolean rejection (old)
+            // Satellite is lower than DTM, LOS is obstructed
+            if (sat_height < current_DTM_height) {
+                //fprintf(stderr, "sat height is less than DTM height, %lf < %lf\n", sat_height, current_DTM_height);
+                return 1;
+            }
+
+            //Else, onto the new max height checked
+            max_checked_DTM_height = current_DTM_height;
+            continue;
+        }
+
         if (DSM->processing_type > 1 || DSM->processing_type < -1) {
             //Calculate probability of obstruction
             determine_sat_height_var(&sat_height_var, origin_horizontal_variance, origin_vertical_variance, sat_vertical_slope, DSM);
 
             determine_DTM_height_var(&DTM_height_var, DSM);
-
-            y = (current_DTM_height - sat_height) / sqrt(DTM_height_var + sat_height_var);
+            
+            y = (height_to_check - sat_height) / sqrt(DTM_height_var + sat_height_var);
 
             apply_probability(&y, &probability_of_obstruction);
 
@@ -322,15 +358,6 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             }
 
             continue;
-        }
-
-        // if processing_type == 1 
-
-        // Boolean rejection (old)
-        // Satellite is lower than DTM, LOS is obstructed
-        if (sat_height < current_DTM_height) { 
-            //fprintf(stderr, "sat height is less than DTM height, %lf < %lf\n", sat_height, current_DTM_height);
-            return 1;
         }
 
         // Otherwise continue traversing

@@ -551,6 +551,8 @@ typedef struct DSMData {
     UTM_projection projection_dsm; /* Map projection of the digital surface model */
     ellipsoid ellipsoid_dsm; /* Ellipsoid of the coordinate system of the digital surface model */
 
+    double building_height_margin;
+
 } DSMData;
 
 // WGS-84
