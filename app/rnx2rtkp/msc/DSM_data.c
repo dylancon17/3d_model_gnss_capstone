@@ -93,6 +93,11 @@ east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
     return closest_EN;
 }
 
+void apply_curvature_correction(double* h, double d) { // https://labs.landsurveyorsunited.com/toools/curvaturecorrection
+    *h = *h - (d) * (d) / 1207420000; //Final number is earth's diameter in meters
+}
+
+
 double calculate_true_height_meters(const DSMData* DSM, const int index)
 {
     const double val = (double)(DSM->heights_array[index]);
@@ -240,6 +245,7 @@ void get_relative_height
     const DSMData* DSM,
     const int* steps_E,
     const int* steps_N,
+    double* d,
     double* h,
     int* out_of_bounds
 )
@@ -256,6 +262,7 @@ void get_relative_height
     if (*out_of_bounds == 0) {
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
         *h = calculate_true_height_meters(DSM, index);
+        apply_curvature_correction(h, (*d * DSM->step_size));
         //printf("Relative height: %f\n", *h);
     }
     else {

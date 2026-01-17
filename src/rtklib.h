@@ -1898,6 +1898,7 @@ extern void get_relative_height
     const struct DSMData* DSM,
     const int* steps_E,
     const int* steps_N,
+    double* d,
     double* h,
     int* out_of_bounds
 );

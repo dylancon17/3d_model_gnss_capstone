@@ -186,8 +186,9 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     double current_DTM_height = 0, sat_height = 0;
     double sat_vertical_slope = tanf(sat_elev);
     int origin_x = 0, origin_y = 0;
+    double distance = 0;
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
-    get_relative_height(DSM, &origin_x, &origin_y, &current_DTM_height, &out_of_bounds);
+    get_relative_height(DSM, &origin_x, &origin_y, &distance, &current_DTM_height, &out_of_bounds);
 
     double probability_of_obstruction = -1; // -1 = uninitialized - otherwise a range of 0-1
 
@@ -244,7 +245,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         // Traverse the DTM
         step_along_line(&line);
         
-        get_relative_height(DSM, &(line.E), &(line.N), &current_DTM_height, &out_of_bounds);
+        get_relative_height(DSM, &(line.E), &(line.N), &(line.d), &current_DTM_height, &out_of_bounds);
 
         //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
         if (debug) {
