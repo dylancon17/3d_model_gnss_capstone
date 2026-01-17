@@ -383,7 +383,7 @@ void determine_DTM_height_var(double* var, struct DSMData* DSM) {
     // Height accuracy
     // Coordinate Horizontal accuracy - insignificant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so slight horizontal error doesn't matter
     // Height errros due to calling the nearest height - insignficant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so no interpolation error would be introduced anyways
-    *var = DSM->vertical_point_variance;
+    *var = pow((double)DSM->step_size,2) + DSM->vertical_point_variance;
 }
 
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope,DSMData* DSM) {
