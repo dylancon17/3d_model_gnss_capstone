@@ -193,7 +193,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     double current_building_height = current_DTM_height;
     int current_plane_checked = 1; //Don't check starting plane
     double height_to_check = current_DTM_height;
-    double change_in_height_var = 0;
+    double change_in_height_var = pow(DSM->step_size,2);
 
     double probability_of_obstruction = -1; // -1 = uninitialized - otherwise a range of 0-1
 
@@ -277,7 +277,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         }
         
         
-        if (DSM->processing_type == 1) {
+        if (DSM->processing_type >= -3 && DSM->processing_type <= 6) {
             // If a higher height has already been checked, it's not needed to check it again, it's assumed to be low probability of obstruction. NOTE - this is a simplification for efficiency purposes. It also means only one probability per building is estiimated (assuming the building height is ~ constant)
             if (current_DTM_height <= max_checked_DTM_height + 2) {
                 if (probability_of_obstruction < 0.0) { // If uninitialized, initilize
@@ -288,21 +288,25 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
                 }
                 continue;
             }
+            max_checked_DTM_height = current_DTM_height;
+            height_to_check = current_DTM_height;
         }
 
         //Height not changing
-        if (DSM->processing_type > 1 || DSM->processing_type < -1) {
+        if (DSM->processing_type > 6 || DSM->processing_type < -3) {
             if (current_DTM_height > current_building_height - DSM->building_height_margin && current_DTM_height < current_building_height + DSM->building_height_margin) {
                 if (current_plane_checked != 0) { // If already checked at this height don't check again
                     continue;
                 }
                 height_to_check = current_building_height; // Check the front plane of the building
                 current_plane_checked == 1; //Will check plane below
+                change_in_height_var = 0.0;
             }
             else { // Height did change
                 height_to_check = (current_building_height + current_DTM_height) / 2; //Interpolate between the heights
                 current_building_height = current_DTM_height; //Set the next building as the new height
                 current_plane_checked; //Reset that height to check
+                change_in_height_var = pow(current_building_height - current_DTM_height, 2) / 2; // Sample variance
             }
         }
 
@@ -330,7 +334,6 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             }
 
             //Else, onto the new max height checked
-            max_checked_DTM_height = current_DTM_height;
             continue;
         }
 
@@ -340,7 +343,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
             determine_DTM_height_var(&DTM_height_var, DSM);
             
-            y = (height_to_check - sat_height) / sqrt(DTM_height_var + sat_height_var);
+            y = (height_to_check - sat_height) / sqrt(DTM_height_var + change_in_height_var + sat_height_var); // Change in height var, part of the DTM height var
 
             apply_probability(&y, &probability_of_obstruction);
 
@@ -410,7 +413,8 @@ void determine_DTM_height_var(double* var, struct DSMData* DSM) {
     // Height accuracy
     // Coordinate Horizontal accuracy - insignificant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so slight horizontal error doesn't matter
     // Height errros due to calling the nearest height - insignficant as all coordinates along the line are called. Can make the assumption that surfaces are generally flat so no interpolation error would be introduced anyways
-    *var = pow((double)DSM->step_size,2) + DSM->vertical_point_variance;
+    //*var = pow((double)DSM->step_size,2) + DSM->vertical_point_variance;
+    *var = DSM->vertical_point_variance;
 }
 
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope,DSMData* DSM) {
