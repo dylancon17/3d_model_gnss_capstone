@@ -227,7 +227,7 @@ void retrieve_new_file_name
     }
 }
 
-void initialize_dsm
+void initialize_dsm_tile
 (
     const char* file_name, /* Name of the DSM .bin file */
     DSMData* DSM, /* Output DSM struct to fill in from the raster data */
@@ -237,6 +237,10 @@ void initialize_dsm
     int n_columns /* Number of columns in the DSM grid */
 )
 {
+    if (DSM->heights_array != NULL) {
+        free(DSM->heights_array);
+        DSM->heights_array = NULL;
+    }
     //printf("\nInitializing dsm\n");
     //printf("\nOpening file name %s\n", file_name);
     file_BIN file;
@@ -261,6 +265,8 @@ void initialize_dsm
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
     if (!DSM->heights_array) {
         perror("\nmalloc failed\n");
+        printf("Press any key to continue...\n");
+        _getch();
         fclose(file.file_ptr);
         return;
     }
@@ -374,8 +380,8 @@ void set_relative_origin
         proj,
         e
     );
-    //printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
-    //printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
+    printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
+    printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
 
     const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
 
@@ -403,7 +409,7 @@ void set_relative_origin
         printf("\nnew_file_name: %s\n", new_file_name);
 
         printf("\nRe-initializing DSM\n");
-        initialize_dsm(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
+        initialize_dsm_tile(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n") ;
@@ -464,7 +470,7 @@ void get_relative_height
         //printf("\nnew_file_name: %s\n", new_file_name);
 
         //printf("\nRe-initializing DSM\n");
-        initialize_dsm(new_file_name, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
+        initialize_dsm_tile(new_file_name, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");

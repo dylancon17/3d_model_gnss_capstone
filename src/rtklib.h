@@ -1887,7 +1887,7 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
 
 extern void retrieve_new_file_name(char* new_file_name, size_t new_file_name_size, const east_north* tile_origin_coords, const char* file_path, const char* file_prefix, const char* file_extension);
 
-extern void initialize_dsm
+extern void initialize_dsm_tile
 (
     const char* file_name, /* Name of the DSM .bin file */
     DSMData* DSM, /* Output DSM struct to fill in from the raster data */
