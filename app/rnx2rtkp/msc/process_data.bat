@@ -138,7 +138,7 @@ for %%D in (!DATASET_LIST!) do (
         set "TRUTH_FILE=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_truth.txt"
         set "TRUTH_STAT=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_dd_residuals_truth.pos.stat"
 
-        set "PLOT_OUTDIR=!OUTDIR!\plot"
+        set "PLOT_OUTDIR=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!"
 
         if not exist "!PLOT_OUTDIR!" (
             mkdir "!PLOT_OUTDIR!" >nul 2>&1
