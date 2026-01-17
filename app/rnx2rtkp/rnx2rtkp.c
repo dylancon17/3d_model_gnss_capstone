@@ -181,7 +181,7 @@ int main(int argc, char **argv)
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
 
-        initialize_dsm("C:\\capstone\\dsm_tiles\\data.bin", &(prcopt.DSM), -5243.600, 5657585.200, 5, 220);
+        initialize_dsm("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
 
 
         /* Calgary 114W 3TM */
