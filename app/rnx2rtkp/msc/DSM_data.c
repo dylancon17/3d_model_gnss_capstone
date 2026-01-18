@@ -481,7 +481,7 @@ void deallocate_dsm(const DSMData* DSM) {
 
 void test_playground(DSMData* DSM, TilesDataset* tiles_dataset) {
     // PLAYGROUND =========================
-//printf("\nStarted playground\n");
+    printf("\nStarted playground\n");
     double num = -123.856789;
     char buffer[100]; // Enough space for the converted string
 
@@ -501,5 +501,7 @@ void test_playground(DSMData* DSM, TilesDataset* tiles_dataset) {
     snprintf(result, sizeof(result), "%s_%s", a, b);
     //printf("\nAdding strings together: %s\n", result);
 
-    //printf("\nEnded playground\n");
+    printf("\nEnded playground\n");
+    printf("Press any key to continue...\n");
+    _getch();
 }
