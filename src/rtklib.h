@@ -1928,6 +1928,9 @@ extern void get_relative_height
 
 extern void deallocate_dsm(const DSMData* DSM);
 
+//**** TESTING FUNCTION
+extern void test_playground(DSMData* DSM, TilesDataset* tiles_dataset);
+
 /* UTM Projection Functions */
 
 extern void project_latitude_longitude_to_UTM

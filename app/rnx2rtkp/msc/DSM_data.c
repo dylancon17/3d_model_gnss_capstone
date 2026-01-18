@@ -38,7 +38,7 @@ int open_BIN(file_BIN* file, const char* fileName)
         return -1;
     }
 
-    strcpy(file->file_name, fileName);
+    snprintf(file->file_name, sizeof(file->file_name), "%s", fileName);
 
     fseek(file->file_ptr, 0, SEEK_END);
     file->file_size = ftell(file->file_ptr);
@@ -62,7 +62,7 @@ int read_BIN(file_BIN* file, const char* fileName)
     // Copy the file name string into the file_BIN struct so the
     // struct stores which file it represents.
     // ----------------------------------------------------------- */
-    strcpy(file->file_name, fileName);
+    snprintf(file->file_name, sizeof(file->file_name), "%s", fileName);
 
     /* -----------------------------------------------------------
     // Open the .bin file in binary read mode ("rb").
@@ -100,11 +100,7 @@ int read_BIN(file_BIN* file, const char* fileName)
     return n_data;
 }
 
-/// <summary>
-///
-/// </summary>
-/// <param name="num"></param>
-/// <returns></returns>
+
 double retrieve_anchor_decimal(const double num)
 {
     double num_subtract;
@@ -117,24 +113,11 @@ double retrieve_anchor_decimal(const double num)
     return num_first_digit;
 }
 
-/// <summary>
-/// Test
-/// </summary>
-/// <param name="input"></param>
-/// <param name="first_digit"></param>
-/// <param name="step_size"></param>
-/// <returns>test</returns>
 double round_to_anchor_step(const double input, const double anchor, const int step_size)
 {
     return step_size * round((input - anchor) / step_size) + anchor;
 }
 
-/// <summary>
-///
-/// </summary>
-/// <param name="EN"></param>
-/// <param name="DSM"></param>
-/// <returns></returns>
 east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
 {
     east_north closest_EN;
@@ -241,8 +224,8 @@ void initialize_dsm_tile
         free(DSM->heights_array);
         DSM->heights_array = NULL;
     }
-    printf("\nInitializing dsm\n");
-    printf("\nOpening file name %s\n", file_name);
+    //printf("\nInitializing dsm\n");
+    //printf("\nOpening file name %s\n", file_name);
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     int n_samples = open_BIN(&file,file_name);
@@ -270,7 +253,9 @@ void initialize_dsm_tile
         fclose(file.file_ptr);
         return;
     }
-    else { printf("\nmalloc to a new tile successful"); }
+    else { 
+        //printf("\nmalloc to a new tile successful"); 
+    }
 
     if (read_BIN_data(&file, DSM->heights_array, (size_t)DSM->n_data_points) != 0) {
         fprintf(stderr, "Failed to read DSM raster data\n");
@@ -291,37 +276,7 @@ void initialize_dsm_tile
     fclose(file.file_ptr);
     file.file_ptr = NULL;
 
-    // PLAYGROUND =========================
-    //printf("\nStarted playground\n");
-    double num = -123.856789;
-    char buffer[100]; // Enough space for the converted string
-
-    // Convert double to string with 6 decimal places
-    if (snprintf(buffer, sizeof(buffer), "%d", (int)round(num)) < 0) {
-        fprintf(stderr, "Error converting double to string.\n");
-        return 1;
-    }
-
-    //printf("\nDouble as string: %s\n", buffer);
-
-    char result[64];
-
-    const char* a = "abc";
-    const char* b = "123";
-
-    snprintf(result, sizeof(result), "%s_%s", a, b);
-    //printf("\nAdding strings together: %s\n", result);
-
-    //printf("\nEnded playground\n");
-
-    /*
-    printf("\nTraverse easting: %f\n", traverse.easting);
-    printf("\nTraverse northing: %f\n", traverse.northing);
-    printf("\nRounded easting: %f\n", rounded.easting);
-    printf("\nRounded northing: %f\n", rounded.northing);
-    */
-
-    printf("\nInitialization complete\n");
+    //printf("\nInitialization complete\n");
 }
 
 steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM)
@@ -375,7 +330,7 @@ void set_relative_origin
     int* out_of_bounds
 )
 {
-    printf("\nSetting relative origin\n");
+    //printf("\nSetting relative origin\n");
     project_latitude_longitude_to_UTM
     (
         &DSM->relative_origin_traverse,
@@ -383,27 +338,27 @@ void set_relative_origin
         proj,
         e
     );
-    printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
-    printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
+    //printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
+    //printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
 
     const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
-    printf("\nout_of_bounds: %d\n",*out_of_bounds);
-    printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
+    //printf("\nout_of_bounds: %d\n",*out_of_bounds);
+    //printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         printf("\nCoordinate is within the tile bounds. Computing to be continued.\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("Press any key to continue...\n");
+        //_getch();
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) {
-        printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("\nTODO: OPEN A NEW TILE FOR DSM COMPUTATIONS\n");
+        //printf("Press any key to continue...\n");
+        //_getch();
 
         east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse, tiles_dataset);
 
@@ -413,20 +368,22 @@ void set_relative_origin
 
         char new_file_name[100];
         retrieve_new_file_name(new_file_name, sizeof(new_file_name), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
-        printf("\nnew_file_name: %s\n", new_file_name);
-        printf("\nRe-initializing DSM\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("\nnew_file_name: %s\n", new_file_name);
+        
+        //printf("\nRe-initializing DSM\n");
+        //printf("Press any key to continue...\n");
+        //_getch();
+        
         initialize_dsm_tile(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
         double tile_limit_x = traverse_to_tile_origin.easting + DSM->n_columns;
         double tile_limit_y = traverse_to_tile_origin.northing - DSM->n_rows;
-        printf("\nDSM tile easting bounds\n: %f to %f", traverse_to_tile_origin.easting, tile_limit_x);
-        printf("\nDSM tile northing bounds\n: %f to %f\n", traverse_to_tile_origin.northing,tile_limit_y);
+        //printf("\nDSM tile easting bounds\n: %f to %f", traverse_to_tile_origin.easting, tile_limit_x);
+        //printf("\nDSM tile northing bounds\n: %f to %f\n", traverse_to_tile_origin.northing,tile_limit_y);
         
         // Try setting the relative origin again
-        printf("\Try setting the relative origin again after connecting to a new tile...\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("\Try setting the relative origin again after connecting to a new tile...\n");
+        //printf("Press any key to continue...\n");
+        //_getch();
         set_relative_origin(DSM,tiles_dataset,relative_origin_degrees,proj,e,out_of_bounds);
 
     }
@@ -458,27 +415,27 @@ void get_relative_height
     const double traverse_N = DSM->relative_origin_traverse.northing + (*steps_N) * (double)DSM->step_size;
 
     east_north traverse = { traverse_E,traverse_N };
-    printf("\nRelative position easting: %f\n",traverse.easting);
-    printf("\nRelative position northing: %f\n", traverse.northing);
+    //printf("\nRelative position easting: %f\n",traverse.easting);
+    //printf("\nRelative position northing: %f\n", traverse.northing);
 
     const steps_XY steps = calculate_steps_from_tile_corner(&traverse, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
 
-    printf("\nout_of_bounds: %d\n", *out_of_bounds);
-    printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
+    //printf("\nout_of_bounds: %d\n", *out_of_bounds);
+    //printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
-        printf("\nCoordinate is within bounds. Computing relative height.\n");
+        //printf("\nCoordinate is within bounds. Computing relative height.\n");
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
         *h = calculate_true_height_meters(DSM, index);
-        printf("\nRelative height calculated: %f\n", *h);
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("\nRelative height calculated: %f\n", *h);
+        //printf("Press any key to continue...\n");
+        //_getch();
     }
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
-        printf("\nRelative height needs to be calculated with a new DSM tile.\n");
+        //printf("\nRelative height needs to be calculated with a new DSM tile.\n");
         east_north relative_point_to_tile_origin = round_to_tile_origin(&traverse, tiles_dataset);
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
@@ -487,21 +444,21 @@ void get_relative_height
 
         char new_file_name[100];
         retrieve_new_file_name(new_file_name, sizeof(new_file_name), &relative_point_to_tile_origin, file_path, file_prefix, file_extension);
-        printf("\nnew_file_name: %s\n", new_file_name);
+        //printf("\nnew_file_name: %s\n", new_file_name);
 
-        printf("\nRe-initializing DSM\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("\nRe-initializing DSM\n");
+        //printf("Press any key to continue...\n");
+        //_getch();
         initialize_dsm_tile(new_file_name, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
         double tile_limit_x = relative_point_to_tile_origin.easting + DSM->n_columns;
         double tile_limit_y = relative_point_to_tile_origin.northing - DSM->n_rows;
-        printf("\nDSM tile easting bounds:\n %f to %f", relative_point_to_tile_origin.easting, tile_limit_x);
-        printf("\nDSM tile northing bounds:\n %f to %f\n", relative_point_to_tile_origin.northing, tile_limit_y);
+        //printf("\nDSM tile easting bounds:\n %f to %f", relative_point_to_tile_origin.easting, tile_limit_x);
+        //printf("\nDSM tile northing bounds:\n %f to %f\n", relative_point_to_tile_origin.northing, tile_limit_y);
 
         // Try computing the relative height again
-        printf("\nTry getting the relative height again after changing tile connection...\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        //printf("\nTry getting the relative height again after changing tile connection...\n");
+        //printf("Press any key to continue...\n");
+        //_getch();
         get_relative_height(DSM,tiles_dataset,steps_E,steps_N,h,out_of_bounds);
     }
     else if (out_of_bounds_tiles_dataset == 1) { 
@@ -520,4 +477,29 @@ void get_relative_height
 void deallocate_dsm(const DSMData* DSM) {
     free(DSM->heights_array);
     DSM = NULL;
+}
+
+void test_playground(DSMData* DSM, TilesDataset* tiles_dataset) {
+    // PLAYGROUND =========================
+//printf("\nStarted playground\n");
+    double num = -123.856789;
+    char buffer[100]; // Enough space for the converted string
+
+    // Convert double to string with 6 decimal places
+    if (snprintf(buffer, sizeof(buffer), "%d", (int)round(num)) < 0) {
+        fprintf(stderr, "Error converting double to string.\n");
+        return 1;
+    }
+
+    //printf("\nDouble as string: %s\n", buffer);
+
+    char result[64];
+
+    const char* a = "abc";
+    const char* b = "123";
+
+    snprintf(result, sizeof(result), "%s_%s", a, b);
+    //printf("\nAdding strings together: %s\n", result);
+
+    //printf("\nEnded playground\n");
 }
