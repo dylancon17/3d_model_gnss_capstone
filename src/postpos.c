@@ -336,7 +336,7 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
     int read_success = 0;
     if (popt->DSM.processing_type < 0) {
 
-        if (!truth_open(&rtk, "C:\\capstone\\ToShare\\5\\5_truth.txt")) {
+        if (!truth_open(&rtk, "C:\\capstone\\ToShare\\1\\1_truth.txt")) {
             fprintf(stderr, "Truth failed to open");
             return;
         }

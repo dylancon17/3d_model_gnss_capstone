@@ -152,7 +152,7 @@ void initialize_dsm
     /* 1. Read how many elevation samples are in the DSM raster dataset.
      *    read_BIN() returns the number of 16-bit integer compressed height values */
     DSM->n_data_points = read_BIN(&file, file_name);
-
+    fprintf(stderr, "%d points read\n", DSM->n_data_points);
     /* 2. Copy spatial metadata from the raster into the DSM struct.
      *    These metadata values are determined beforehand. */
     DSM->origin_dsm.easting = E_origin_DSM;
@@ -162,12 +162,14 @@ void initialize_dsm
 
     /* 3. Count the number of rows in the square/rectangle DSM grid. */
     DSM->n_rows = DSM->n_data_points / DSM->n_columns;
-
+    fprintf(stderr, "%d rows founds\n", DSM->n_rows);
     /* 4. Allocate memory into the DSM height array to fit the size of the .bin file.
      *    Each height value is stored as compressed uint16_t values (from 0-65535).
      *    And then read the file to store these values from the .bin file into the heights array. */
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
+    fprintf(stderr, "Malloced\n");
     fread(DSM->heights_array, sizeof(uint16_t), DSM->n_data_points, file.file_ptr);
+    fprintf(stderr, "Read\n");
 
     /* 5. Precompute the "first digit" values of the x/y origin.
      *    This is used to properly index through the compressed height values in heights_array */
@@ -175,7 +177,10 @@ void initialize_dsm
     DSM->first_digit.northing = retrieve_first_digit_decimal(DSM->origin_dsm.northing);
 
     /* 6. Calculate the maximum height in the dataset. */
+    fprintf(stderr, "Calc max height\n");
     DSM->max_dsm_height = calc_max_height(DSM);
+    fprintf(stderr, "Calc max height done\n");
+
 }
 
 steps_XY calculate_steps_from_origin(const east_north* point, const DSMData* DSM)
