@@ -171,6 +171,9 @@ static gtime_t time_stat={0};    /* rtk status file time */
 *          outc     : data outage count
 *          slipc    : cycle-slip count
 *          rejc     : data reject (outlier) count
+*          scal     : Weight scaling of observations due to obstruction probability
+*          prob     : probability of obstruction [0-1]
+*          
 *
 *-----------------------------------------------------------------------------*/
 extern int rtkopenstat(const char *file, int level)
@@ -321,11 +324,11 @@ static void outsolstat(rtk_t *rtk)
         if (!ssat->vs) continue;
         satno2id(i+1,id);
         for (j=0;j<nfreq;j++) {
-            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d\n",
+            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%lf,%lf,%d\n",
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp [j],ssat->resc[j],  ssat->vsat[j],ssat->snr[j]*0.25,
                     ssat->fix  [j],ssat->slip[j]&3,ssat->lock[j],ssat->outc[j],
-                    ssat->slipc[j],ssat->rejc[j]);
+                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i);
         }
     }
 }
@@ -364,11 +367,11 @@ static double gfobs_L1L5(const obsd_t *obs, int i, int j, const double *lam)
     return pi==0.0||pj==0.0?0.0:pi-pj;
 }
 /* single-differenced measurement error variance -----------------------------
-int sat        // satellite id (index/PRN) — only used implicitly (not used inside function)
+int sat        // satellite id (index/PRN) ï¿½ only used implicitly (not used inside function)
 int sys        // satellite system identifier (e.g. SYS_GPS, SYS_GLO, SYS_GAL, SYS_SBS)
 double el      // satellite elevation angle (radians)
-double bl      // baseline length (meters) — distance between rover and base
-double dt      // time offset (seconds) — used to scale clock instability error
+double bl      // baseline length (meters) ï¿½ distance between rover and base
+double dt      // time offset (seconds) ï¿½ used to scale clock instability error
 int f          // frequency index (integer used to select code vs phase and frequency-specific entries)
 const prcopt_t *opt // pointer to processing options struct (holds error model params)
 */
@@ -406,7 +409,7 @@ static double varerr(int sat, int sys, double el, double bl, double dt, int f,
     }
 
     // modified to include the rover sat scaling. Instead of 2 x A do A + A / (1-p) + d * d. One A is for base noise, one for rover noise
-    if (opt->dtm.processing_type > 2) {
+    if (opt->DSM.processing_type > 2) {
         double signal_noise = (opt->ionoopt == IONOOPT_IFLC ? 3.0 : 1.0) * (a * a + b * b / sinel / sinel + c * c);
 
         // linearlly scale sd, square the variance resultingly
@@ -1069,6 +1072,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
     Ri=mat(ns*nf*2+2,1); Rj=mat(ns*nf*2+2,1); im=mat(ns,1);
     tropu=mat(ns,1); tropr=mat(ns,1); dtdxu=mat(ns,3); dtdxr=mat(ns,3);
     
+    // Residuals get reset here
     for (i=0;i<MAXSAT;i++) for (j=0;j<NFREQ;j++) {
         rtk->ssat[i].resp[j]=rtk->ssat[i].resc[j]=0.0;
     }
@@ -1092,7 +1096,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
             if (!test_sys(sysi,m)) continue;
             if (!validobs(iu[j],ir[j],f,nf,y)) continue;
 
-            if (opt->dtm.processing_type > 4) {
+            if (opt->DSM.processing_type > 4 || opt->DSM.processing_type < -2) {
                 // Pick reference satellite that minimizes noise scaling (obstruction scaling / sin (elev)). 
                 current_noise_ratio = rtk->ssat[sat[j] - 1].obstruction_scaling / sin(azel[1 + iu[j] * 2]);
                 if (i < 0 || current_noise_ratio <= best_noise_ratio) {
@@ -1182,6 +1186,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
                 
                 v[nv]-=gloicbcorr(sat[i],sat[j],&rtk->opt,lami,lamj,f);
             }
+            // Residuals get saved here
             if (f<nf) rtk->ssat[sat[j]-1].resc[f   ]=v[nv];
             else      rtk->ssat[sat[j]-1].resp[f-nf]=v[nv];
             
@@ -1560,6 +1565,9 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     for (i=0;i<MAXSAT;i++) {
         rtk->ssat[i].sys=satsys(i+1,NULL);
         for (j=0;j<NFREQ;j++) rtk->ssat[i].vsat[j]=rtk->ssat[i].snr[j]=0;
+        rtk->ssat[i].obstruction_scaling = 1.0;
+        rtk->ssat[i].obstruction_probability = -1.0;
+
     }
     /* satellite positions/clocks */
     satposs(time,obs,n,nav,opt->sateph,rs,dts,var,svh);
@@ -1586,13 +1594,43 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* temporal update of states */
     udstate(rtk,obs,sat,iu,ir,ns,nav);
 
-    if (rtk->opt.dtm.processing_type != 0) {
-        int nrejected = los_update(rtk, obs, nav, time, sat, iu, ir, &ns, rs);
-        trace(2, "%i observations rejected due to no line of sight", nrejected);
+    double rr_save[3];
+
+
+    if (rtk->opt.DSM.processing_type != 0) {
+        if (rtk->opt.DSM.processing_type < -1) {
+
+            /* save estimated rover position */
+            memcpy(rr_save, rtk->sol.rr, 3 * sizeof(double));
+
+            /* overwrite rover position with truth (ECEF) */
+            rtk->sol.rr[0] = rtk->truth.rr[0];
+            rtk->sol.rr[1] = rtk->truth.rr[1];
+            rtk->sol.rr[2] = rtk->truth.rr[2];
+
+            rtk->sol.qr[0] = 1.0;
+            rtk->sol.qr[1] = 1.0;
+            rtk->sol.qr[2] = 1.0;
+
+            rtk->sol.qr[3] = 0.1;
+            rtk->sol.qr[4] = 0.1;
+            rtk->sol.qr[5] = 0.1;
+        }
+
+        int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
+        //fprintf(stdout, "%i observations rejected due to no line of sight", nrejected);
+
+
+        if (rtk->opt.DSM.processing_type < -1) {
+            //Reset the rover position to not use the truth to just let RTK run normally
+            memcpy(rtk->sol.rr, rr_save, 3 * sizeof(double));
+        }
     }
     else {
-        trace(2, "Skipping line of sight checks");
+        fprintf(stdout, "Skipping line of sight checks");
     }
+
+
 
     trace(4,"x(0)="); tracemat(4,rtk->x,1,NR(opt),13,4);
     
@@ -1604,8 +1642,10 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     
     /* add 2 iterations for baseline-constraint moving-base */
     niter=opt->niter+(opt->mode==PMODE_MOVEB&&opt->baseline[0]>0.0?2:0);
-    
+
     for (i=0;i<niter;i++) {
+
+        
         /* undifferenced residuals for rover */
         if (!zdres(0,obs,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
             errmsg(rtk,"rover initial position error\n");
@@ -1627,11 +1667,26 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         }
         trace(4,"x(%d)=",i+1); tracemat(4,xp,1,NR(opt),13,4);
     }
+    double xp_save[3];
+
+    if (rtk->opt.DSM.processing_type < 0) {
+
+        /* save estimated rover position */
+        memcpy(xp_save, xp, 3 * sizeof(double));
+
+        /* overwrite rover position with truth (ECEF) */
+        xp[0] = rtk->truth.rr[0];
+        xp[1] = rtk->truth.rr[1];
+        xp[2] = rtk->truth.rr[2];
+    }
+
     if (stat!=SOLQ_NONE&&zdres(0,obs,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
         
+        // Residuals reupdated here
         /* post-fit residuals for float solution */
         nv=ddres(rtk,nav,dt,xp,Pp,sat,y,e,azel,iu,ir,ns,v,NULL,R,vflg);
         
+        //No modifications to residuals
         /* validation of float solution */
         if (valpos(rtk,v,R,vflg,nv,4.0)) {
             
@@ -1652,22 +1707,29 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         }
         else stat=SOLQ_NONE;
     }
+
+    if (rtk->opt.DSM.processing_type < 0) {
+        //Reset the rover position to not use the truth to just let RTK run normally
+        memcpy(xp, xp_save, 3 * sizeof(double));
+    }
+
+    //Explicity don't do ambiguity resolution when calculating true pseudorange error, maybe overkill?
     /* resolve integer ambiguity by WL-NL */
-    if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_WLNL) {
+    if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_WLNL&&rtk->opt.DSM.processing_type>=0) {
         
         if (resamb_WLNL(rtk,obs,sat,iu,ir,ns,nav,azel)) {
             stat=SOLQ_FIX;
         }
     }
     /* resolve integer ambiguity by TCAR */
-    else if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_TCAR) {
+    else if (stat!=SOLQ_NONE&&rtk->opt.modear==ARMODE_TCAR&&rtk->opt.DSM.processing_type>=0) {
         
         if (resamb_TCAR(rtk,obs,sat,iu,ir,ns,nav,azel)) {
             stat=SOLQ_FIX;
         }
     }
     /* resolve integer ambiguity by LAMBDA */
-    else if (stat!=SOLQ_NONE&&resamb_LAMBDA(rtk,bias,xa)>1) {
+    else if (stat!=SOLQ_NONE&&resamb_LAMBDA(rtk,bias,xa)>1&&rtk->opt.DSM.processing_type >= 0) {
         
         if (zdres(0,obs,nu,rs,dts,svh,nav,xa,opt,0,y,e,azel)) {
             

@@ -87,7 +87,16 @@
     <ClCompile Include="custom_tests.c">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="demdata.c">
+    <ClCompile Include="DSM_data.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="UTM_projections.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="truth.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="truth.c">
       <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>

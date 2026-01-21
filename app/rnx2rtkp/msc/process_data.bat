@@ -7,7 +7,7 @@ if /I "%~1"=="--help" goto :show_help
 REM ---------------- Configuration (edit paths if necessary) -----------
 set "ROOT=C:\capstone\ToShare"
 set "DATAYEAR=23"
-set "RTKLIB_EXE=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\Release\rnx2rtkp.exe"
+set "RTKLIB_EXE=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\Release\rnx2rtkp_vc.exe"
 set "RTKPLOT_EXE=C:\capstone\3d_model_gnss_capstone\app\rtkplot\rtkplot.exe"
 set "CONFIG=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\config.conf"
 set "wpaProfile=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\JustCPUrnx2rtkp.wpaProfile"
@@ -136,7 +136,9 @@ for %%D in (!DATASET_LIST!) do (
 
         set "PLOT_SCRIPT=C:\capstone\3d_model_gnss_capstone\analysis_scripts\plotting.py"
         set "TRUTH_FILE=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_truth.txt"
-        set "PLOT_OUTDIR=!OUTDIR!\plot"
+        set "TRUTH_STAT=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_dd_residuals_truth.pos.stat"
+
+        set "PLOT_OUTDIR=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!"
 
         if not exist "!PLOT_OUTDIR!" (
             mkdir "!PLOT_OUTDIR!" >nul 2>&1
@@ -144,13 +146,12 @@ for %%D in (!DATASET_LIST!) do (
 
 	echo.
         echo Running plotting script for dataset !SPECIFICDATASET!:
-        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!TRUTH_FILE!" "!PLOT_OUTDIR!"
+        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
 	echo.
     )
 )
 
 REM Clean up and exit
-pause
 endlocal
 exit /b 0
 
@@ -161,6 +162,8 @@ echo Usage:
 echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
 echo.
 echo DEM Options:
+echo	-2 = no DEM processing, calculate true signal errors and obstruction probability using truth position (must also change line 338 in postpos.c)
+echo	-1 = no DEM processing, calculate true signal errors using truth position (must also change line 338 in postpos.c)
 echo    0 = no DEM processing
 echo    1 = boolean observation rejection
 echo    2 = probability-threshold observation rejection
@@ -185,13 +188,13 @@ echo    Added to all output file names
 echo.
 echo Examples:
 echo   process_data.bat 1 2
-echo       -> Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
+echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
 echo.
 echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
-echo       -> Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
+echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
 echo.
 echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4
-echo       -> Runs datasets 1–6 with full processing and prefix RUN4
+echo        - Runs datasets 1 to 6 with full processing and prefix RUN4
 echo ===================================================================
 echo.
 goto :EOF

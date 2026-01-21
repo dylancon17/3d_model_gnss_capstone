@@ -34,6 +34,8 @@
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
+
+#include <stdint.h>
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
@@ -470,11 +472,56 @@ extern "C" {
 #define FILEPATHSEP '/'
 #endif
 
-/* custom project structs*/
-typedef struct DTMData {
-    int max_dem_height; /* Max DEM height. Allows for calculating how far to search*/
+/* custom project structs and objects*/
+
+typedef struct UTM_projection {
+    double central_meridian; /* central meridian can also be written as lambda_0 must be in degrees */
+    double latitude_of_origin; /* latitude of origin can also be written as phi_0 must be in degrees */
+    double scale_factor; /* scale factor can also be written as k_0 */
+    double false_easting; /* must be in meters */
+    double false_northing; /* must be in meters */
+} UTM_projection;
+
+typedef struct ellipsoid {
+    double semi_major_axis; /* Semi-major axis can also be written as "a" */
+    double semi_minor_axis; /* Also commonly written as b */
+    double flattening; /* Flattening parameter can also be written as "f" */
+    double first_eccentricity; /* also commonly written as "e^2" */
+    double second_eccentricity; /* also commonly written as "e'^2 */
+} ellipsoid;
+
+/* This struct is used to hold easting and northing coordinates */
+typedef struct east_north {
+    double easting; /* X coordinate */
+    double northing; /* Y coordinate */
+} east_north;
+
+/* This struct is used to hold latitude and longitude coordinates */
+typedef struct lat_long {
+    double latitude; /* latitude (must be in degrees) */
+    double longitude; /* longitude (must be in degrees) */
+} lat_long;
+
+typedef struct steps_XY {
+    int steps_X;
+    int steps_Y;
+} steps_XY;
+
+/* This struct is used for reading the .bin file containing the surface data */
+typedef struct file_BIN {
+    char file_name[256]; // name of the .bin file
+    int file_size;
+    FILE* file_ptr; // file pointer data member
+} file_BIN;
+
+typedef struct DSMData {
+    double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
+                         -4 = Calculate true psuedorange and probability and use reference satellite selection and height interpolation
+                         -3 = Calculate true pseduorange and probability and use reference satellite selection based on probability threshold
+                         -2 = Calculate true pseudorange and probabilities
+                         -1 = Calculate true pseudorange errors
                          0 = don't do anything with the DEM. 
                          1 = do boolean observation rejection. 
                          2 = do observation rejection based on probability threshold. 
@@ -482,16 +529,61 @@ typedef struct DTMData {
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
                          6 = do observation deweighting, rejection, reference satellite selection and incorrect position update stopping based on probability threshold
-                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection >5 for observed to expected check*/
+                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and height interpolation
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >6 or <-3 for height interpolation ,>5 for observed to expected check*/
     double rejection_threshold;
-    int step_size; /* Spacing between raster points, ex. 5m*/
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
-    boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
+    int use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
     int max_noise_scaling; /*Scale the noise by a maximum of n time*/
-    double average_prob_error_max; /* The maximum error that can exist in the overall probability checks*/
-} DTMData;
+
+    east_north origin_dsm; /* Origin of the digital surface model used for out of bounds checking and indexing */
+    east_north relative_origin_traverse; /* Origin of the traversal algorithm */
+
+    int n_rows; /* Number of rows in the elevation (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
+    int n_columns; /* Number of columns in the (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
+    int n_data_points; /* Number of data points in the dataset (this value should equal to n_rows x n_columns) */
+    int step_size; /* Spacing between raster points, ex. 5m*/
+    int tile_size_x;
+    int tile_size_y;
+    uint16_t* heights_array; /* Data member array to hold the compressed height values. */
+
+    /* "First digit" value example: The number 5243.6 would have the first digit (the one's place and the first decimal place) to be 3.6.
+    These coordinates are used for indexing through the data member arrays. */
+    east_north first_digit;
+
+    UTM_projection projection_dsm; /* Map projection of the digital surface model */
+    ellipsoid ellipsoid_dsm; /* Ellipsoid of the coordinate system of the digital surface model */
+
+    double building_height_margin;
+    double average_prob_error_max;
+
+} DSMData;
+
+typedef struct TilesDataset {
+    int num_tiles_x;
+    int num_tiles_y;
+    int tiles_dimension_x;
+    int tiles_dimension_y;
+    double x_limit;
+    double y_limit;
+    east_north top_left_tile_origin;
+} TilesDataset;
+
+// WGS-84
+extern ellipsoid WGS_84;
+
+// Calgary 3TM projection 114 degrees W
+extern UTM_projection Calgary_3TM_114W;
+
+typedef struct {
+    FILE* fp;
+    int     week;
+    double  tow;
+    double  rr[3];   /* ECEF truth position */
+} truth_t;
+
 
 /* type definitions ----------------------------------------------------------*/
 
@@ -1041,7 +1133,10 @@ typedef struct {        /* processing options type */
     int  syncsol;       /* solution sync mode (0:off,1:on) */
     double odisp[2][6*11]; /* ocean tide loading parameters {rov,base} */
     exterr_t exterr;    /* extended receiver error model */
-    struct DTMData dtm;     /* The DEM related data*/
+    DSMData DSM;     /* The DEM related data*/
+    UTM_projection UTM;
+    ellipsoid ellip;
+    TilesDataset tiles_dataset;
 } prcopt_t;
 
 typedef struct {        /* solution options type */
@@ -1134,7 +1229,7 @@ typedef struct {        /* satellite status type */
     gtime_t pt[2][NFREQ]; /* previous carrier-phase time */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
     double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
-    double obstruction_probability; /* probability of a building obstruction */
+    double obstruction_probability; /* probability of obstruction*/
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */
@@ -1159,6 +1254,7 @@ typedef struct {        /* RTK control/result type */
     int neb;            /* bytes in error message buffer */
     char errbuf[MAXERRMSG]; /* error message buffer */
     prcopt_t opt;       /* processing options */
+    truth_t truth;
 } rtk_t;
 
 typedef struct {        /* receiver raw data control type */
@@ -1764,7 +1860,9 @@ extern double check_los(
     double origin_height,
     double origin_horizontal_variance,
     double origin_vertical_variance,
-    struct DTMData* DTM);
+    struct DSMData* DSM,
+    TilesDataset* tiles_dataset,
+    int debug);
 
 extern int los_update(
     rtk_t* rtk,
@@ -1777,18 +1875,95 @@ extern int los_update(
     int* ns,
     const double* rs);
 
-extern void set_relative_origin(
-    struct DTMData* DEM, 
-    double latitude, 
-    double longitude);
+/* DSM functions */
 
-extern void get_relative_height(
-    struct DTMData* DEM, 
-    int* E, 
-    int* N, 
-    double* h, 
-    int* out_of_bounds);
+extern void initialize_tiles_dataset
+(
+    TilesDataset* td,
+    int num_tiles_x, 
+    int num_tiles_y, 
+    int tiles_dimension_x, 
+    int tiles_dimension_y, 
+    double top_left_tile_origin_x, 
+    double top_left_tile_origin_y
+);
 
+extern int open_BIN(file_BIN* file, const char* fileName);
+
+extern int read_BIN_data();
+
+extern int read_BIN(file_BIN* file, const char* fileName);
+
+extern double retrieve_anchor_decimal(double num);
+
+extern double round_to_anchor_step(double input, double anchor, int step_size);
+
+extern east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM);
+
+extern double calc_max_height(const DSMData* DSM);
+
+east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset);
+
+extern void retrieve_new_file_name(char* new_file_name, size_t new_file_name_size, const east_north* tile_origin_coords, const char* file_path, const char* file_prefix, const char* file_extension);
+
+extern void initialize_dsm_tile
+(
+    const char* file_name, /* Name of the DSM .bin file */
+    DSMData* DSM, /* Output DSM struct to fill in from the raster data */
+    double E_origin_DSM, /* Input easting origin of the DSM (ex. top left location easting of the DSM) */
+    double N_origin_DSM, /* Input northing origin of the DSM (ex. top left location northing of the DSM)*/
+    int step_size, /* DSM raster spatial resolution (ex. 5m spatial resolution) */
+    int n_columns /* Number of columns in the DSM grid */
+);
+
+extern double calculate_true_height_meters(const DSMData* DSM, int index);
+
+extern steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM);
+
+extern int out_of_bounds_check_tiles_dataset(const east_north* traverse, const TilesDataset* tiles_dataset);
+
+extern int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM);
+
+extern void set_relative_origin
+(
+    DSMData* DSM,
+    const TilesDataset* tiles_dataset,
+    const lat_long* relative_origin_degrees,
+    const UTM_projection* proj,
+    const ellipsoid* e,
+    int* out_of_bounds
+
+);
+
+extern void get_relative_height
+(
+    const DSMData* DSM,
+    const TilesDataset* tiles_dataset,
+    const int* steps_E,
+    const int* steps_N,
+    double* d,
+    double* h,
+    int* out_of_bounds
+);
+
+extern void deallocate_dsm(const DSMData* DSM);
+
+//**** TESTING FUNCTION
+extern void test_playground(DSMData* DSM, TilesDataset* tiles_dataset);
+
+/* UTM Projection Functions */
+
+extern void project_latitude_longitude_to_UTM
+(
+    east_north* EN,
+    const lat_long* ll,
+    const UTM_projection* proj,
+    const ellipsoid* e
+);
+
+extern int truth_open(rtk_t* rtk, const char* file);
+
+extern int truth_read(rtk_t* rtk);
 
 #ifdef __cplusplus
 }
