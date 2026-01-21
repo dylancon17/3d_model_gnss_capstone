@@ -1861,7 +1861,7 @@ extern double check_los(
     double origin_horizontal_variance,
     double origin_vertical_variance,
     struct DSMData* DTM,
-    TilesDataset* tiles_dataset
+    TilesDataset* tiles_dataset,
     int debug);
 
 extern int los_update(
