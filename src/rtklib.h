@@ -528,9 +528,8 @@ typedef struct DSMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         6 = do observation deweighting, rejection, reference satellite selection and incorrect position update stopping based on probability threshold
                          7 = do observation deweighting, rejection, reference sat selection, observed to expected and height interpolation
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >6 or <-3 for height interpolation ,>5 for observed to expected check*/
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >6 or <-3 for height interpolation */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
@@ -557,7 +556,6 @@ typedef struct DSMData {
     ellipsoid ellipsoid_dsm; /* Ellipsoid of the coordinate system of the digital surface model */
 
     double building_height_margin;
-    double average_prob_error_max;
 
 } DSMData;
 
@@ -1852,6 +1850,8 @@ extern int lexioncorr(gtime_t time, const nav_t *nav, const double *pos,
                       const double *azel, double *delay, double *var);
 
 
+/* ------------ custom project functions ------------ */
+
 extern double check_los(
     double sat_az,
     double sat_elev,
@@ -1860,15 +1860,13 @@ extern double check_los(
     double origin_height,
     double origin_horizontal_variance,
     double origin_vertical_variance,
-    struct DSMData* DSM,
+    struct DSMData* DTM,
     TilesDataset* tiles_dataset,
     int debug);
 
 extern int los_update(
     rtk_t* rtk,
     const obsd_t* obs,
-    const nav_t* nav, 
-    gtime_t tor,
     int* sat,
     int* iu,
     int* ir,
