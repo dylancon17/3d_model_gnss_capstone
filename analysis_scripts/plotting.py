@@ -118,8 +118,23 @@ sol_stats["resp"] = abs(sol_stats["resp"])
 sol_stats["resc"] = abs(sol_stats["resc"])
 
 
-# Remove zero-probability entries (temporary until DEM of full city)
+# Remove -1-probability entries (indicates always out of bounds)
 sol_stats = sol_stats[sol_stats["prob"] >= 0.0] 
+
+# sol_stats = sol_stats[sol_stats["frq"] == 1] 
+# sol_stats = sol_stats[sol_stats["frq"] == 2] 
+# sol_stats = sol_stats[sol_stats["sat"].str.startswith("G")]
+# sol_stats = sol_stats[sol_stats["sat"].str.startswith("R")]
+
+#sol_stats = sol_stats[sol_stats["prob"] >= 0.95] 
+#sol_stats = sol_stats[sol_stats["resp"] <= 1.00] 
+
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
+
+print(sol_stats)
 
 # sol_stats = sol_stats[sol_stats["resp"] != 0.0]
 # Assign the base the minimum residual across the other satellites, as it can't be better than that
@@ -444,6 +459,81 @@ plt.savefig(os.path.join(out_dir, "Obstruction Probability Histogram.png"),dpi=3
 plt.close()
 
 
+plt.show()
+
+# Convert to skyplot coordinates
+theta = np.deg2rad(sol_stats_primary["az"])
+r = 90 - sol_stats_primary["el"]
+
+# Classification masks
+tn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] < 10)
+tp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] >= 10)
+fp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] < 10)
+fn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] >= 10)
+
+# Create polar plot
+fig = plt.figure(figsize=(7,7))
+ax = plt.subplot(111, polar=True)
+
+# GNSS-style orientation
+ax.set_theta_zero_location("N")
+ax.set_theta_direction(-1)
+ax.set_rlim(0, 90)
+
+# Plot classes
+ax.scatter(theta[tn], r[tn], s=12, label="True Negative")
+ax.scatter(theta[tp], r[tp], s=12, label="True Positive")
+ax.scatter(theta[fp], r[fp], s=12, label="False Positive")
+ax.scatter(theta[fn], r[fn], s=12, label="False Negative")
+
+# Grid and labels
+ax.set_rgrids([0, 30, 60, 90], labels=["0", "30", "60°", "90°"])
+ax.set_title("Skyplot: Probability vs Residual Classification", pad=20)
+ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
+
+plt.savefig(os.path.join(out_dir, "Pseudorange Residuals.png"),dpi=300,bbox_inches="tight")
+
+plt.close()
+plt.show()
+
+
+# Convert to skyplot coordinates
+theta = np.deg2rad(sol_stats_primary["az"])
+r = 90 - sol_stats_primary["el"]
+
+# Create polar plot
+fig = plt.figure(figsize=(7,7))
+ax = plt.subplot(111, polar=True)
+
+# GNSS-style orientation
+ax.set_theta_zero_location("N")
+ax.set_theta_direction(-1)
+ax.set_rlim(0, 90)
+
+# Plot one layer per satellite
+for sat in sorted(sol_stats_primary["sat"].unique()):
+    mask = sol_stats_primary["sat"] == sat
+    ax.scatter(theta[mask], r[mask], s=12, label=sat)
+
+# Grid and labels
+ax.set_rgrids([0, 30, 60, 90], labels=["90°", "60°", "30°", "0°"])
+ax.set_title("Skyplot by Satellite", pad=20)
+
+# Place legend outside plot
+ax.legend(
+    loc="upper right",
+    bbox_to_anchor=(1.35, 1.1),
+    title="Satellite",
+    fontsize=8
+)
+
+plt.savefig(
+    os.path.join(out_dir, "Skyplot_by_Satellite.png"),
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
 plt.show()
 
 #Trajectory map
