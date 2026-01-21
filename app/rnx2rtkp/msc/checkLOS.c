@@ -75,7 +75,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     if (*ns > 0) {
         obs_time = obs[0].time;
         /* get current truth time */
-        point_time = gpst2time(2258, 160782);
+        point_time = gpst2time(2258, 160665);
         if (abs(timediff(obs_time, point_time)) < 0.1) {
             debug = 1;
         }
@@ -303,10 +303,15 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
                 change_in_height_var = 0.0;
             }
             else { // Height did change
+                current_plane_checked = 0; //Reset that height to check
+                if (current_DTM_height < current_building_height) { // If height decreases, no need to check again
+                    current_building_height = current_DTM_height; //Set the next building as the new height
+                    continue;
+                }
+
                 height_to_check = (current_building_height + current_DTM_height) / 2; //Interpolate between the heights
-                current_building_height = current_DTM_height; //Set the next building as the new height
-                current_plane_checked; //Reset that height to check
                 change_in_height_var = pow(current_building_height - current_DTM_height, 2) / 2; // Sample variance
+                current_building_height = current_DTM_height; //Set the next building as the new height
             }
         }
 
@@ -348,7 +353,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             apply_probability(&y, &probability_of_obstruction);
 
             if (debug) {
-                fprintf(stderr, "Probability Updated To: %lf, Sat Height: %lf, DTM Height: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sat_height, current_DTM_height, sqrt(sat_height_var), sqrt(DTM_height_var), y);
+                fprintf(stderr, "Probability Updated To: %lf, Sat Height: %lf, DTM Height: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sat_height, height_to_check, sqrt(sat_height_var + change_in_height_var), sqrt(DTM_height_var), y);
             }
 
             // If hit 0.99 round up to 1.
