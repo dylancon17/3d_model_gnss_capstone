@@ -482,24 +482,9 @@ void deallocate_dsm(const DSMData* DSM) {
 void test_playground(DSMData* DSM, TilesDataset* tiles_dataset) {
     // PLAYGROUND =========================
     printf("\nStarted playground\n");
-    double num = -123.856789;
-    char buffer[100]; // Enough space for the converted string
 
-    // Convert double to string with 6 decimal places
-    if (snprintf(buffer, sizeof(buffer), "%d", (int)round(num)) < 0) {
-        fprintf(stderr, "Error converting double to string.\n");
-        return 1;
-    }
 
-    //printf("\nDouble as string: %s\n", buffer);
-
-    char result[64];
-
-    const char* a = "abc";
-    const char* b = "123";
-
-    snprintf(result, sizeof(result), "%s_%s", a, b);
-    //printf("\nAdding strings together: %s\n", result);
+    initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-2000E_5638000N.bin",DSM,-2010,5637990,1,5000);
 
     printf("\nEnded playground\n");
     printf("Press any key to continue...\n");
