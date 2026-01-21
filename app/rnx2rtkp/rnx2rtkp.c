@@ -181,9 +181,6 @@ int main(int argc, char **argv)
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
         prcopt.DSM.building_height_margin = 1;
-      
-        initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 8, 5000, 5000, -22000.00, 5678000.00);
-
         initialize_dsm("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
 
 
@@ -193,7 +190,7 @@ int main(int argc, char **argv)
         prcopt.UTM.scale_factor = 0.9999;
         prcopt.UTM.false_easting = 0.0;
         prcopt.UTM.false_northing = 0.0;
-        
+
         /* WGS 84 Ellipsoid */
         prcopt.ellip.flattening = 1 / 298.257223563;
         prcopt.ellip.semi_major_axis = 6378137.0;
@@ -201,7 +198,7 @@ int main(int argc, char **argv)
         double a = prcopt.ellip.semi_major_axis;
         double b = prcopt.ellip.semi_minor_axis;
         prcopt.ellip.first_eccentricity = (a * a - b * b) / (a * a);
-        prcopt.ellip.second_eccentricity = (a * a - b * b) / (b * b);        
+        prcopt.ellip.second_eccentricity = (a * a - b * b) / (b * b);
     }
     ret=postpos(ts,te,tint,0.0,&prcopt,&solopt,&filopt,infile,n,outfile,"","");
 

@@ -10,8 +10,8 @@ void project_latitude_longitude_to_UTM
 	const ellipsoid* e
 )
 {
-
 	const double a = e->semi_major_axis;
+
 	const double lat = ll->latitude * M_PI / 180;
 	const double lon = ll->longitude * M_PI / 180;
 	const double W = sqrt(1 - e->first_eccentricity * sin(lat) * sin(lat));
