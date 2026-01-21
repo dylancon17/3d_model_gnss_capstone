@@ -130,6 +130,25 @@ for %%D in (!DATASET_LIST!) do (
     )
 
     REM End of per-dataset processing
+
+    REM ------------------ Run Python analysis / plotting ------------------
+    if /I "!ARG_ANALYZE!"=="ANALYZE" (
+
+        set "PLOT_SCRIPT=C:\capstone\3d_model_gnss_capstone\analysis_scripts\plotting.py"
+        set "TRUTH_FILE=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_truth.txt"
+        set "TRUTH_STAT=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_dd_residuals_truth.pos.stat"
+
+        set "PLOT_OUTDIR=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!"
+
+        if not exist "!PLOT_OUTDIR!" (
+            mkdir "!PLOT_OUTDIR!" >nul 2>&1
+        )
+
+	echo.
+        echo Running plotting script for dataset !SPECIFICDATASET!:
+        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
+	echo.
+    )
 )
 
 REM Clean up and exit
@@ -143,6 +162,8 @@ echo Usage:
 echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
 echo.
 echo DEM Options:
+echo	-2 = no DEM processing, calculate true signal errors and obstruction probability using truth position (must also change line 338 in postpos.c)
+echo	-1 = no DEM processing, calculate true signal errors using truth position (must also change line 338 in postpos.c)
 echo    0 = no DEM processing
 echo    1 = boolean observation rejection
 echo    2 = probability-threshold observation rejection
@@ -177,4 +198,3 @@ echo        - Runs datasets 1 to 6 with full processing and prefix RUN4
 echo ===================================================================
 echo.
 goto :EOF
-

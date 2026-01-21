@@ -80,7 +80,7 @@ int read_BIN(file_BIN* file, const char* fileName)
 
     /* If file doesn't open, send an error message */
     if (!file->file_ptr) {
-        fprintf(stdout, "Failed to open file\n");
+        fprintf(stdout, "Failed to open DSM file\n");
         return 1;
     }
     else { printf("\nFile opened successfully\n"); }
@@ -127,10 +127,15 @@ east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
     return closest_EN;
 }
 
+void apply_curvature_correction(double* h, double d) { // https://labs.landsurveyorsunited.com/toools/curvaturecorrection
+    *h = *h - (d) * (d) / 1207420000; //Final number is earth's diameter in meters
+}
+
+
 double calculate_true_height_meters(const DSMData* DSM, const int index)
 {
     const double val = (double)(DSM->heights_array[index]);
-    const double height = val / 100 + 1020;
+    const double height = val / 100 + 1020 - 16.7;
     return height;
 }
 
@@ -406,6 +411,7 @@ void get_relative_height
     const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
+    double* d,
     double* h,
     int* out_of_bounds
 )
@@ -430,6 +436,8 @@ void get_relative_height
         //printf("\nCoordinate is within bounds. Computing relative height.\n");
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
         *h = calculate_true_height_meters(DSM, index);
+        apply_curvature_correction(h, (*d * DSM->step_size));
+        //printf("Relative height: %f\n", *h);
         //printf("\nRelative height calculated: %f\n", *h);
         //printf("Press any key to continue...\n");
         //_getch();

@@ -518,17 +518,22 @@ typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
+                         -4 = Calculate true psuedorange and probability and use reference satellite selection and height interpolation
+                         -3 = Calculate true pseduorange and probability and use reference satellite selection based on probability threshold
+                         -2 = Calculate true pseudorange and probabilities
+                         -1 = Calculate true pseudorange errors
                          0 = don't do anything with the DEM. 
                          1 = do boolean observation rejection. 
                          2 = do observation rejection based on probability threshold. 
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         currently treated in code as 0 = do nothing, > 1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection*/
+                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and height interpolation
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >6 or <-3 for height interpolation */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
-    boolean use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
+    int use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
     int max_noise_scaling; /*Scale the noise by a maximum of n time*/
 
@@ -550,6 +555,8 @@ typedef struct DSMData {
     UTM_projection projection_dsm; /* Map projection of the digital surface model */
     ellipsoid ellipsoid_dsm; /* Ellipsoid of the coordinate system of the digital surface model */
 
+    double building_height_margin;
+
 } DSMData;
 
 typedef struct TilesDataset {
@@ -567,6 +574,14 @@ extern ellipsoid WGS_84;
 
 // Calgary 3TM projection 114 degrees W
 extern UTM_projection Calgary_3TM_114W;
+
+typedef struct {
+    FILE* fp;
+    int     week;
+    double  tow;
+    double  rr[3];   /* ECEF truth position */
+} truth_t;
+
 
 /* type definitions ----------------------------------------------------------*/
 
@@ -1212,6 +1227,7 @@ typedef struct {        /* satellite status type */
     gtime_t pt[2][NFREQ]; /* previous carrier-phase time */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
     double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
+    double obstruction_probability; /* probability of obstruction*/
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */
@@ -1236,6 +1252,7 @@ typedef struct {        /* RTK control/result type */
     int neb;            /* bytes in error message buffer */
     char errbuf[MAXERRMSG]; /* error message buffer */
     prcopt_t opt;       /* processing options */
+    truth_t truth;
 } rtk_t;
 
 typedef struct {        /* receiver raw data control type */
@@ -1843,9 +1860,9 @@ extern double check_los(
     double origin_height,
     double origin_horizontal_variance,
     double origin_vertical_variance,
-    DSMData* DTM,
+    struct DSMData* DTM,
     TilesDataset* tiles_dataset
-);
+    int debug);
 
 extern int los_update(
     rtk_t* rtk,
@@ -1922,6 +1939,7 @@ extern void get_relative_height
     const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
+    double* d,
     double* h,
     int* out_of_bounds
 );
@@ -1940,6 +1958,10 @@ extern void project_latitude_longitude_to_UTM
     const UTM_projection* proj,
     const ellipsoid* e
 );
+
+extern int truth_open(rtk_t* rtk, const char* file);
+
+extern int truth_read(rtk_t* rtk);
 
 #ifdef __cplusplus
 }

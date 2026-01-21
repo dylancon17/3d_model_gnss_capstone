@@ -328,11 +328,29 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
     solstatic=sopt->solstatic&&
               (popt->mode==PMODE_STATIC||popt->mode==PMODE_PPP_STATIC);
     
+    fprintf(stderr, "Initializing RTK Engine\n");
     rtkinit(&rtk,popt);
     rtcm_path[0]='\0';
+
+
+    int read_success = 0;
+    if (popt->DSM.processing_type < 0) {
+
+        if (!truth_open(&rtk, "C:\\capstone\\ToShare\\5\\5_truth.txt")) {
+            fprintf(stderr, "Truth failed to open");
+            return;
+        }
+        else {
+            read_success = truth_read(&rtk); /* prime first truth record */
+        }
+    }
+
+    gtime_t tr, tt;
+    double dt;
+    int process_state = 0; // 0 = process, 1 = skip this rover epoch due to lack of truth, 2 = end of truth data, exit code
     
     while ((nobs=inputobs(obs,rtk.sol.stat,popt))>=0) {
-        
+
         /* exclude satellites */
         for (i=n=0;i<nobs;i++) {
             if ((satsys(obs[i].sat,NULL)&popt->navsys)&&
@@ -340,6 +358,45 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
         }
         if (n<=0) continue;
         
+        if (popt->DSM.processing_type < 0) {
+            tr = obs[0].time;
+
+            while (1) {
+                if (read_success == 0) {
+                    process_state = 2;
+                    break;
+                }
+
+                /* get current truth time */
+                tt = gpst2time(rtk.truth.week, rtk.truth.tow);
+                dt = timediff(tr, tt);
+
+                // If rover ahead of truth advance truth
+                if (dt > 0.01) {
+                    read_success = truth_read(&rtk);
+                    continue;
+                }
+
+                // If truth ahead of rover advance rover
+                if (dt < -0.01) {
+                    process_state = 1;
+                    break;
+                }
+
+                // Else truth = rover timing
+                process_state = 0;
+                break;
+            }
+
+            if (process_state == 2) {
+                break;
+            }
+
+            if (process_state == 1) {
+                continue;
+            }
+        }
+
         if (!rtkpos(&rtk,obs,n,&navs)) continue;
         
         if (mode==0) { /* forward/backward */
