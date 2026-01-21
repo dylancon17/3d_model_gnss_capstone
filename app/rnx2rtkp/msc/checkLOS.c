@@ -54,11 +54,13 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     covenu(pos, P, Q);
 
     lat_long ll = { pos[0] * 180 / M_PI, pos[1] * 180 / M_PI};
+    printf("\nRelative origin latitude: %f\n", ll.latitude);
+    printf("\nRelative origin longitude: %f\n", ll.longitude);
 
     int out_of_bounds = 0;
     // Set relative origin here as it is constant for the rest of the update
     // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
-    set_relative_origin(&(rtk->opt.DSM),&ll,&(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+    set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
@@ -109,7 +111,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), debug);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
@@ -170,7 +172,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, int debug) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, int debug) {
     if (debug) {
         fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
             sat_az * 180 / M_PI,
@@ -188,7 +190,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     int origin_x = 0, origin_y = 0;
     double distance = 0;
     //If the starting height is below the DEM, use the DEM height, or if the option to use_dem_height_only is set
-    get_relative_height(DSM, &origin_x, &origin_y, &distance, &current_DTM_height, &out_of_bounds);
+    get_relative_height(DSM, tiles_dataset, &origin_x, &origin_y, &distance, &current_DTM_height, &out_of_bounds);
 
     double current_building_height = current_DTM_height;
     int current_plane_checked = 1; //Don't check starting plane
@@ -249,7 +251,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         // Traverse the DTM
         step_along_line(&line);
         
-        get_relative_height(DSM, &(line.E), &(line.N), &(line.d), &current_DTM_height, &out_of_bounds);
+        get_relative_height(DSM, tiles_dataset, &(line.E), &(line.N), &(line.d), &current_DTM_height, &out_of_bounds);
 
         //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
         if (debug) {
