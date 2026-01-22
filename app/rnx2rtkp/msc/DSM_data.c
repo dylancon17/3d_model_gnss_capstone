@@ -489,15 +489,3 @@ void deallocate_dsm(const DSMData* DSM) {
     free(DSM->heights_array);
     DSM = NULL;
 }
-
-void test_playground(DSMData* DSM, TilesDataset* tiles_dataset) {
-    // PLAYGROUND =========================
-    printf("\nStarted playground\n");
-
-
-    initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-2000E_5638000N.bin",DSM,-2010,5637990,1,5000);
-
-    printf("\nEnded playground\n");
-    printf("Press any key to continue...\n");
-    _getch();
-}
