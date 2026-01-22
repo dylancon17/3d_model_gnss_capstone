@@ -542,7 +542,7 @@ typedef struct DSMData {
 
     int n_rows; /* Number of rows in the elevation (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_columns; /* Number of columns in the (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
-    int n_data_points; /* Number of data points in the dataset (this value should equal to n_rows x n_columns) */
+    int64_t n_data_points; /* Number of data points in the dataset (this value should equal to n_rows x n_columns) */
     int step_size; /* Spacing between raster points, ex. 5m*/
     int tile_size_x;
     int tile_size_y;
@@ -1886,11 +1886,9 @@ extern void initialize_tiles_dataset
     double top_left_tile_origin_y
 );
 
-extern int open_BIN(file_BIN* file, const char* fileName);
+extern int64_t open_BIN(file_BIN* file, const char* fileName);
 
-extern int read_BIN_data();
-
-extern int read_BIN(file_BIN* file, const char* fileName);
+extern int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n);
 
 extern double retrieve_anchor_decimal(double num);
 
@@ -1945,9 +1943,6 @@ extern void get_relative_height
 );
 
 extern void deallocate_dsm(const DSMData* DSM);
-
-//**** TESTING FUNCTION
-extern void test_playground(DSMData* DSM, TilesDataset* tiles_dataset);
 
 /* UTM Projection Functions */
 

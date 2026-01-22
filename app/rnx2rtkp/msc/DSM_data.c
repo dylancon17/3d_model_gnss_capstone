@@ -27,7 +27,7 @@ void initialize_tiles_dataset
     td->y_limit = td->top_left_tile_origin.northing - (td->tiles_dimension_y * td->num_tiles_y);
 }
 
-int open_BIN(file_BIN* file, const char* fileName)
+int64_t open_BIN(file_BIN* file, const char* fileName) 
 {
 
     //Set file to be empty
@@ -44,61 +44,18 @@ int open_BIN(file_BIN* file, const char* fileName)
     file->file_size = ftell(file->file_ptr);
     rewind(file->file_ptr);
 
-    return (int)(file->file_size / sizeof(uint16_t)); // Return the number of data points in the .bin file
+    return (int64_t)(file->file_size / sizeof(uint16_t)); // Return the number of data points in the .bin file
 }
 
-int read_BIN_data(file_BIN* file, uint16_t* buffer, int n) 
+int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n) 
 {
     if (!file || !file->file_ptr || !buffer) return -1;
 
-    size_t read = fread(buffer, sizeof(uint16_t), n, file->file_ptr);
-    return (read == (size_t)n) ? 0 : -1;
+    int64_t read = (int64_t)fread(buffer, sizeof(uint16_t), n, file->file_ptr);
+    return (read == n) ? 0 : -1;
 }
 
-int read_BIN(file_BIN* file, const char* fileName)
-{
 
-    /* ----------------------------------------------------------
-    // Copy the file name string into the file_BIN struct so the
-    // struct stores which file it represents.
-    // ----------------------------------------------------------- */
-    snprintf(file->file_name, sizeof(file->file_name), "%s", fileName);
-
-    /* -----------------------------------------------------------
-    // Open the .bin file in binary read mode ("rb").
-    // "r" = read, "b" = binary (no newline translation).
-    // ----------------------------------------------------------- */
-
-    printf("\nReading .bin file\n");
-
-    if (file->file_ptr != NULL) { 
-        printf("\nFile is not null\n");
-        rewind(file->file_ptr); 
-        printf("\nFile pointer has been reset.\n");
-    }
-    file->file_ptr = fopen(fileName, "rb");
-
-    /* If file doesn't open, send an error message */
-    if (!file->file_ptr) {
-        fprintf(stdout, "Failed to open DSM file\n");
-        return 1;
-    }
-    else { printf("\nFile opened successfully\n"); }
-
-    /* Move the file pointer to the end so we can measure the total size of the file (in bytes) */
-    fseek(file->file_ptr, 0, SEEK_END);
-
-    /* ftell() tells us the current file position in bytes. Since the pointer is at the end it tells us the file size */
-    file->file_size = ftell(file->file_ptr);
-
-    /* Compute the number of elevation samples in the file. Each elevation sample is 2 bytes (which is sizeof(uint16_t) */
-    const int n_data = (int)(file->file_size / sizeof(uint16_t));
-
-    /* Now that we know the number of elevation samples, we can */
-    rewind(file->file_ptr);
-
-    return n_data;
-}
 
 
 double retrieve_anchor_decimal(const double num)
@@ -256,7 +213,7 @@ void initialize_dsm_tile
     //printf("\nOpening file name %s\n", file_name);
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
-    int n_samples = open_BIN(&file,file_name);
+    int64_t n_samples = open_BIN(&file,file_name);
     if (n_samples < 0) {
         fprintf(stderr, "\nFailed to open DSM file\n");
     }
@@ -285,7 +242,7 @@ void initialize_dsm_tile
         //printf("\nmalloc to a new tile successful"); 
     }
 
-    if (read_BIN_data(&file, DSM->heights_array, (size_t)DSM->n_data_points) != 0) {
+    if (read_BIN_data(&file, DSM->heights_array, DSM->n_data_points) != 0) {
         fprintf(stderr, "Failed to read DSM raster data\n");
         printf("Press any key to continue...\n");
         _getch();
