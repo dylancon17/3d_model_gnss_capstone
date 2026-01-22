@@ -134,7 +134,7 @@ pd.set_option("display.max_columns", None)
 pd.set_option("display.width", None)
 pd.set_option("display.max_colwidth", None)
 
-print(sol_stats)
+print(sol_stats.head())
 
 # sol_stats = sol_stats[sol_stats["resp"] != 0.0]
 # Assign the base the minimum residual across the other satellites, as it can't be better than that
@@ -163,9 +163,6 @@ group_min = (
 # Replace zeros with group minimum
 mask = sol_stats["resc"] == 0
 sol_stats.loc[mask, "resc"] = group_min[mask]
-
-
-print(sol_stats)
 
 
 

@@ -99,7 +99,9 @@ void apply_curvature_correction(double* h, double d) { // https://labs.landsurve
 
 double calculate_true_height_meters(const DSMData* DSM, const int index)
 {
-
+    if ((double)(DSM->heights_array[index] == 50000.0)) {
+        fprintf(stderr, "5000000000000000000000000000000000000000000000000000 hit!!!!!!!!!!!!!!!!!!!!!1\n");
+    }
 
     const double val = (double)(DSM->heights_array[index]);
     const double height = val / 100 + 947.259;
