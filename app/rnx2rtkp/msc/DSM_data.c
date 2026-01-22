@@ -329,6 +329,7 @@ int out_of_bounds_check_tiles_dataset(east_north* traverse, TilesDataset* tiles_
     //printf("\nx_limit: %f\n", tiles_dataset->x_limit);
     //printf("\ny_limit: %f\n", tiles_dataset->y_limit);
 
+    // fprintf(stderr, "Comparing %lf %lf to %lf %lf to %lf %lf\n", traverse->easting, traverse->northing, tiles_dataset->top_left_tile_origin.easting, tiles_dataset->top_left_tile_origin.northing, tiles_dataset->x_limit, tiles_dataset->y_limit);
 
     if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
     else if (traverse->easting > tiles_dataset->x_limit) return 1;

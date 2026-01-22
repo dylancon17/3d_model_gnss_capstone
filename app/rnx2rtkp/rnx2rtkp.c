@@ -182,9 +182,11 @@ int main(int argc, char **argv)
         prcopt.DSM.max_noise_scaling = 20; // Scale errors to a max of 20 times
         prcopt.DSM.building_height_margin = 1;
       
-        initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 8, 5000, 5000, -22000.00, 5678000.00);
+        //initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 8, 5000, 5000, -22000.00, 5678000.00);
+        //initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
 
-        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
+        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 20000, 25000, -17000.00, 5678000.00);
+        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_567800_-17000_5N_4E.bin", &(prcopt.DSM), -17000.000, 5678000.000, 1, 20000);
 
 
         /* Calgary 114W 3TM */
