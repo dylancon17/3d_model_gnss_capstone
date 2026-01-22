@@ -77,12 +77,20 @@ double round_to_anchor_step(const double input, const double anchor, const int s
 
 east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
 {
-    east_north closest_EN;
-    closest_EN.easting = round_to_anchor_step(EN->easting, DSM->first_digit.easting, DSM->step_size);
-    closest_EN.northing = round_to_anchor_step(EN->northing, DSM->first_digit.northing, DSM->step_size);
+    east_north snapped;
 
-    return closest_EN;
+    const double dx = (EN->easting - DSM->origin_dsm.easting) / DSM->step_size;
+    const double dy = (DSM->origin_dsm.northing - EN->northing) / DSM->step_size;
+
+    const int ix = (int)llround(dx);
+    const int iy = (int)llround(dy);
+
+    snapped.easting = DSM->origin_dsm.easting + ix * DSM->step_size;
+    snapped.northing = DSM->origin_dsm.northing - iy * DSM->step_size;
+
+    return snapped;
 }
+
 
 void apply_curvature_correction(double* h, double d) { // https://labs.landsurveyorsunited.com/toools/curvaturecorrection
     *h = *h - (d) * (d) / 1207420000; //Final number is earth's diameter in meters
@@ -91,8 +99,10 @@ void apply_curvature_correction(double* h, double d) { // https://labs.landsurve
 
 double calculate_true_height_meters(const DSMData* DSM, const int index)
 {
+
+
     const double val = (double)(DSM->heights_array[index]);
-    const double height = val / 100 + 1020 - 16.7;
+    const double height = val / 100 + 947.259;
     return height;
 }
 
@@ -101,12 +111,13 @@ double calc_max_height(const DSMData* DSM) {
     int max_height_grid_code = 0;
     for (int i = 0; i < DSM->n_data_points; i++) {
         //printf("%d\n",i);
-        if (DSM->heights_array[i] > max_height_grid_code) {
+        if (DSM->heights_array[i] > max_height_grid_code && DSM->heights_array[i] != 50000) {
             max_height_grid_code = DSM->heights_array[i];
             max_height_index = i;
         }
     }
     double max_height_true = calculate_true_height_meters(DSM, max_height_index);
+    fprintf(stderr, "Max height: %lf", max_height_true);
     return max_height_true;
 }
 
@@ -431,12 +442,15 @@ void get_relative_height
     //printf("\nout_of_bounds: %d\n", *out_of_bounds);
     //printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
-    //fprintf(stderr, "Gettinig relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         //printf("\nCoordinate is within bounds. Computing relative height.\n");
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
+
         *h = calculate_true_height_meters(DSM, index);
+        // fprintf(stderr, "Got relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d and index as %d: %lf\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset, index, *h);
+
+        
         apply_curvature_correction(h, (*d * DSM->step_size));
         //printf("Relative height: %f\n", *h);
         //printf("\nRelative height calculated: %f\n", *h);

@@ -134,6 +134,10 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             probability_of_obstruction == 0.0;
         }
 
+        if (debug) {
+            fprintf(stderr, "Probability after editing, %lf", probability_of_obstruction);
+        }
+
         double scaling = 1.0 / (1.0 - probability_of_obstruction); // TODO divide by 0 risk here
         if (scaling > rtk->opt.DSM.max_noise_scaling)
         {
@@ -199,15 +203,16 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
     double probability_of_obstruction = -1; // -1 = uninitialized - otherwise a range of 0-1
 
-    if (out_of_bounds) {
-        return probability_of_obstruction; //-1
-    }
-
     if (debug) {
-        fprintf(stderr, "Origin Height: %lf, DEM Height: %lf, Out of Bounds %d",
+        fprintf(stderr, "Origin Height: %lf, DEM Height: %lf, Out of Bounds %d\n",
             origin_height,
             current_DTM_height,
             out_of_bounds);
+    }
+
+
+    if (out_of_bounds) {
+        return probability_of_obstruction; //-1
     }
 
 

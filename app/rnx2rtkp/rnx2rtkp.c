@@ -188,8 +188,11 @@ int main(int argc, char **argv)
         // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 20000, 25000, -17000.00, 5678000.00);
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_567800_-17000_5N_4E.bin", &(prcopt.DSM), -17000.000, 5678000.000, 1, 20000);
 
-        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -17000.00, 5673000.00);
-        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5673000_-17000_5N_5E.bin", &(prcopt.DSM), -17000.000, 5673000.000, 1, 25000);
+        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -17000.00, 5673000.00);
+        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5673000_-17000_5N_5E.bin", &(prcopt.DSM), -17000.000, 5673000.000, 1, 25000);
+
+        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
 
 
         // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 35000, 45000, -22000.00, 5678000.00);
