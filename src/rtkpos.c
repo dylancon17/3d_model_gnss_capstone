@@ -1617,7 +1617,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
             rtk->sol.qr[5] = 0.1;
         }
 
-        int nrejected = los_update(rtk, obs, nav, sat, iu, ir, &ns, rs);
+        int nrejected = los_update(rtk, obs, sat, iu, ir, &ns, rs);
 
         //fprintf(stdout, "%i observations rejected due to no line of sight", nrejected);
 
