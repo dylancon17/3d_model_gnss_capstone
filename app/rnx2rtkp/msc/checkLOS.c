@@ -22,6 +22,7 @@ void apply_probability(double* y, double* probability);
 void determine_DTM_height_var(double* var, struct DSMData* DSM);
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DSMData* DTM);
 void soltocov_rtk(sol_t* sol, double* P);
+double line_probability(LineState* l);
 
 /* los update ---------------------------------------------------
 * check and update observations based off of line of sight
@@ -359,6 +360,9 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
             apply_probability(&y, &probability_of_obstruction);
 
+            double accuracy_probability = line_probability(&line);
+            probability_of_obstruction = probability_of_obstruction * accuracy_probability;
+
             if (debug) {
                 fprintf(stderr, "Probability Updated To: %lf, Sat Height: %lf, DTM Height: %lf, Sat Height SD: %lf, DTM Height SD: %lf, y: %lf\n", probability_of_obstruction, sat_height, height_to_check, sqrt(sat_height_var + change_in_height_var), sqrt(DTM_height_var), y);
             }
@@ -448,6 +452,13 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
 
 
     return;
+}
+
+double line_probability(LineState* l)
+{
+    double sigma = 0.35; // pixels
+    double err_norm = l->err / hypot(l->dE, l->dN);
+    return exp(-(err_norm * err_norm) / (2.0 * sigma * sigma));
 }
 
 /* solution to covariance - copy from solution.c-------------------*/

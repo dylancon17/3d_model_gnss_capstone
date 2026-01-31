@@ -406,12 +406,12 @@ void set_relative_origin
     else if (out_of_bounds_tiles_dataset == 1) { 
         printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n") ;
         printf("Press any key to continue...\n");
-        _getch();
+        // _getch();
     }
     else if (*out_of_bounds != 0 && *out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
         printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
         printf("Press any key to continue...\n");
-        _getch();
+        // _getch();
     }
 }
 
