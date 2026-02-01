@@ -518,7 +518,7 @@ typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
-                         -4 = Calculate true psuedorange and probability and use reference satellite selection and height interpolation
+                         -4 = Calculate true psuedorange and probability and use reference satellite selection and use max prob
                          -3 = Calculate true pseduorange and probability and use reference satellite selection based on probability threshold
                          -2 = Calculate true pseudorange and probabilities
                          -1 = Calculate true pseudorange errors
@@ -528,8 +528,8 @@ typedef struct DSMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and height interpolation
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >6 or <-3 for height interpolation */
+                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and use max prob
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, ==7 or ==-4 for max prob */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
