@@ -463,10 +463,10 @@ theta = np.deg2rad(sol_stats_primary["az"])
 r = 90 - sol_stats_primary["el"]
 
 # Classification masks
-tn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] < 10)
-tp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] >= 10)
-fp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] < 10)
-fn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] >= 10)
+tn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] < 5)
+tp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] >= 5)
+fp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] < 5)
+fn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] >= 5)
 
 # Create polar plot
 fig = plt.figure(figsize=(7,7))
@@ -534,11 +534,13 @@ plt.close()
 plt.show()
 
 with open(os.path.join(out_dir, "Pseudorange Error Summary.txt"), "w") as file:
-    file.write("Total Observations: " + str(sol_stats_primary.shape[0]))
-    file.write("TN: " + str(tn) + ": " + str(100 * tn/sol_stats_primary.shape[0]) + "%")
-    file.write("TP: " + str(tp) + ": " + str(100 * tp/sol_stats_primary.shape[0]) + "%")
-    file.write("FN: " + str(fn) + ": " + str(100 * fn/sol_stats_primary.shape[0]) + "%")
-    file.write("FP: " + str(fp) + ": " + str(100 * fp/sol_stats_primary.shape[0]) + "%")
+    total = sol_stats_primary.shape[0]
+
+    file.write(f"Total Observations: {total}\n")
+    file.write(f"TN: {sol_stats_primary[tn].shape[0]} : {100 * sol_stats_primary[tn].shape[0] / total:.2f}%\n")
+    file.write(f"TP: {sol_stats_primary[tp].shape[0]} : {100 * sol_stats_primary[tp].shape[0] / total:.2f}%\n")
+    file.write(f"FN: {sol_stats_primary[fn].shape[0]} : {100 * sol_stats_primary[fn].shape[0] / total:.2f}%\n")
+    file.write(f"FP: {sol_stats_primary[fp].shape[0]} : {100 * sol_stats_primary[fp].shape[0] / total:.2f}%\n")
 
 
 #Trajectory map
