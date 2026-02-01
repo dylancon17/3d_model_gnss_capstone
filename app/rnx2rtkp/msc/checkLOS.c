@@ -43,7 +43,7 @@ void soltocov_rtk(sol_t* sol, double* P);
 double phi_from_standardized(double y); // safe phi wrapper
 void reset_scaling(rtk_t* rtk, int* ns, int* sat);
 
-int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum) {
+int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum, double traverse_origin_relative_grid_x, double traverse_origin_relative_grid_y, int debug) {
     double rs[6], dts[2], var;
     int sat;
     int svh[2];
@@ -73,7 +73,7 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         satazel(pos, elev, azel);
 
-        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
 
         num_possible++;
         *probability_sum += rtk->ssat[i - 1].obstruction_probability;
@@ -98,7 +98,7 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         satazel(pos, elev, azel);
 
-        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
 
         num_possible++;
         *probability_sum += rtk->ssat[i - 1].obstruction_probability;
@@ -157,6 +157,21 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
         return 0;
     }
 
+    gtime_t obs_time, point_time;
+    int debug = 0;
+    if (*ns > 0) {
+        obs_time = obs[0].time;
+        /* get current truth time */
+        point_time = gpst2time(2258, 160665);
+        if (abs(timediff(obs_time, point_time)) < 0.1) {
+            debug = 1;
+        }
+    }
+    else {
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
 
     double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
     double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
@@ -172,7 +187,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     double current_DTM_height;
 
     double probability_total = 0;
-    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total);
+    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total, traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
 
     if (num_possible < 1) {
         reset_scaling(rtk, ns, sat);
@@ -181,19 +196,6 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     int num_not_observed = num_possible;
     double observed_probability_sum = 0;
 
-    gtime_t obs_time, point_time;
-    int debug = 0;
-    if (*ns > 0) {
-        obs_time = obs[0].time;
-        /* get current truth time */
-        point_time = gpst2time(2258, 160665);
-        if (abs(timediff(obs_time, point_time)) < 0.1) {
-            debug = 1;
-        }
-    }
-    else {
-        return 0;
-    }
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
 
