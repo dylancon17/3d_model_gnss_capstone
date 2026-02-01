@@ -341,7 +341,7 @@ void set_relative_origin
     //printf("\nSetting relative origin\n");
     project_latitude_longitude_to_UTM
     (
-        &DSM->relative_origin_traverse,
+        &DSM->relative_origin_traverse_true,
         relative_origin_degrees,
         proj,
         e
@@ -349,10 +349,10 @@ void set_relative_origin
     //printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
     //fprintf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
 
-    const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
+    const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse_true, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
-    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
+    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse_true, tiles_dataset);
 
     //printf("\nout_of_bounds: %d\n",*out_of_bounds);
    // printf("out_of_bounds_tiles_dataset: %d\n\n", out_of_bounds_tiles_dataset);
@@ -361,7 +361,7 @@ void set_relative_origin
         //printf("\nCoordinate is within the tile bounds. Computing to be continued.\n");
         //printf("Press any key to continue...\n");
         //_getch();
-        DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
+        DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse_true, DSM);
         //printf("\nRelative origin easting: %f", DSM->relative_origin_traverse.easting);
         //printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
         //fprintf(stderr, "Relative Origin Set As: %lf %lf and is %d %d steps from tile corner\n", DSM->relative_origin_traverse.easting, DSM->relative_origin_traverse.northing, steps.steps_X, steps.steps_Y);
@@ -374,7 +374,7 @@ void set_relative_origin
         //printf("Press any key to continue...\n");
         //_getch();
 
-        east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse, tiles_dataset);
+        east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse_true, tiles_dataset);
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";

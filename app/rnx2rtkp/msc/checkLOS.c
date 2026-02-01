@@ -34,7 +34,7 @@ typedef struct {
 
 
 /* ---------- Helper prototypes ---------- */
-void init_dda_ray(DDARay* r, double azimuth);
+void init_dda_ray(DDARay* r, double azimuth, double origin_x_grid, double origin_y_grid);
 void step_dda_ray(DDARay* r);
 double compute_cell_weight(const DDARay* r, int cell_ix, int cell_iy, struct DSMData* DSM);
 void determine_DTM_height_var(double* var, struct DSMData* DSM);
@@ -80,6 +80,13 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     // Set relative origin here as it is constant for the rest of the update
     // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
     set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+
+    double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
+    double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
+
+    double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / rtk->opt.DSM.step_size;
+    double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / rtk->opt.DSM.step_size;
+
 
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
@@ -130,7 +137,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
@@ -150,7 +157,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
 
         if (probability_of_obstruction < 0.0) { // Handles uninitilized case by setting no scaling
-            probability_of_obstruction == 0.0;
+            probability_of_obstruction = 0.0;
         }
 
         if (debug) {
@@ -195,7 +202,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, int debug) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug) {
     if (debug) {
         fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
             sat_az * 180 / M_PI,
@@ -256,7 +263,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     int N1 = (int)round(max_distance_grid_units * cos(sat_az));
 
     DDARay ray;
-    init_dda_ray(&ray, sat_az);
+    init_dda_ray(&ray, sat_az, traverse_origin_x_grid, traverse_origin_y_grid);
 
     // accumulation variables for the three options
     double weighted_numer = 0.0; // numerator = sum(w_i * p_i)
@@ -276,13 +283,15 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
         //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
         // if we've exceeded max_distance_grid_units stop as original did
-        if (ray.t > max_distance_grid_units) {
+        double d_grid = (ray.t + ray.tPrev) / 2;
+        
+        if (d_grid > max_distance_grid_units) {
             if (debug) fprintf(stderr, "max distance travelled\n");
 
             return probability_of_obstruction;
         }
 
-        get_relative_height(DSM, tiles_dataset, &ray.ix, &ray.iy, &ray.t, &current_DTM_height, &out_of_bounds);
+        get_relative_height(DSM, tiles_dataset, &ray.ix, &ray.iy, &d_grid, &current_DTM_height, &out_of_bounds);
 
         if (out_of_bounds) {
             // If we run off the DSM, behavior: LOS clear beyond DSM
@@ -291,7 +300,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         }
 
         // compute sat height at this distance (meters)
-        double sat_height = origin_height + sat_vertical_slope * ray.t * DSM->step_size;
+        double sat_height = origin_height + sat_vertical_slope * d_grid * DSM->step_size;
 
         if (debug) {
             fprintf(stderr, "Stepped along ray to: %d, %d, %lf with sat height: %lf, building height: %lf\n", ray.ix, ray.iy, ray.t, sat_height, current_DTM_height);
@@ -363,37 +372,35 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     }
 } // end traversal loop
 
-
-void init_dda_ray(
-    DDARay* r,
-    double azimuth
-)
+void init_dda_ray(DDARay* r, double azimuth, double origin_x_grid, double origin_y_grid)
 {
-    // Ray origin is exactly at (0,0) in grid space
-    r->x0 = 0.0;
-    r->y0 = 0.0;
+    r->x0 = origin_x_grid;
+    r->y0 = origin_y_grid;
 
-    // Direction
     r->dx = sin(azimuth);
     r->dy = cos(azimuth);
 
-    // Start cell
-    r->ix = 0;
-    r->iy = 0;
+    // Map fractional origin to the integer cell whose center is nearest
+    const double EPS = 1e-14;
+    r->ix = (int)floor(r->x0 + 0.5 + EPS);
+    r->iy = (int)floor(r->y0 + 0.5 + EPS);
 
     r->stepX = (r->dx >= 0.0) ? 1 : -1;
     r->stepY = (r->dy >= 0.0) ? 1 : -1;
 
-    // Next boundary distances
-    double nextGridX = (r->stepX > 0) ? 1.0 : 0.0;
-    double nextGridY = (r->stepY > 0) ? 1.0 : 0.0;
+    // distance from origin to the cell boundaries at ix +/- 0.5
+    double nextGridDistX = (r->stepX > 0) ? ((r->ix + 0.5) - r->x0) : (r->x0 - (r->ix - 0.5));
+    double nextGridDistY = (r->stepY > 0) ? ((r->iy + 0.5) - r->y0) : (r->y0 - (r->iy - 0.5));
+
+    if (nextGridDistX < 0.0) nextGridDistX = 0.0; // guard numerical noise
+    if (nextGridDistY < 0.0) nextGridDistY = 0.0;
 
     if (fabs(r->dx) < 1e-12) {
         r->tMaxX = INFINITY;
         r->tDeltaX = INFINITY;
     }
     else {
-        r->tMaxX = nextGridX / r->dx;
+        r->tMaxX = nextGridDistX / fabs(r->dx);
         r->tDeltaX = fabs(1.0 / r->dx);
     }
 
@@ -402,13 +409,14 @@ void init_dda_ray(
         r->tDeltaY = INFINITY;
     }
     else {
-        r->tMaxY = nextGridY / r->dy;
+        r->tMaxY = nextGridDistY / fabs(r->dy);
         r->tDeltaY = fabs(1.0 / r->dy);
     }
 
     r->t = 0.0;
     r->tPrev = 0.0;
 }
+
 
 
 /* ---------- Step the DDA ray to the next crossed grid boundary ---------- */
@@ -459,8 +467,8 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     //  DEM Source - use determine_DTM_height_var + DEM offset var
     //  KF Source - use the estimated filter variance
     * var = origin_vertical_variance;
-    double distance_var = pow(0.34 * DSM->step_size, 2) + origin_horizontal_variance;
-    *var = *var + pow(sat_vertical_slope, 2) * distance_var;
+    // double distance_var = pow(0.34 * DSM->step_size, 2) + origin_horizontal_variance;
+    // *var = *var + pow(sat_vertical_slope, 2) * distance_var;
 
     //fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
     return;

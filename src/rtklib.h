@@ -539,6 +539,7 @@ typedef struct DSMData {
 
     east_north origin_dsm; /* Origin of the digital surface model used for out of bounds checking and indexing */
     east_north relative_origin_traverse; /* Origin of the traversal algorithm */
+    east_north relative_origin_traverse_true; /* Origin of the traversal algorithm not on a nice coordinate*/
 
     int n_rows; /* Number of rows in the elevation (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_columns; /* Number of columns in the (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
@@ -1862,6 +1863,8 @@ extern double check_los(
     double origin_vertical_variance,
     struct DSMData* DTM,
     TilesDataset* tiles_dataset,
+    double traverse_origin_x_grid,
+    double traverse_origin_y_grid,
     int debug);
 
 extern int los_update(
