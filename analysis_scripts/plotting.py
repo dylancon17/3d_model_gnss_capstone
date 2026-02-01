@@ -445,6 +445,44 @@ plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability
 plt.close()
 
 
+
+plt.figure()
+counts, xedges, yedges, im = plt.hist2d(
+    sol_stats_primary["prob"],
+    abs(sol_stats_primary["resp"]),
+    bins=[20, 20],     # probability bins, 2 m bins up to 100 m
+    range=[[0.0, 1.0], [20.0, 300.0]],
+    norm=LogNorm()
+)
+
+plt.colorbar(label="Count (log scale)")
+
+# Compute bin centers
+xcenters = 0.5 * (xedges[:-1] + xedges[1:])
+ycenters = 0.5 * (yedges[:-1] + yedges[1:])
+
+# Annotate each bin with count
+for i, x in enumerate(xcenters):
+    for j, y in enumerate(ycenters):
+        count = counts[i, j]
+        if count > 0:  # avoid cluttering empty bins
+            plt.text(
+                x, y,
+                f"{int(count)}",
+                color="white",
+                ha="center",
+                va="center",
+                fontsize=5
+            )
+
+plt.xlabel("Probability of Obstruction")
+plt.ylabel("True Double Differenced Pseudorange Error (m)")
+plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
+plt.grid()
+plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Zoomed (Heatmap).png"),dpi=300,bbox_inches="tight")
+plt.close()
+
+
 # Probability Histogram
 plt.figure()
 plt.hist(sol_stats["prob"],bins=20,range=(0.0, 1.0))
