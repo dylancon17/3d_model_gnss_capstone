@@ -341,7 +341,9 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
         // compute weight for this cell and scale prob(distance_from_cell_center)
         double dw = compute_cell_weight(&ray, ray.ix, ray.iy, DSM);
-        double p_i = p_i_0 * dw;
+        double p_i = p_i_0 * dw * 0.25;
+
+        
 
         if (debug) {
             fprintf(stderr, "Checking prob for: %lf, with original prob of %lf and deweighting of %lf using vars of %lf, %lf\n", p_i, p_i_0, dw, sat_height_var, DTM_height_var);
