@@ -410,7 +410,7 @@ plt.close()
 
 plt.figure()
 counts, xedges, yedges, im = plt.hist2d(
-    sol_stats["prob"],
+    sol_stats_primary["prob"],
     abs(sol_stats["resp"]),
     bins=[20, int(300 / 10)],     # probability bins, 2 m bins up to 100 m
     range=[[0.0, 1.0], [0.0, 300.0]],
@@ -463,10 +463,10 @@ theta = np.deg2rad(sol_stats_primary["az"])
 r = 90 - sol_stats_primary["el"]
 
 # Classification masks
-tn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] < 5)
-tp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] >= 5)
-fp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] < 5)
-fn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] >= 5)
+tn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] < 3)
+tp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] >= 3)
+fp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] < 3)
+fn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] >= 3)
 
 # Create polar plot
 fig = plt.figure(figsize=(7,7))
