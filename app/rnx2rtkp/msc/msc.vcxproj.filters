@@ -99,5 +99,8 @@
     <ClCompile Include="truth.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="dop_calc.c">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
