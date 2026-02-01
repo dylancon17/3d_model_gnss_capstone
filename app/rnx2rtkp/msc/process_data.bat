@@ -16,6 +16,11 @@ REM --------------------------------------------------------------------
 REM Enable delayed expansion for variables modified inside loops
 setlocal enabledelayedexpansion
 
+set "DO_DOP=0"
+for %%A in (%*) do (
+    if /I "%%~A"=="DOP" set "DO_DOP=1"
+)
+
 REM ------------------ Parse arguments with defaults --------------------
 REM Arg order: Dataset, DEM, PLOT, PREFIX
 set "ARG_DATASET=%~1"
@@ -66,10 +71,7 @@ if /I "!ARG_PLOT!"=="PLOT" (
 )
 
 REM ------------------ Generate one timestamp for entire run -----------
-for /f %%a in ('wmic os get localdatetime ^| find "."') do set DTS=%%a
-set TIMESTAMP=%DTS:~0,8%_%DTS:~8,6%
-
-
+for /f %%a in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TIMESTAMP=%%a"
 
 REM ---------------- Elevate if needed for performance monitoring --------------------
 net session >nul 2>&1
@@ -108,16 +110,21 @@ for %%D in (!DATASET_LIST!) do (
     set "OUTPATH_DEM="
     set "OUTPATH_NODEM="
 
-
     set "FINAL_PREFIX=!CUSTOM_PREFIX!_!ARG_DEM!"
     set "OUTFILE=solution_!TIMESTAMP!.pos"
     set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
     echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: !ARG_DEM! Output Name: !OUTPATH!
+
+    set "DOP_ARGS="
+    if "!DO_DOP!"=="1" set "DOP_ARGS=-dopout"
+
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
         wpr -start CPU.Light -filemode
     )
-    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+
+    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! !DOP_ARGS! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         wpr -stop !OUTPATHETL!
         wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
