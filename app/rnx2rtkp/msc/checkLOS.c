@@ -43,7 +43,7 @@ void soltocov_rtk(sol_t* sol, double* P);
 double phi_from_standardized(double y); // safe phi wrapper
 void reset_scaling(rtk_t* rtk, int* ns, int* sat);
 
-int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum, double traverse_origin_relative_grid_x, double traverse_origin_relative_grid_y, int debug) {
+int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum, double traverse_origin_relative_grid_x, double traverse_origin_relative_grid_y, double origin_height, double origin_variance, int debug) {
     double rs[6], dts[2], var;
     int sat;
     int svh[2];
@@ -73,10 +73,10 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         satazel(pos, elev, azel);
 
-        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        rtk->ssat[sat - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], origin_height, Q[0] + Q[4], origin_variance, &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
 
         num_possible++;
-        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+        *probability_sum += rtk->ssat[sat - 1].obstruction_probability;
 
         //        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
         //            num_expected++;
@@ -98,10 +98,10 @@ int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, dou
 
         satazel(pos, elev, azel);
 
-        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        rtk->ssat[sat - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], origin_height, Q[0] + Q[4], origin_variance, &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
 
         num_possible++;
-        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+        *probability_sum += rtk->ssat[sat - 1].obstruction_probability;
 
 
         //        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
@@ -147,15 +147,13 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     // printf("\nRelative origin latitude: %f\n", ll.latitude);
     // printf("\nRelative origin longitude: %f\n", ll.longitude);
 
+
     int out_of_bounds = 0;
     // Set relative origin here as it is constant for the rest of the update
     // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
     set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
-    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
-        reset_scaling(rtk, ns, sat);
-        return 0;
-    }
+
 
     gtime_t obs_time, point_time;
     int debug = 0;
@@ -185,9 +183,57 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     double probability_of_obstruction = 0;
 
     double current_DTM_height;
+    // get starting grid coordinates and DTM height
+    int origin_x = 0, origin_y = 0;
+    double dummy_distance = 0.0;
+    get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+
+    double origin_height = pos[2];
+    double origin_vertical_variance = Q[8];
+
+    // compute y and local probability p_i
+    double denom_var = 10 + origin_vertical_variance + rtk->opt.DSM.antenna_dem_offset_var; // General noise added in to the test, needs to be a clear lack of intercept
+    double y = (origin_height - (rtk->opt.DSM.antenna_dem_offset + current_DTM_height)) / sqrt(denom_var);
+    double p_i_0 = phi_from_standardized(y);
+    double p_diff = 2.0 * fmin(p_i_0, 1.0 - p_i_0); // Two tailed setup
+
+
+    if (p_diff < 0.05 && rtk->opt.DSM.processing_type > 8) {
+        // Heights don't match. Incorrect starting height and therefore position
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+        fprintf(stderr, "Theoretically impossible out of bounds hit");
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
+
+    if (debug) {
+        fprintf(stderr, "Origin Height: %lf, DEM Height: %lf, Out of Bounds %d\n",
+            pos[2],
+            current_DTM_height,
+            out_of_bounds);
+    }
+
+    if (out_of_bounds != 1 && (current_DTM_height > origin_height || rtk->opt.DSM.use_dem_height_only == 1) && rtk->opt.DSM.use_dem_height_only != 2) {
+        origin_height = current_DTM_height + rtk->opt.DSM.antenna_dem_offset;
+        origin_vertical_variance = rtk->opt.DSM.vertical_point_variance + rtk->opt.DSM.antenna_dem_offset_var;
+        if (debug) {
+            fprintf(stderr, ", Using DTM Height\n");
+        }
+        if (debug) fprintf(stderr, "Using DTM Height as origin height (with antenna offset)\n");
+    }
+    else {
+        if (debug) {
+            fprintf(stderr, ", Using GPS Height\n");
+        }
+    }
 
     double probability_total = 0;
-    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total, traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total, traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, origin_height, origin_vertical_variance, debug);
 
     if (num_possible < 1) {
         reset_scaling(rtk, ns, sat);
@@ -299,37 +345,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     double current_DTM_height = 0;
     double sat_vertical_slope = tan(sat_elev);
 
-    // get starting grid coordinates and DTM height
-    int origin_x = 0, origin_y = 0;
-    double dummy_distance = 0.0;
-    get_relative_height(DSM, tiles_dataset, &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
-    if (debug) {
-        fprintf(stderr, "Origin Height: %lf, DEM Height: %lf, Out of Bounds %d\n",
-            origin_height,
-            current_DTM_height,
-            out_of_bounds);
-    }
-
-
-    if (out_of_bounds) {
-        return -1.0; // out of DSM area
-    }
-
-
-    if (out_of_bounds != 1 && (current_DTM_height > origin_height || DSM->use_dem_height_only == 1) && DSM->use_dem_height_only != 2) {
-        origin_height = current_DTM_height + DSM->antenna_dem_offset;
-        origin_vertical_variance = DSM->vertical_point_variance + DSM->antenna_dem_offset_var;
-        if (debug) {
-            fprintf(stderr, ", Using DTM Height\n");
-        }
-        if (debug) fprintf(stderr, "Using DTM Height as origin height (with antenna offset)\n");
-    }
-    else {
-        if (debug) {
-            fprintf(stderr, ", Using GPS Height\n");
-        }
-    }
     // Only search until a distance where you're guranteed to hit a building, or you've searched a ways
     double max_distance_m = (DSM->max_dsm_height - origin_height) / sat_vertical_slope;
     if (max_distance_m > DSM->max_distance) {
