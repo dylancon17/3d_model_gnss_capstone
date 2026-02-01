@@ -411,7 +411,7 @@ plt.close()
 plt.figure()
 counts, xedges, yedges, im = plt.hist2d(
     sol_stats_primary["prob"],
-    abs(sol_stats["resp"]),
+    abs(sol_stats_primary["resp"]),
     bins=[20, int(300 / 10)],     # probability bins, 2 m bins up to 100 m
     range=[[0.0, 1.0], [0.0, 300.0]],
     norm=LogNorm()
