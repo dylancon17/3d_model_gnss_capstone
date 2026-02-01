@@ -533,6 +533,14 @@ plt.savefig(
 plt.close()
 plt.show()
 
+with open(os.path.join(out_dir, "Pseudorange Error Summary"), "w") as file:
+    file.write("Total Observations: " + str(sol_stats_primary.shape[0]))
+    file.write("TN: " + str(tn) + ": " + str(100 * tn/sol_stats_primary.shape[0]) + "%")
+    file.write("TP: " + str(tp) + ": " + str(100 * tp/sol_stats_primary.shape[0]) + "%")
+    file.write("FN: " + str(fn) + ": " + str(100 * fn/sol_stats_primary.shape[0]) + "%")
+    file.write("FP: " + str(fp) + ": " + str(100 * fp/sol_stats_primary.shape[0]) + "%")
+
+
 #Trajectory map
 # Create GeoDataFrame for RTK
 gdf_rtk = gpd.GeoDataFrame(
@@ -585,5 +593,6 @@ plt.savefig(
     bbox_inches="tight"
 )
 plt.close()
+
 
 
