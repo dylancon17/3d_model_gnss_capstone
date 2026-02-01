@@ -518,6 +518,7 @@ typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
     int processing_type; /* 
+                         -5 = Calculate true psuedorange and probability and use reference satellite selection and observed to expected
                          -4 = Calculate true psuedorange and probability and use reference satellite selection and use max prob
                          -3 = Calculate true pseduorange and probability and use reference satellite selection based on probability threshold
                          -2 = Calculate true pseudorange and probabilities
@@ -528,8 +529,10 @@ typedef struct DSMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and use max prob
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, ==7 or ==-4 for max prob */
+                         7 = do observation deweighting, rejection, reference sat selection, and use max prob
+                         8 = do observation deweighting, rejection and reference satellite selection based on probability threshold + observed to expected
+                         9 = do observation deweighting, rejection and reference satellite selection based on probability threshold + observed to expected + position quality filtering
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, ==7 or ==-4 for max prob, >7 or <-4 for observed to expected rejection, >8 for position quality filtering */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
@@ -557,6 +560,8 @@ typedef struct DSMData {
     ellipsoid ellipsoid_dsm; /* Ellipsoid of the coordinate system of the digital surface model */
 
     double building_height_margin;
+
+    double average_prob_error_max;
 
 } DSMData;
 
@@ -1870,6 +1875,8 @@ extern double check_los(
 extern int los_update(
     rtk_t* rtk,
     const obsd_t* obs,
+    const nav_t* nav, 
+    gtime_t tor,
     int* sat,
     int* iu,
     int* ir,

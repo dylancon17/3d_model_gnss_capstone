@@ -41,6 +41,77 @@ void determine_DTM_height_var(double* var, struct DSMData* DSM);
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DSMData* DTM);
 void soltocov_rtk(sol_t* sol, double* P);
 double phi_from_standardized(double y); // safe phi wrapper
+void reset_scaling(rtk_t* rtk, int* ns, int* sat);
+
+int calc_expected_los(rtk_t* rtk, const nav_t* nav, gtime_t tor, double* rr, double* pos, double* Q, double* probability_sum) {
+    double rs[6], dts[2], var;
+    int sat;
+    int svh[2];
+
+    double r;
+
+    double elev[3], azel[2];
+
+    //TODO this whole section could be done better as sat positions are being calculated twice!
+    // WARNING - this uses the time of reception, not time of transmission. This is incorrect! Expected error is 1-4", so likely insignificant?
+    int num_possible = 0;
+
+    /* ---- GPS/GAL/BDS/QZSS/SBAS broadcast ephemerides ---- */
+    for (int i = 0; i < nav->n; i++) {
+        eph_t* e = &nav->eph[i];
+        sat = e->sat;
+
+
+        // Get sat position
+        if (!satpos(tor, tor, sat, EPHOPT_BRDC, nav, rs, dts, &var, svh)) continue;
+
+        r = geodist(rs + i * 6, rr, elev); //TODO how is rs indexed
+        /* geodist failure check */
+        if (r <= 0) {
+            continue;
+        }
+
+        satazel(pos, elev, azel);
+
+        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+
+        num_possible++;
+        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+
+        //        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
+        //            num_expected++;
+        //        }
+    }
+
+    /* ---- GLONASS broadcast ephemerides ---- */
+    for (int i = 0; i < nav->ng; i++) {
+        geph_t* g = &nav->geph[i];
+        sat = g->sat;
+
+        if (!satpos(tor, tor, sat, EPHOPT_BRDC, nav, rs, dts, &var, svh)) continue;
+
+        r = geodist(rs + i * 6, rr, elev); //TODO how is rs indexed
+        /* geodist failure check */
+        if (r <= 0) {
+            continue;
+        }
+
+        satazel(pos, elev, azel);
+
+        rtk->ssat[i - 1].obstruction_probability = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.dtm));
+
+        num_possible++;
+        *probability_sum += rtk->ssat[i - 1].obstruction_probability;
+
+
+        //        if (rtk->ssat[i - 1].obstruction_probability < rtk->opt.dtm.rejection_threshold) {
+        //            num_expected++;
+        //        }
+    }
+
+    return num_possible;
+}
+
 
 /* los update ---------------------------------------------------
 * check and update observations based off of line of sight
@@ -52,14 +123,14 @@ double phi_from_standardized(double y); // safe phi wrapper
 *          int       *ns    I   number of common satellites
 *          double    *rs    I   satellite positions in ECEF
 * return : int (number of rejected sats) */
-extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
+extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t tor, int* sat, int* iu, int* ir, int* ns, const double* rs) {
     //fprintf(stderr, "%s", "LOS Update\n");
 
 
 
     int i, nrej=0;
     int rej_idx[MAXOBS];
-    const double *rr = rtk->sol.rr; // TODO add filtering for if the estimated position is poor
+    const double *rr = rtk->sol.rr; // TODO add filtering for if the estimated position is wrong
 
     // Converts ECEF to LLH
     double pos[3];
@@ -81,6 +152,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
     set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
+
     double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
     double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
 
@@ -94,9 +171,15 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     double current_DTM_height;
 
-    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+    double probability_total = 0;
+    int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total);
+
+    if (num_possible < 1) {
+        reset_scaling(rtk, ns, sat);
         return 0;
     }
+    int num_not_observed = num_possible;
+    double observed_probability_sum = 0;
 
     gtime_t obs_time, point_time;
     int debug = 0;
@@ -114,33 +197,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
 
+        probability_of_obstruction = rtk->ssat[sat[i] - 1].obstruction_probability;
 
-        //fprintf(stderr, "Checking satellite %d\n", i);
-
-        r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
-
-            /* geodist failure check */
-        if (r <= 0) {
-            /* Bad geometry → reject satellite */
-            rej_idx[nrej++] = i;
-            // Reset scaling just in case...
-            rtk->ssat[sat[i] - 1].obstruction_scaling = 1;
-            //fprintf(stderr, "Geodist Failed %d\n", i);
-
-            fprintf(stderr, "Geodist Check Failed");
-
-            continue;
-        }
-
-        satazel(pos, e, azel);
-        
-        if (debug) {
-            fprintf(stderr, "Requesting probability: %d\n", sat[i]);
-        }
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
-        if (debug) {
-            fprintf(stderr, "%lf\n", probability_of_obstruction);
-        }
         // Reject the signal if it's likely that it's obstructed (works for DEM processing options 1 and 2)
         if (probability_of_obstruction > rtk->opt.DSM.rejection_threshold) {
 
@@ -151,6 +209,11 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
 
         rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
+
+        observed_probability_sum += probability_of_obstruction;
+        probability_total -= probability_of_obstruction;
+        num_not_observed--;
+
 
         if (probability_of_obstruction == 1.0) { // Avoid a divide by 0 error
             probability_of_obstruction = 0.999;
@@ -180,6 +243,14 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     }
 
     //fprintf(stdout, "%d possible sats\n", *ns);
+    double average_probability_error = (observed_probability_sum + (num_not_observed - probability_total)) / num_possible;
+    // If our prediction was more than a threshold incorrect, our probability calc is likely incorrect due to an incorrect starting position
+    // Therefore, don't reject deweight sats to prevent us from continuing along the wrong path
+    // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
+    if (average_probability_error > rtk->opt.DSM.average_prob_error_max && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type < -4)) {
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
 
     // If deterministic or probabilistic rejection
     if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4) {
@@ -196,10 +267,18 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     //fprintf(stdout, "%d sats rejected\n", nrej);
 
-
     return  nrej;
     
 }
+
+void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
+    // Undo any scaling
+    for (int i = 0;i < *ns && i < MAXOBS;i++) {
+        rtk->ssat[sat[i] - 1].obstruction_scaling = 1.0;
+    }
+    return;
+}
+
 
 //Assumes relative origin already set
 extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug) {
