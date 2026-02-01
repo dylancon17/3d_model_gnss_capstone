@@ -447,7 +447,7 @@ void determine_DTM_height_var(double* var, struct DSMData* DSM) {
     *var = DSM->vertical_point_variance;
 }
 
-void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope,DSMData* DSM) {
+void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, DSMData* DSM) {
     //Formula for sat height variance: height = tan(elev) * horizontal distance traversed + origin_height
     //Possible Error Sources:
     // Elevation accuracy - function of sat err, pos err and baseline distance. Assumed to be insignificant due to extremely long baseline
@@ -458,11 +458,14 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     // Origin Height - Will have errors, depends on origin height source
     //  DEM Source - use determine_DTM_height_var + DEM offset var
     //  KF Source - use the estimated filter variance
-    *var = origin_vertical_variance;
-    double distance_var = pow(0.34 * DSM->step_size,2) + origin_horizontal_variance;
+    * var = origin_vertical_variance;
+    double distance_var = pow(0.34 * DSM->step_size, 2) + origin_horizontal_variance;
     *var = *var + pow(sat_vertical_slope, 2) * distance_var;
 
     //fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
+    return;
+}
+
 
 /* ---------- compute per-cell weight for traversal over cell centers ---------- */
 double compute_cell_weight(const DDARay* r, int cell_ix, int cell_iy, struct DSMData* DSM)
