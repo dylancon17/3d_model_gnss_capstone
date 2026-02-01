@@ -282,7 +282,7 @@ int main(int argc, char** argv)
     int dop_enable = 0;
     const char* dop_outdir = "C:\\capstone\\tmp";
     double dop_step_sec = 60.0 * 15.0;
-    double dop_grid_m = 500.0;
+    double dop_grid_m = 100.0;
     double dop_h_m = 1100.0;
 
     /* load options from configuration file */
