@@ -235,6 +235,10 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     double probability_total = 0;
     int num_possible = calc_expected_los(rtk, nav, tor, rr, pos, Q, &probability_total, traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, origin_height, origin_vertical_variance, debug);
 
+    if (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type < -4) {
+        fprintf(stderr, "%d possible satellites. Total probability: %lf\n", num_possible, probability_total);
+    }
+
     if (num_possible < 1) {
         reset_scaling(rtk, ns, sat);
         return 0;
@@ -295,10 +299,15 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, const nav_t* nav, gtime_t t
     // If our prediction was more than a threshold incorrect, our probability calc is likely incorrect due to an incorrect starting position
     // Therefore, don't reject deweight sats to prevent us from continuing along the wrong path
     // TODO - if this happens consider undoing the previous state update as it's guranteed wrong (or was weighted not enough to fix it)
+
+    if (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type < -4) {
+        fprintf(stderr, "%d possible satellites. %d were observed. %d were not observed. %lf was observed prob sum (should be 0). %lf was not observed prob sum (should be %d). Average Error: %lf\n", num_possible, num_possible - num_not_observed, num_not_observed, observed_probability_sum, probability_total, num_not_observed, average_probability_error);
+    }
     if (average_probability_error > rtk->opt.DSM.average_prob_error_max && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type < -4)) {
         reset_scaling(rtk, ns, sat);
         return 0;
     }
+
 
     // If deterministic or probabilistic rejection
     if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4) {
