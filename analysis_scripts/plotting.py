@@ -10,6 +10,32 @@ from shapely.geometry import Point
 from matplotlib.colors import LogNorm
 
 # ============================
+# CDF / Diagnostics helpers
+# ============================
+def ecdf(x):
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    if x.size == 0:
+        return np.array([]), np.array([])
+    xs = np.sort(x)
+    ys = np.arange(1, xs.size + 1) / xs.size
+    return xs, ys
+
+def percentile_xlim(data, pct=99.9):
+    x = np.asarray(data, dtype=float)
+    x = x[np.isfinite(x)]
+    if x.size == 0:
+        return None
+    return (0.0, np.nanpercentile(x, pct))
+
+def p_xlim(x, pct):
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    if x.size == 0:
+        return (0.0, 1.0)
+    return (0.0, np.percentile(x, pct))
+
+# ============================
 # COMMAND LINE ARGUMENTS
 # ============================
 if len(sys.argv) != 6:
@@ -48,6 +74,10 @@ rtk.columns = [
     "sdne", "sdeu", "sdun", "age", "ratio"
 ]
 
+# Make sure key numeric columns are numeric (helps merge_asof)
+for c in ["GPSTime", "Lat_deg", "Lon_deg", "Height_m", "Q", "ns"]:
+    rtk[c] = pd.to_numeric(rtk[c], errors="coerce")
+
 # Relative time (seconds from start)
 rtk["t"] = rtk["GPSTime"] - rtk["GPSTime"].iloc[0]
 
@@ -84,13 +114,12 @@ sat_cols = [
     "slipc",  # cycle slip count
     "rejc",   # reject count
     "scal",   # observation weight scaling
-    "prob",    # obstruction probability
-    "idx" # Index
+    "prob",   # obstruction probability
+    "idx"     # Index
 ]
 
 sol_stats = pd.DataFrame(sat_rows, columns=sat_cols)
 
-# Columns that should be numeric
 numeric_cols = [
     "week", "tow", "frq",
     "az", "el",
@@ -108,37 +137,22 @@ sol_stats = sol_stats.drop(
     columns=["vsat", "snr", "fix", "slip", "lock", "outc", "slipc", "rejc", "scal"]
 )
 
-# sol_stats = sol_stats[sol_stats["tow"] == 160782.0]
-
-
 # Relative time in seconds from first epoch
 sol_stats["t"] = sol_stats["tow"] - sol_stats["tow"].iloc[0]
 
 sol_stats["resp"] = abs(sol_stats["resp"])
 sol_stats["resc"] = abs(sol_stats["resc"])
 
-
 # Remove -1-probability entries (indicates always out of bounds)
-sol_stats = sol_stats[sol_stats["prob"] >= 0.0] 
-
-# sol_stats = sol_stats[sol_stats["frq"] == 1] 
-# sol_stats = sol_stats[sol_stats["frq"] == 2] 
-# sol_stats = sol_stats[sol_stats["sat"].str.startswith("G")]
-# sol_stats = sol_stats[sol_stats["sat"].str.startswith("R")]
-
-#sol_stats = sol_stats[sol_stats["prob"] >= 0.95] 
-#sol_stats = sol_stats[sol_stats["resp"] <= 1.00] 
+sol_stats = sol_stats[sol_stats["prob"] >= 0.0]
 
 pd.set_option("display.max_rows", None)
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", None)
 pd.set_option("display.max_colwidth", None)
 
-print(sol_stats.head())
-
-# sol_stats = sol_stats[sol_stats["resp"] != 0.0]
 # Assign the base the minimum residual across the other satellites, as it can't be better than that
-sat_sys = sol_stats["sat"].str[0]
+sat_sys = sol_stats["sat"].astype(str).str[0]
 
 # Compute per-(tow, sat_sys) minimum non-zero resp
 group_min = (
@@ -148,9 +162,9 @@ group_min = (
     .transform("min")
 )
 
-# Replace zeros with group minimum
+# Replace zeros with group minimum (fallback epsilon if group_min is NaN)
 mask = sol_stats["resp"] == 0
-sol_stats.loc[mask, "resp"] = group_min[mask]
+sol_stats.loc[mask, "resp"] = group_min[mask].fillna(1e-6)
 
 # Compute per-(tow, sat_sys) minimum non-zero resc
 group_min = (
@@ -160,10 +174,9 @@ group_min = (
     .transform("min")
 )
 
-# Replace zeros with group minimum
+# Replace zeros with group minimum (fallback epsilon if group_min is NaN)
 mask = sol_stats["resc"] == 0
-sol_stats.loc[mask, "resc"] = group_min[mask]
-
+sol_stats.loc[mask, "resc"] = group_min[mask].fillna(1e-6)
 
 
 # ============================
@@ -191,21 +204,59 @@ truth = pd.read_csv(
 numeric_cols = truth.columns[1:]
 truth[numeric_cols] = truth[numeric_cols].apply(pd.to_numeric, errors="coerce")
 
-# Drop rows where GPSTime is NaN (e.g., the units row)
 truth = truth.dropna(subset=["GPSTime", "Latitude", "Longitude", "H-Ell"])
 
-# Truth relative time
 truth["t"] = truth["GPSTime"] - truth["GPSTime"].iloc[0]
 
+# ============================
+# MATCH TRUTH TO RTK TIME
+# ============================
 
-# ============================
-# INTERPOLATE TRUTH TO RTK TIME
-# ============================
+# Use absolute GPSTime as numeric
+rtk["GPSTime_abs"] = pd.to_numeric(rtk["GPSTime"], errors="coerce")
+truth["GPSTime_abs"] = pd.to_numeric(truth["GPSTime"], errors="coerce")
+
+# Drop rows missing the needed fields
+rtk = rtk.dropna(subset=["GPSTime_abs", "Lat_deg", "Lon_deg", "Height_m"]).copy()
+truth = truth.dropna(subset=["GPSTime_abs", "Latitude", "Longitude", "H-Ell"]).copy()
+
+# Sort for merge_asof
+rtk_sorted = rtk.sort_values("GPSTime_abs").reset_index(drop=True)
+truth_sorted = truth.sort_values("GPSTime_abs").reset_index(drop=True)
+
+# Tolerance for "aligned" epochs (seconds)
+TOL_S = 0.001
+
+matched = pd.merge_asof(
+    rtk_sorted,
+    truth_sorted[["GPSTime_abs", "Latitude", "Longitude", "H-Ell"]],
+    on="GPSTime_abs",
+    direction="nearest",
+    tolerance=TOL_S
+)
+
+# Drop RTK epochs that had no truth match within tolerance
+matched = matched.dropna(subset=["Latitude", "Longitude", "H-Ell"]).copy()
+
+print("\nMatch-only alignment:")
+print(f"  tolerance: {TOL_S} s")
+print(f"  matched epochs: {len(matched)} / {len(rtk_sorted)}")
+
+if len(matched) == 0:
+    raise RuntimeError("No matched epochs found. Increase TOL_S or fix time sync between logs.")
+
+# Redefine RTK stream to matched-only epochs (so everything below uses matched epochs)
+rtk = matched.reset_index(drop=True)
+
+# Define analysis time axis as seconds since first matched epoch
+rtk["t"] = rtk["GPSTime_abs"] - rtk["GPSTime_abs"].iloc[0]
+
+# Build truth_interp with the same shape as rtk (keeps your downstream code unchanged)
 truth_interp = pd.DataFrame()
 truth_interp["t"] = rtk["t"]
-truth_interp["Lat_deg"]  = np.interp(rtk["t"], truth["t"], truth["Latitude"])
-truth_interp["Lon_deg"]  = np.interp(rtk["t"], truth["t"], truth["Longitude"])
-truth_interp["Height_m"] = np.interp(rtk["t"], truth["t"], truth["H-Ell"])
+truth_interp["Lat_deg"] = rtk["Latitude"]
+truth_interp["Lon_deg"] = rtk["Longitude"]
+truth_interp["Height_m"] = rtk["H-Ell"]
 
 
 # ============================
@@ -213,14 +264,12 @@ truth_interp["Height_m"] = np.interp(rtk["t"], truth["t"], truth["H-Ell"])
 # ============================
 llt_to_ecef = Transformer.from_crs("EPSG:4979", "EPSG:4978", always_xy=True)
 
-# Convert truth LLH → ECEF
 truth_ecef = np.array(llt_to_ecef.transform(
     truth_interp["Lon_deg"].values,
     truth_interp["Lat_deg"].values,
     truth_interp["Height_m"].values
 )).T
 
-# Convert RTK LLH → ECEF
 rtk_ecef = np.array(llt_to_ecef.transform(
     rtk["Lon_deg"].values,
     rtk["Lat_deg"].values,
@@ -235,18 +284,16 @@ ecef_err = rtk_ecef - truth_ecef
 ref_lat = truth_interp["Lat_deg"].iloc[0]
 ref_lon = truth_interp["Lon_deg"].iloc[0]
 ref_h   = truth_interp["Height_m"].iloc[0]
-# Reference LLH in radians
+
 lat0 = np.deg2rad(ref_lat)
 lon0 = np.deg2rad(ref_lon)
 
-# Rotation matrix ECEF → ENU
 R = np.array([
     [-np.sin(lon0),              np.cos(lon0),              0],
     [-np.sin(lat0)*np.cos(lon0), -np.sin(lat0)*np.sin(lon0), np.cos(lat0)],
     [ np.cos(lat0)*np.cos(lon0),  np.cos(lat0)*np.sin(lon0), np.sin(lat0)]
 ])
 
-# Compute ENU
 enu_err = (R @ ecef_err.T).T
 
 rtk["E_err"] = enu_err[:, 0]
@@ -265,7 +312,6 @@ rmse_h = np.sqrt(np.mean(E**2 + N**2))
 rmse_v = np.sqrt(np.mean(U**2))
 rmse_3d = np.sqrt(np.mean(E**2 + N**2 + U**2))
 
-# Print to console
 print("\n==== RMSE Positioning Errors ====")
 print(f"Horizontal RMSE : {rmse_h:.4f} m")
 print(f"Vertical RMSE   : {rmse_v:.4f} m")
@@ -307,7 +353,6 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Height Over Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-# ENU Errors
 plt.figure()
 plt.plot(rtk["t"], rtk["N_err"], label="North Err")
 plt.plot(rtk["t"], rtk["E_err"], label="East Err")
@@ -320,7 +365,6 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "ENU Error vs Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-# Horizontal error
 plt.figure()
 plt.plot(rtk["t"], rtk["Horz_err"])
 plt.xlabel("Time (s)")
@@ -330,7 +374,6 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Horizontal Error Over Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-# Vertical error
 plt.figure()
 plt.plot(rtk["t"], rtk["U_err"])
 plt.xlabel("Time (s)")
@@ -340,7 +383,6 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Vertical Error Over Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-# Histograms
 xmax = np.percentile(rtk["Horz_err"], 50)
 plt.figure()
 plt.hist(rtk["Horz_err"], bins=10000)
@@ -363,7 +405,6 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Vertical Error Histogram.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-# Satellite count
 plt.figure()
 plt.plot(rtk["t"], rtk["ns"])
 plt.xlabel("Time (s)")
@@ -372,8 +413,6 @@ plt.title("Satellite Count vs Time")
 plt.grid()
 plt.savefig(os.path.join(out_dir, "Satellite Count vs Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
-
-# Sat prob vs pseudorange error
 
 sol_stats_primary = sol_stats[sol_stats["frq"] == 1]
 sol_stats_secondary = sol_stats[sol_stats["frq"] == 2]
@@ -392,9 +431,8 @@ plt.close()
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
-pd.set_option('display.max_colwidth', None) # Useful for long strings in columns
+pd.set_option('display.max_colwidth', None)
 
-# Sat prob vs carrier phase error heatmap
 plt.figure()
 plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resc"]), s=8, alpha=0.6, label="Primary Frequency")
 plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resc"]), s=8, alpha=0.6, label="Secondary Frequency")
@@ -406,28 +444,24 @@ plt.legend()
 plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Carrier_Phase_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-
-
 plt.figure()
 counts, xedges, yedges, im = plt.hist2d(
     sol_stats["prob"],
     abs(sol_stats["resp"]),
-    bins=[20, int(300 / 10)],     # probability bins, 2 m bins up to 100 m
+    bins=[20, int(300 / 10)],
     range=[[0.0, 1.0], [0.0, 300.0]],
     norm=LogNorm()
 )
 
 plt.colorbar(label="Count (log scale)")
 
-# Compute bin centers
 xcenters = 0.5 * (xedges[:-1] + xedges[1:])
 ycenters = 0.5 * (yedges[:-1] + yedges[1:])
 
-# Annotate each bin with count
 for i, x in enumerate(xcenters):
     for j, y in enumerate(ycenters):
         count = counts[i, j]
-        if count > 0:  # avoid cluttering empty bins
+        if count > 0:
             plt.text(
                 x, y,
                 f"{int(count)}",
@@ -441,82 +475,65 @@ plt.xlabel("Probability of Obstruction")
 plt.ylabel("True Double Differenced Pseudorange Error (m)")
 plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
 plt.grid()
-plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"),dpi=300,bbox_inches="tight")
+plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-
-# Probability Histogram
 plt.figure()
-plt.hist(sol_stats["prob"],bins=20,range=(0.0, 1.0))
+plt.hist(sol_stats["prob"], bins=20, range=(0.0, 1.0))
 plt.xlabel("Probability of Obstruction")
 plt.ylabel("Count")
 plt.title("Distribution of Estimated Obstruction Probability")
 plt.grid()
-plt.savefig(os.path.join(out_dir, "Obstruction Probability Histogram.png"),dpi=300,bbox_inches="tight")
+plt.savefig(os.path.join(out_dir, "Obstruction Probability Histogram.png"), dpi=300, bbox_inches="tight")
 plt.close()
-
 
 plt.show()
 
-# Convert to skyplot coordinates
 theta = np.deg2rad(sol_stats_primary["az"])
 r = 90 - sol_stats_primary["el"]
 
-# Classification masks
 tn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] < 10)
 tp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] >= 10)
 fp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] < 10)
 fn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] >= 10)
 
-# Create polar plot
-fig = plt.figure(figsize=(7,7))
+fig = plt.figure(figsize=(7, 7))
 ax = plt.subplot(111, polar=True)
 
-# GNSS-style orientation
 ax.set_theta_zero_location("N")
 ax.set_theta_direction(-1)
 ax.set_rlim(0, 90)
 
-# Plot classes
 ax.scatter(theta[tn], r[tn], s=12, label="True Negative")
 ax.scatter(theta[tp], r[tp], s=12, label="True Positive")
 ax.scatter(theta[fp], r[fp], s=12, label="False Positive")
 ax.scatter(theta[fn], r[fn], s=12, label="False Negative")
 
-# Grid and labels
 ax.set_rgrids([0, 30, 60, 90], labels=["0", "30", "60°", "90°"])
 ax.set_title("Skyplot: Probability vs Residual Classification", pad=20)
 ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
 
-plt.savefig(os.path.join(out_dir, "Pseudorange Residuals.png"),dpi=300,bbox_inches="tight")
-
+plt.savefig(os.path.join(out_dir, "Pseudorange Residuals.png"), dpi=300, bbox_inches="tight")
 plt.close()
 plt.show()
 
-
-# Convert to skyplot coordinates
 theta = np.deg2rad(sol_stats_primary["az"])
 r = 90 - sol_stats_primary["el"]
 
-# Create polar plot
-fig = plt.figure(figsize=(7,7))
+fig = plt.figure(figsize=(7, 7))
 ax = plt.subplot(111, polar=True)
 
-# GNSS-style orientation
 ax.set_theta_zero_location("N")
 ax.set_theta_direction(-1)
 ax.set_rlim(0, 90)
 
-# Plot one layer per satellite
 for sat in sorted(sol_stats_primary["sat"].unique()):
     mask = sol_stats_primary["sat"] == sat
     ax.scatter(theta[mask], r[mask], s=12, label=sat)
 
-# Grid and labels
 ax.set_rgrids([0, 30, 60, 90], labels=["90°", "60°", "30°", "0°"])
 ax.set_title("Skyplot by Satellite", pad=20)
 
-# Place legend outside plot
 ax.legend(
     loc="upper right",
     bbox_to_anchor=(1.35, 1.1),
@@ -533,15 +550,13 @@ plt.savefig(
 plt.close()
 plt.show()
 
-#Trajectory map
-# Create GeoDataFrame for RTK
+# Trajectory map
 gdf_rtk = gpd.GeoDataFrame(
     rtk,
     geometry=gpd.points_from_xy(rtk["Lon_deg"], rtk["Lat_deg"]),
-    crs="EPSG:4326"  # WGS84 lat/lon
+    crs="EPSG:4326"
 )
 
-# Create GeoDataFrame for Truth
 gdf_truth = gpd.GeoDataFrame(
     truth_interp,
     geometry=gpd.points_from_xy(truth_interp["Lon_deg"], truth_interp["Lat_deg"]),
@@ -553,7 +568,6 @@ gdf_truth = gdf_truth.to_crs(epsg=3857)
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
-# Plot truth and RTK
 gdf_truth.plot(
     ax=ax,
     color="green",
@@ -569,7 +583,6 @@ gdf_rtk.plot(
     label="Solution"
 )
 
-# Add basemap
 ctx.add_basemap(
     ax,
     source=ctx.providers.OpenStreetMap.Mapnik
@@ -586,4 +599,132 @@ plt.savefig(
 )
 plt.close()
 
+# ============================
+# CDF Metrics and Plots
+# ============================
+E_abs = np.abs(rtk["E_err"].astype(float).values)
+N_abs = np.abs(rtk["N_err"].astype(float).values)
+U_abs = np.abs(rtk["U_err"].astype(float).values)
+H = np.abs(rtk["Horz_err"].astype(float).values)
 
+print("\nSolution quality (Q) breakdown:")
+q_counts = rtk["Q"].value_counts(dropna=False).sort_index()
+print(q_counts)
+
+has_solution = (
+    rtk["Q"].notna() &
+    (rtk["Q"] > 0) &
+    np.isfinite(rtk["Lat_deg"]) &
+    np.isfinite(rtk["Lon_deg"]) &
+    np.isfinite(rtk["Height_m"])
+)
+epochs_with_solution = int(has_solution.sum())
+total_epochs = int(len(rtk))
+solution_rate = epochs_with_solution / total_epochs if total_epochs else np.nan
+
+# Percentiles by Q using matched errors
+q_rows = []
+for q in sorted(rtk["Q"].dropna().unique()):
+    vals = rtk.loc[rtk["Q"] == q, "Horz_err"].astype(float).values
+    vals = vals[np.isfinite(vals)]
+    if vals.size < 10:
+        continue
+
+    q_rows.append({
+        "Q": int(q),
+        "n": int(vals.size),
+        "P50": float(np.nanpercentile(vals, 50)),
+        "P95": float(np.nanpercentile(vals, 95)),
+        "P99": float(np.nanpercentile(vals, 99)),
+        "Max": float(np.nanmax(vals)),
+
+        # --- NEW columns in the CSV ---
+        "epochs_with_solution": epochs_with_solution,
+        "total_epochs": total_epochs,
+        "solution_rate": float(solution_rate),
+    })
+
+q_table = pd.DataFrame(q_rows)
+q_table.to_csv(os.path.join(out_dir, "HorzError_percentiles_by_Q.csv"), index=False)
+
+# Build table
+q_table = pd.DataFrame(q_rows)
+
+# Nice formatting for console
+q_table_print = q_table.sort_values("Q").copy()
+q_table_print[["P50", "P95", "P99", "Max", "solution_rate"]] = q_table_print[
+    ["P50", "P95", "P99", "Max", "solution_rate"]
+].round(4)
+
+print("\n==== Horz_err percentiles by Q ====")
+print(q_table_print.to_string(index=False))
+
+print(f"\nSolution availability: {epochs_with_solution} / {total_epochs} = {solution_rate:.3%}")
+
+#CDF Plotting
+CDF_PCT = 99
+
+plt.figure()
+for data, lab in zip([E_abs, N_abs, U_abs], ["|E|", "|N|", "|U|"]):
+    xs, ys = ecdf(data)
+    if xs.size:
+        plt.plot(xs, ys, label=lab)
+plt.xlim(p_xlim(np.r_[E_abs, N_abs, U_abs], CDF_PCT))
+plt.xlabel("Absolute error (m)")
+plt.ylabel("CDF")
+plt.title(f"CDF Absolute ENU Component Errors (0–P{CDF_PCT})")
+plt.grid(True)
+plt.legend()
+plt.savefig(os.path.join(out_dir, f"CDF_ENU_abs_P{CDF_PCT}.png"), dpi=300, bbox_inches="tight")
+plt.close()
+
+plt.figure()
+xs, ys = ecdf(H)
+plt.plot(xs, ys, label="Horizontal |EN|")
+plt.xlim(p_xlim(H, CDF_PCT))
+plt.xlabel("Horizontal error (m)")
+plt.ylabel("CDF")
+plt.title(f"CDF Horizontal Error (0–P{CDF_PCT})")
+plt.grid(True)
+plt.legend()
+plt.savefig(os.path.join(out_dir, f"CDF_Horizontal_P{CDF_PCT}.png"), dpi=300, bbox_inches="tight")
+plt.close()
+
+plt.figure()
+for q in sorted(rtk["Q"].dropna().unique()):
+    vals = rtk.loc[rtk["Q"] == q, "Horz_err"].values
+    vals = vals[np.isfinite(vals)]
+    if vals.size < 20:
+        continue
+    xs, ys = ecdf(vals)
+    plt.plot(xs, ys, label=f"Q={int(q)} (n={vals.size})")
+plt.xlim(p_xlim(H, 99))
+plt.xlabel("Horizontal error (m)")
+plt.ylabel("CDF")
+plt.title("CDF Horizontal Error by Solution Quality (Q)")
+plt.grid(True)
+plt.legend()
+plt.savefig(os.path.join(out_dir, "CDF_Horizontal_by_Q_P99.png"), dpi=300, bbox_inches="tight")
+plt.close()
+
+# ============================
+# Solution availability over time
+# ============================
+has_solution = (
+    rtk["Q"].notna() &
+    (rtk["Q"] > 0) &
+    np.isfinite(rtk["Lat_deg"]) &
+    np.isfinite(rtk["Lon_deg"]) &
+    np.isfinite(rtk["Height_m"])
+)
+rtk["has_solution"] = has_solution.astype(int)
+
+plt.figure()
+plt.step(rtk["t"], rtk["has_solution"], where="post")
+plt.ylim(-0.1, 1.1)
+plt.xlabel("Time (s)")
+plt.ylabel("Solution Available")
+plt.title("Solution Availability vs Time")
+plt.grid(True)
+plt.savefig(os.path.join(out_dir, "Solution Availability vs Time.png"), dpi=300, bbox_inches="tight")
+plt.close()
