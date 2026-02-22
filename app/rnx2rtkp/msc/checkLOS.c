@@ -137,7 +137,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     fprintf(stderr, "Origin Height: %lf +/- %lf, DSM Height: %lf +/- %lf, prob_of_match: %lf\n", origin_height, origin_vertical_variance, current_DTM_height, rtk->opt.DSM.antenna_dem_offset_var, p_diff);
 
 
-    if (p_diff < 0.05 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 5)) {
+    if (p_diff < 0.05 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
         // Heights don't match. Incorrect starting height and therefore position
         reset_scaling(rtk, ns, sat);
         return 0;
