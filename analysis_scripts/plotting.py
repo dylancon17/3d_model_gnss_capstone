@@ -82,8 +82,8 @@ for c in ["GPSTime", "Lat_deg", "Lon_deg", "Height_m", "Q", "ns"]:
 rtk["t"] = rtk["GPSTime"] - rtk["GPSTime"].iloc[0]
 
 # Time-based solution availability
-start_time = rtk["GPSTime_abs"].iloc[0]
-end_time = rtk["GPSTime_abs"].iloc[-1]
+start_time = rtk["GPSTime"].iloc[0]
+end_time = rtk["GPSTime"].iloc[-1]
 duration = end_time - start_time
 
 epochs = len(rtk)
@@ -410,7 +410,7 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Vertical Error Over Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-xmax = np.percentile(rtk["Horz_err"], 50)
+xmax = np.percentile(rtk["Horz_err"], 99)
 plt.figure()
 plt.hist(rtk["Horz_err"], bins=10000)
 plt.xlim(0, xmax)
@@ -421,7 +421,7 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Horizontal Error Histogram.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-xmax = np.percentile(rtk["Horz_err"], 50)
+xmax = np.percentile(rtk["Horz_err"], 99)
 plt.figure()
 plt.hist(rtk["U_err"], bins=10000)
 plt.xlim(0, xmax)
@@ -523,10 +523,14 @@ try:
         counts, xedges, yedges, im = plt.hist2d(
             sol_stats_primary["prob"],
             abs(sol_stats_primary["resp"]),
-            bins=[20, 20],     # probability bins, 2 m bins up to 100 m
-            range=[[0.0, 1.0], [20.0, 300.0]],
+            bins=[
+                np.arange(0, 1.025, 0.025),   # x‑bins
+                np.arange(0, 51, 1)           # y‑bins
+            ],
+            range=[[0.0, 1.0], [0.0, 50.0]],
             norm=LogNorm()
         )
+
 
         plt.colorbar(label="Count (log scale)")
 
@@ -705,7 +709,7 @@ except:
     traceback.print_exc()
 
 try:
-    bins_zoom = np.linspace(-200, 200, 81)  # 5 m bins
+    bins_zoom = np.linspace(-50, 50, 100)  # 5 m bins
 
     plt.figure(figsize=(10, 6))
     plt.hist(dH_tn, bins=bins_zoom, alpha=0.6, label="TN")

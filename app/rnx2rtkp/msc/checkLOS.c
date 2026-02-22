@@ -146,9 +146,10 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
 
         if (abs(current_DTM_height - spp_pos[2]) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
-            //Both positions are incorrect
-            reset_scaling(rtk, ns, sat);
-            return 0;
+            //Both positions are incorrect. Just raise the variance and deal with it.
+            //reset_scaling(rtk, ns, sat);
+            //return 0;
+            kf_Q[8] = pow(abs(current_DTM_height - spp_pos[2]), 2);
         }
 
         /* KF height is wrong → fall back to SPP position and covariance */
