@@ -119,6 +119,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double dummy_distance = 0.0;
     get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+        fprintf(stderr, "Theoretically impossible out of bounds hit");
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
     double origin_height = pos[2];
     double origin_vertical_variance = Q[8];
 
@@ -128,18 +134,15 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double p_i_0 = phi_from_standardized(y);
     double p_diff = 2.0 * fmin(p_i_0, 1.0 - p_i_0); // Two tailed setup
 
+    fprintf(stderr, "Origin Height: %lf +/- %lf, DSM Height: %lf +/- %lf, prob_of_match: %lf\n", origin_height, origin_vertical_variance, current_DTM_height, rtk->opt.DSM.antenna_dem_offset_var, p_diff);
 
-    if (p_diff < 0.05 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 7)) {
+
+    if (p_diff < 0.05 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 5)) {
         // Heights don't match. Incorrect starting height and therefore position
         reset_scaling(rtk, ns, sat);
         return 0;
     }
 
-    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
-        fprintf(stderr, "Theoretically impossible out of bounds hit");
-        reset_scaling(rtk, ns, sat);
-        return 0;
-    }
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
 
