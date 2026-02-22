@@ -528,8 +528,10 @@ typedef struct DSMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and use max prob
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, ==7 or ==-4 for max prob */
+                         6 = do observation deweighting, rejection, reference sat selection, height based change rejection
+                         7 = do observation deweighting, rejection, reference sat selection, building plane interpolation
+                         8 = do observation deweighting, rejection, reference sat selection, building plane interpolation, height based change rejection
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for height interpolation, 5 or >7 for height based change rejection */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
