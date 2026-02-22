@@ -478,6 +478,46 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"), dpi=300, bbox_inches="tight")
 plt.close()
 
+
+
+plt.figure()
+counts, xedges, yedges, im = plt.hist2d(
+    sol_stats_primary["prob"],
+    abs(sol_stats_primary["resp"]),
+    bins=[20, 20],     # probability bins, 2 m bins up to 100 m
+    range=[[0.0, 1.0], [20.0, 300.0]],
+    norm=LogNorm()
+)
+
+plt.colorbar(label="Count (log scale)")
+
+# Compute bin centers
+xcenters = 0.5 * (xedges[:-1] + xedges[1:])
+ycenters = 0.5 * (yedges[:-1] + yedges[1:])
+
+# Annotate each bin with count
+for i, x in enumerate(xcenters):
+    for j, y in enumerate(ycenters):
+        count = counts[i, j]
+        if count > 0:  # avoid cluttering empty bins
+            plt.text(
+                x, y,
+                f"{int(count)}",
+                color="white",
+                ha="center",
+                va="center",
+                fontsize=5
+            )
+
+plt.xlabel("Probability of Obstruction")
+plt.ylabel("True Double Differenced Pseudorange Error (m)")
+plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
+plt.grid()
+plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Zoomed (Heatmap).png"),dpi=300,bbox_inches="tight")
+plt.close()
+
+
+# Probability Histogram
 plt.figure()
 plt.hist(sol_stats["prob"], bins=20, range=(0.0, 1.0))
 plt.xlabel("Probability of Obstruction")
@@ -492,10 +532,11 @@ plt.show()
 theta = np.deg2rad(sol_stats_primary["az"])
 r = 90 - sol_stats_primary["el"]
 
-tn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] < 10)
-tp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] >= 10)
-fp = (sol_stats_primary["prob"] >= 0.5) & (sol_stats_primary["resp"] < 10)
-fn = (sol_stats_primary["prob"] < 0.5) & (sol_stats_primary["resp"] >= 10)
+# Classification masks
+tn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] < 3)
+tp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] >= 3)
+fp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] < 3)
+fn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] >= 3)
 
 fig = plt.figure(figsize=(7, 7))
 ax = plt.subplot(111, polar=True)
@@ -550,7 +591,18 @@ plt.savefig(
 plt.close()
 plt.show()
 
-# Trajectory map
+with open(os.path.join(out_dir, "Pseudorange Error Summary.txt"), "w") as file:
+    total = sol_stats_primary.shape[0]
+
+    file.write(f"Total Observations: {total}\n")
+    file.write(f"TN: {sol_stats_primary[tn].shape[0]} : {100 * sol_stats_primary[tn].shape[0] / total:.2f}%\n")
+    file.write(f"TP: {sol_stats_primary[tp].shape[0]} : {100 * sol_stats_primary[tp].shape[0] / total:.2f}%\n")
+    file.write(f"FN: {sol_stats_primary[fn].shape[0]} : {100 * sol_stats_primary[fn].shape[0] / total:.2f}%\n")
+    file.write(f"FP: {sol_stats_primary[fp].shape[0]} : {100 * sol_stats_primary[fp].shape[0] / total:.2f}%\n")
+
+
+#Trajectory map
+# Create GeoDataFrame for RTK
 gdf_rtk = gpd.GeoDataFrame(
     rtk,
     geometry=gpd.points_from_xy(rtk["Lon_deg"], rtk["Lat_deg"]),
@@ -678,53 +730,4 @@ plt.legend()
 plt.savefig(os.path.join(out_dir, f"CDF_ENU_abs_P{CDF_PCT}.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-plt.figure()
-xs, ys = ecdf(H)
-plt.plot(xs, ys, label="Horizontal |EN|")
-plt.xlim(p_xlim(H, CDF_PCT))
-plt.xlabel("Horizontal error (m)")
-plt.ylabel("CDF")
-plt.title(f"CDF Horizontal Error (0–P{CDF_PCT})")
-plt.grid(True)
-plt.legend()
-plt.savefig(os.path.join(out_dir, f"CDF_Horizontal_P{CDF_PCT}.png"), dpi=300, bbox_inches="tight")
-plt.close()
 
-plt.figure()
-for q in sorted(rtk["Q"].dropna().unique()):
-    vals = rtk.loc[rtk["Q"] == q, "Horz_err"].values
-    vals = vals[np.isfinite(vals)]
-    if vals.size < 20:
-        continue
-    xs, ys = ecdf(vals)
-    plt.plot(xs, ys, label=f"Q={int(q)} (n={vals.size})")
-plt.xlim(p_xlim(H, 99))
-plt.xlabel("Horizontal error (m)")
-plt.ylabel("CDF")
-plt.title("CDF Horizontal Error by Solution Quality (Q)")
-plt.grid(True)
-plt.legend()
-plt.savefig(os.path.join(out_dir, "CDF_Horizontal_by_Q_P99.png"), dpi=300, bbox_inches="tight")
-plt.close()
-
-# ============================
-# Solution availability over time
-# ============================
-has_solution = (
-    rtk["Q"].notna() &
-    (rtk["Q"] > 0) &
-    np.isfinite(rtk["Lat_deg"]) &
-    np.isfinite(rtk["Lon_deg"]) &
-    np.isfinite(rtk["Height_m"])
-)
-rtk["has_solution"] = has_solution.astype(int)
-
-plt.figure()
-plt.step(rtk["t"], rtk["has_solution"], where="post")
-plt.ylim(-0.1, 1.1)
-plt.xlabel("Time (s)")
-plt.ylabel("Solution Available")
-plt.title("Solution Availability vs Time")
-plt.grid(True)
-plt.savefig(os.path.join(out_dir, "Solution Availability vs Time.png"), dpi=300, bbox_inches="tight")
-plt.close()
