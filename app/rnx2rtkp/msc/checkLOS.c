@@ -57,48 +57,6 @@ void reset_scaling(rtk_t* rtk, int* ns, int* sat);
 extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir, int* ns, const double* rs) {
     //fprintf(stderr, "%s", "LOS Update\n");
 
-
-
-    int i, nrej=0;
-    int rej_idx[MAXOBS];
-    const double *spp_rr = rtk->sol.rr; // TODO add filtering for if the estimated position is poor
-
-    // Converts ECEF to LLH
-    double spp_pos[3];
-    ecef2pos(spp_rr, spp_pos);
-    
-    // Converts ECEF covars to LLH
-    double spp_P[9]; // 3x3 ENU
-    double spp_Q[9];
-    
-    soltocov_rtk(&(rtk->sol), spp_P);
-    covenu(spp_pos, spp_P, spp_P);
-
-    lat_long ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI};
-    // printf("\nRelative origin latitude: %f\n", ll.latitude);
-    // printf("\nRelative origin longitude: %f\n", ll.longitude);
-
-    int out_of_bounds = 0;
-    // Set relative origin here as it is constant for the rest of the update
-    // TODO, out of bounds filtering may be required...can be used as an optimization. Must reset the scaling if done so
-    set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
-
-    double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
-    double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
-
-    double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / rtk->opt.DSM.step_size;
-    double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / rtk->opt.DSM.step_size;
-
-
-    double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
-    double r;
-    double probability_of_obstruction = 0;
-
-    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
-        reset_scaling(rtk, ns, sat);
-        return 0;
-    }
-
     gtime_t obs_time, point_time;
     int debug = 0;
     if (*ns > 0) {
@@ -114,36 +72,102 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         return 0;
     }
 
+
+
+
+    int i, nrej=0;
+    int rej_idx[MAXOBS];
+    const double *spp_rr = rtk->sol.rr; 
+
+    // Converts ECEF to LLH
+    double spp_pos[3];
+    ecef2pos(spp_rr, spp_pos);
+    
+    // Converts ECEF covars to LLH
+    double spp_P[9]; // 3x3 ENU
+    double spp_Q[9];
+    
+    soltocov_rtk(&(rtk->sol), spp_P);
+    covenu(spp_pos, spp_P, spp_Q);
+
+    double kf_rr[3] = { rtk->x[0], rtk->x[1], rtk->x[2] };
+    double kf_P[9]; // 3x3 ECEF covariance
+    double kf_Q[9];
+
+    double kf_pos[3];
+    ecef2pos(kf_rr, kf_pos);
+
+    for (int i = 0; i < 3; i++) 
+        for (int j = 0; j < 3; j++) 
+            kf_P[i + 3 * j] = rtk->P[i + j * rtk->nx];
+
+    covenu(kf_pos, kf_P, kf_Q);
+
+    lat_long kf_ll = { kf_pos[0] * 180 / M_PI, kf_pos[1] * 180 / M_PI};
+
+    int out_of_bounds = 0;
+    set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &kf_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
     double current_DTM_height;
     int origin_x = 0, origin_y = 0;
     double dummy_distance = 0.0;
     get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
-    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
         fprintf(stderr, "Theoretically impossible out of bounds hit");
         reset_scaling(rtk, ns, sat);
         return 0;
     }
 
-    double origin_height = spp_pos[2];
-    double origin_vertical_variance = spp_Q[8];
-    origin_vertical_variance = 1.0;
 
-    // compute y and local probability p_i
-    double denom_var = 10 + origin_vertical_variance + rtk->opt.DSM.antenna_dem_offset_var; // General noise added in to the test, needs to be a clear lack of intercept
-    double y = (origin_height - (rtk->opt.DSM.antenna_dem_offset + current_DTM_height)) / sqrt(denom_var);
-    double p_i_0 = phi_from_standardized(y);
-    double p_diff = 2.0 * fmin(p_i_0, 1.0 - p_i_0); // Two tailed setup
-
-    fprintf(stderr, "Origin Height: %lf +/- %lf, DSM Height: %lf +/- %lf, prob_of_match: %lf\n", origin_height, Q[8], current_DTM_height, rtk->opt.DSM.antenna_dem_offset_var, p_diff);
-    origin_vertical_variance = pow((current_DTM_height - origin_height) / 0.68, 2);
-
-
-    if (abs(current_DTM_height - origin_height) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+    if (abs(current_DTM_height - kf_pos[2]) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
         // Heights don't match. Incorrect starting height and therefore position
-        reset_scaling(rtk, ns, sat);
-        return 0;
+        //Try the single point position instead
+        lat_long spp_ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI };
+
+        set_relative_origin(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &spp_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+
+        if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+            reset_scaling(rtk, ns, sat);
+            return 0;
+        }
+
+        get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+
+        if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+            fprintf(stderr, "Theoretically impossible out of bounds hit");
+            reset_scaling(rtk, ns, sat);
+            return 0;
+        }
+
+        if (abs(current_DTM_height - spp_pos[2]) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+            //Both positions are incorrect
+            reset_scaling(rtk, ns, sat);
+            return 0;
+        }
+
+        /* KF height is wrong → fall back to SPP position and covariance */
+        memcpy(kf_rr, spp_rr, sizeof(double) * 3);
+        memcpy(kf_pos, spp_pos, sizeof(double) * 3);
+        memcpy(kf_P, spp_P, sizeof(double) * 9);
+        memcpy(kf_Q, spp_Q, sizeof(double) * 9);
     }
+
+    double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
+    double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
+
+    double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / rtk->opt.DSM.step_size;
+    double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / rtk->opt.DSM.step_size;
+
+
+    double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
+    double r;
+    double probability_of_obstruction = 0;
 
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
@@ -151,7 +175,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         //fprintf(stderr, "Checking satellite %d\n", i);
 
-        r = geodist(rs + i * 6, spp_rr, e); //TODO how is rs indexed
+        r = geodist(rs + i * 6, kf_rr, e); //TODO how is rs indexed
 
             /* geodist failure check */
         if (r <= 0) {
@@ -171,7 +195,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], spp_pos[0], spp_pos[1], spp_pos[2], spp_Q[0] + spp_Q[4], origin_vertical_variance, &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
@@ -210,7 +234,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             fprintf(stderr, "Setting ssat at index %d with scaling: %lf\n", sat[i] - 1, scaling);
         }
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
-        rtk->ssat[sat[i] - 1].height_offset = current_DTM_height - origin_height;
+        rtk->ssat[sat[i] - 1].height_offset = current_DTM_height - kf_pos[2];
 
 
     }
