@@ -349,7 +349,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             fprintf(stderr, "Checking prob for: %lf, with original prob of %lf and deweighting of %lf using vars of %lf, %lf\n", p_i, p_i_0, dw, sat_height_var, DTM_height_var);
         }
 
-        if (DSM->processing_type == 7 || DSM->processing_type == -4) {
+        if (DSM->processing_type >= 7 || DSM->processing_type <= -4) {
             if (p_i > probability_of_obstruction) {
                 probability_of_obstruction = p_i;
                 if (debug) {

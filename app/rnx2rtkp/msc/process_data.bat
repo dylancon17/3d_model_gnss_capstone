@@ -162,7 +162,7 @@ echo Usage:
 echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
 echo.
 echo DEM Options:
-echo    -4 = Calculate true pseudorange and probability and use reference satellite selection and height interpolation
+echo    -4 = Calculate true pseudorange and probability and use reference satellite selection and use max prob
 echo    -3 = Calculate true pseudorange and probability and use reference satellite selection based on probability threshold
 echo    -2 = Calculate true pseudorange and probabilities
 echo    -1 = Calculate true pseudorange errors
@@ -172,9 +172,9 @@ echo     2 = do observation rejection based on probability threshold.
 echo     3 = do observation deweighting and rejection based on probability threshold
 echo     4 = do observation deweighting based on probability threshold
 echo     5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-echo     6 = do observation deweighting, rejection, reference sat selection, height‑based change rejection
-echo     7 = do observation deweighting, rejection, reference sat selection, building‑plane interpolation
-echo     8 = do observation deweighting, rejection, reference sat selection, building‑plane interpolation, height‑based change rejection
+echo     6 = do observation deweighting, rejection, reference sat selection, height based change rejection
+echo     7 = do observation deweighting, rejection, reference sat selection, max prob selection
+echo     8 = do observation deweighting, rejection, reference sat selection, max prob selection, height based change rejection
 echo.
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots
