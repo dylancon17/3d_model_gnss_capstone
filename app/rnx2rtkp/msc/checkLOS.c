@@ -127,6 +127,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     double origin_height = pos[2];
     double origin_vertical_variance = Q[8];
+    origin_vertical_variance = 1.0;
 
     // compute y and local probability p_i
     double denom_var = 10 + origin_vertical_variance + rtk->opt.DSM.antenna_dem_offset_var; // General noise added in to the test, needs to be a clear lack of intercept
@@ -134,10 +135,11 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double p_i_0 = phi_from_standardized(y);
     double p_diff = 2.0 * fmin(p_i_0, 1.0 - p_i_0); // Two tailed setup
 
-    fprintf(stderr, "Origin Height: %lf +/- %lf, DSM Height: %lf +/- %lf, prob_of_match: %lf\n", origin_height, origin_vertical_variance, current_DTM_height, rtk->opt.DSM.antenna_dem_offset_var, p_diff);
+    fprintf(stderr, "Origin Height: %lf +/- %lf, DSM Height: %lf +/- %lf, prob_of_match: %lf\n", origin_height, Q[8], current_DTM_height, rtk->opt.DSM.antenna_dem_offset_var, p_diff);
+    origin_vertical_variance = pow((current_DTM_height - origin_height) / 0.68, 2);
 
 
-    if (p_diff < 0.05 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+    if (abs(current_DTM_height - origin_height) > 50000 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
         // Heights don't match. Incorrect starting height and therefore position
         reset_scaling(rtk, ns, sat);
         return 0;
@@ -169,7 +171,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], origin_vertical_variance, &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
@@ -208,13 +210,15 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             fprintf(stderr, "Setting ssat at index %d with scaling: %lf\n", sat[i] - 1, scaling);
         }
         rtk->ssat[sat[i] - 1].obstruction_scaling = scaling;
+        rtk->ssat[sat[i] - 1].height_offset = current_DTM_height - origin_height;
+
 
     }
 
     //fprintf(stdout, "%d possible sats\n", *ns);
 
     // If deterministic or probabilistic rejection
-    if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4) {
+    if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4 && rtk->opt.DSM.processing_type != 9) {
         // Remove the rejected indices
         for (i = nrej - 1; i >= 0; i--) {
             int idx = rej_idx[i];
@@ -381,7 +385,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
 
         // compute weight for this cell and scale prob(distance_from_cell_center)
         double dw = compute_cell_weight(&ray, ray.ix, ray.iy, DSM);
-        double p_i = p_i_0 * dw * 0.25;
+        double p_i = p_i_0 * dw;
 
         
 
@@ -399,7 +403,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         }
         else {
             if (probability_of_obstruction <= 0.0) {
-                probability_of_obstruction = p_i;
+                probability_of_obstruction = p_i * 0.5; // Set max gain per cell when combining cells
             }
 
             probability_of_obstruction = 1.0 - (1.0 - probability_of_obstruction) * (1.0 - p_i);
@@ -508,10 +512,9 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     // Origin Height - Will have errors, depends on origin height source
     //  DEM Source - use determine_DTM_height_var + DEM offset var
     //  KF Source - use the estimated filter variance
-    * var = origin_vertical_variance;
     // double distance_var = pow(0.34 * DSM->step_size, 2) + origin_horizontal_variance;
     // *var = *var + pow(sat_vertical_slope, 2) * distance_var;
-
+    *var = origin_vertical_variance;
     //fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
     return;
 }

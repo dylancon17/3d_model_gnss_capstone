@@ -173,7 +173,7 @@ static gtime_t time_stat={0};    /* rtk status file time */
 *          rejc     : data reject (outlier) count
 *          scal     : Weight scaling of observations due to obstruction probability
 *          prob     : probability of obstruction [0-1]
-*          
+*          dh       : DSM height - GNSS height
 *
 *-----------------------------------------------------------------------------*/
 extern int rtkopenstat(const char *file, int level)
@@ -328,7 +328,7 @@ static void outsolstat(rtk_t *rtk)
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp [j],ssat->resc[j],  ssat->vsat[j],ssat->snr[j]*0.25,
                     ssat->fix  [j],ssat->slip[j]&3,ssat->lock[j],ssat->outc[j],
-                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i);
+                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i,ssat->height_offset);
         }
     }
 }

@@ -531,7 +531,8 @@ typedef struct DSMData {
                          6 = do observation deweighting, rejection, reference sat selection, height based change rejection
                          7 = do observation deweighting, rejection, reference sat selection, max prob selection
                          8 = do observation deweighting, rejection, reference sat selection, max prob selection, height based change rejection
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for max prob selection, 5 or >7 for height based change rejection */
+                         9 = do observation deweighting, reference sat selection, max prob selection, height based change rejection
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 and !=9 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for max prob selection, 5 or >7 for height based change rejection */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var; 
@@ -1231,6 +1232,7 @@ typedef struct {        /* satellite status type */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
     double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
     double obstruction_probability; /* probability of obstruction*/
+    double height_offset; /* Mismatch between DSM and GNSS heights*/
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */

@@ -118,65 +118,68 @@ sat_cols = [
     "idx"     # Index
 ]
 
-sol_stats = pd.DataFrame(sat_rows, columns=sat_cols)
+try:
+    sol_stats = pd.DataFrame(sat_rows, columns=sat_cols)
 
-numeric_cols = [
-    "week", "tow", "frq",
-    "az", "el",
-    "resp", "resc",
-    "vsat", "snr", "fix", "slip",
-    "lock", "outc", "slipc", "rejc",
-    "scal", "prob", "idx"
-]
+    numeric_cols = [
+        "week", "tow", "frq",
+        "az", "el",
+        "resp", "resc",
+        "vsat", "snr", "fix", "slip",
+        "lock", "outc", "slipc", "rejc",
+        "scal", "prob", "idx"
+    ]
 
-sol_stats[numeric_cols] = sol_stats[numeric_cols].apply(
-    pd.to_numeric, errors="coerce"
-)
+    sol_stats[numeric_cols] = sol_stats[numeric_cols].apply(
+        pd.to_numeric, errors="coerce"
+    )
 
-sol_stats = sol_stats.drop(
-    columns=["vsat", "snr", "fix", "slip", "lock", "outc", "slipc", "rejc", "scal"]
-)
+    sol_stats = sol_stats.drop(
+        columns=["vsat", "snr", "fix", "slip", "lock", "outc", "slipc", "rejc", "scal"]
+    )
 
-# Relative time in seconds from first epoch
-sol_stats["t"] = sol_stats["tow"] - sol_stats["tow"].iloc[0]
+    # Relative time in seconds from first epoch
+    sol_stats["t"] = sol_stats["tow"] - sol_stats["tow"].iloc[0]
 
-sol_stats["resp"] = abs(sol_stats["resp"])
-sol_stats["resc"] = abs(sol_stats["resc"])
+    sol_stats["resp"] = abs(sol_stats["resp"])
+    sol_stats["resc"] = abs(sol_stats["resc"])
 
-# Remove -1-probability entries (indicates always out of bounds)
-sol_stats = sol_stats[sol_stats["prob"] >= 0.0]
+    # Remove -1-probability entries (indicates always out of bounds)
+    sol_stats = sol_stats[sol_stats["prob"] >= 0.0]
 
-pd.set_option("display.max_rows", None)
-pd.set_option("display.max_columns", None)
-pd.set_option("display.width", None)
-pd.set_option("display.max_colwidth", None)
+    pd.set_option("display.max_rows", None)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.width", None)
+    pd.set_option("display.max_colwidth", None)
 
-# Assign the base the minimum residual across the other satellites, as it can't be better than that
-sat_sys = sol_stats["sat"].astype(str).str[0]
+    # Assign the base the minimum residual across the other satellites, as it can't be better than that
+    sat_sys = sol_stats["sat"].astype(str).str[0]
 
-# Compute per-(tow, sat_sys) minimum non-zero resp
-group_min = (
-    sol_stats["resp"]
-    .where(sol_stats["resp"] != 0)
-    .groupby([sol_stats["tow"], sat_sys])
-    .transform("min")
-)
+    # Compute per-(tow, sat_sys) minimum non-zero resp
+    group_min = (
+        sol_stats["resp"]
+        .where(sol_stats["resp"] != 0)
+        .groupby([sol_stats["tow"], sat_sys])
+        .transform("min")
+    )
 
-# Replace zeros with group minimum (fallback epsilon if group_min is NaN)
-mask = sol_stats["resp"] == 0
-sol_stats.loc[mask, "resp"] = group_min[mask].fillna(1e-6)
+    # Replace zeros with group minimum (fallback epsilon if group_min is NaN)
+    mask = sol_stats["resp"] == 0
+    sol_stats.loc[mask, "resp"] = group_min[mask].fillna(1e-6)
 
-# Compute per-(tow, sat_sys) minimum non-zero resc
-group_min = (
-    sol_stats["resc"]
-    .where(sol_stats["resc"] != 0)
-    .groupby([sol_stats["tow"], sat_sys])
-    .transform("min")
-)
+    # Compute per-(tow, sat_sys) minimum non-zero resc
+    group_min = (
+        sol_stats["resc"]
+        .where(sol_stats["resc"] != 0)
+        .groupby([sol_stats["tow"], sat_sys])
+        .transform("min")
+    )
 
-# Replace zeros with group minimum (fallback epsilon if group_min is NaN)
-mask = sol_stats["resc"] == 0
-sol_stats.loc[mask, "resc"] = group_min[mask].fillna(1e-6)
+    # Replace zeros with group minimum (fallback epsilon if group_min is NaN)
+    mask = sol_stats["resc"] == 0
+    sol_stats.loc[mask, "resc"] = group_min[mask].fillna(1e-6)
+except:
+    pass
 
 
 # ============================
@@ -312,10 +315,19 @@ rmse_h = np.sqrt(np.mean(E**2 + N**2))
 rmse_v = np.sqrt(np.mean(U**2))
 rmse_3d = np.sqrt(np.mean(E**2 + N**2 + U**2))
 
-print("\n==== RMSE Positioning Errors ====")
-print(f"Horizontal RMSE : {rmse_h:.4f} m")
-print(f"Vertical RMSE   : {rmse_v:.4f} m")
-print(f"3D RMSE         : {rmse_3d:.4f} m")
+rmse_text = (
+    "\n==== RMSE Positioning Errors ====\n"
+    f"Horizontal RMSE : {rmse_h:.4f} m\n"
+    f"Vertical RMSE   : {rmse_v:.4f} m\n"
+    f"3D RMSE         : {rmse_3d:.4f} m\n"
+)
+
+# Print to console
+print(rmse_text, end="")
+
+# Save to file
+with open(os.path.join(out_dir, "RMSE_Positioning_Errors.txt"), "w") as f:
+    f.write(rmse_text)
 
 # ============================
 # PLOTTING
@@ -414,192 +426,214 @@ plt.grid()
 plt.savefig(os.path.join(out_dir, "Satellite Count vs Time.png"), dpi=300, bbox_inches="tight")
 plt.close()
 
-sol_stats_primary = sol_stats[sol_stats["frq"] == 1]
-sol_stats_secondary = sol_stats[sol_stats["frq"] == 2]
+try:
+    sol_stats_primary = sol_stats[sol_stats["frq"] == 1]
+    sol_stats_secondary = sol_stats[sol_stats["frq"] == 2]
 
-plt.figure()
-plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resp"]), s=8, alpha=0.6, label="Primary Frequency")
-plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resp"]), s=8, alpha=0.6, label="Secondary Frequency")
-plt.xlabel("Probability of Obstruction")
-plt.ylabel("True Double Differenced Pseudorange Error (m)")
-plt.title("Pseudorange Errors at Estimated Probability Levels")
-plt.grid()
-plt.legend()
-plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Pseudorange_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
-plt.close()
+    plt.figure()
+    plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resp"]), s=8, alpha=0.6, label="Primary Frequency")
+    plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resp"]), s=8, alpha=0.6, label="Secondary Frequency")
+    plt.xlabel("Probability of Obstruction")
+    plt.ylabel("True Double Differenced Pseudorange Error (m)")
+    plt.title("Pseudorange Errors at Estimated Probability Levels")
+    plt.grid()
+    plt.legend()
+    plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Pseudorange_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
+    plt.close()
 
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-pd.set_option('display.max_colwidth', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
 
-plt.figure()
-plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resc"]), s=8, alpha=0.6, label="Primary Frequency")
-plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resc"]), s=8, alpha=0.6, label="Secondary Frequency")
-plt.xlabel("Probability of Obstruction")
-plt.ylabel("True Double Differenced Carrier Phase Error (m)")
-plt.title("Carrier Phase Errors at Estimated Probability Levels")
-plt.grid()
-plt.legend()
-plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Carrier_Phase_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
-plt.close()
+    plt.figure()
+    plt.scatter(sol_stats_primary["prob"], abs(sol_stats_primary["resc"]), s=8, alpha=0.6, label="Primary Frequency")
+    plt.scatter(sol_stats_secondary["prob"], abs(sol_stats_secondary["resc"]), s=8, alpha=0.6, label="Secondary Frequency")
+    plt.xlabel("Probability of Obstruction")
+    plt.ylabel("True Double Differenced Carrier Phase Error (m)")
+    plt.title("Carrier Phase Errors at Estimated Probability Levels")
+    plt.grid()
+    plt.legend()
+    plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Carrier_Phase_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
+    plt.close()
+except:
+    pass
 
-plt.figure()
-counts, xedges, yedges, im = plt.hist2d(
-    sol_stats["prob"],
-    abs(sol_stats["resp"]),
-    bins=[20, int(300 / 10)],
-    range=[[0.0, 1.0], [0.0, 300.0]],
-    norm=LogNorm()
-)
+try:
+    if sol_stats.empty:
+        pass
+    else:
+        plt.figure()
+        
+        counts, xedges, yedges, im = plt.hist2d(
+            sol_stats["prob"],
+            abs(sol_stats["resp"]),
+            bins=[20, int(300 / 10)],
+            range=[[0.0, 1.0], [0.0, 300.0]],
+            norm=LogNorm()
+        )
 
-plt.colorbar(label="Count (log scale)")
+        plt.colorbar(label="Count (log scale)")
 
-xcenters = 0.5 * (xedges[:-1] + xedges[1:])
-ycenters = 0.5 * (yedges[:-1] + yedges[1:])
+        xcenters = 0.5 * (xedges[:-1] + xedges[1:])
+        ycenters = 0.5 * (yedges[:-1] + yedges[1:])
 
-for i, x in enumerate(xcenters):
-    for j, y in enumerate(ycenters):
-        count = counts[i, j]
-        if count > 0:
-            plt.text(
-                x, y,
-                f"{int(count)}",
-                color="white",
-                ha="center",
-                va="center",
-                fontsize=5
-            )
+        for i, x in enumerate(xcenters):
+            for j, y in enumerate(ycenters):
+                count = counts[i, j]
+                if count > 0:
+                    plt.text(
+                        x, y,
+                        f"{int(count)}",
+                        color="white",
+                        ha="center",
+                        va="center",
+                        fontsize=5
+                    )
 
-plt.xlabel("Probability of Obstruction")
-plt.ylabel("True Double Differenced Pseudorange Error (m)")
-plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
-plt.grid()
-plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"), dpi=300, bbox_inches="tight")
-plt.close()
+        plt.xlabel("Probability of Obstruction")
+        plt.ylabel("True Double Differenced Pseudorange Error (m)")
+        plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
+        plt.grid()
+        plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"), dpi=300, bbox_inches="tight")
+        plt.close()
+except:
+    pass
+
+try:
+    plt.figure()
+    if sol_stats.empty:
+        pass
+    else:
+        counts, xedges, yedges, im = plt.hist2d(
+            sol_stats_primary["prob"],
+            abs(sol_stats_primary["resp"]),
+            bins=[20, 20],     # probability bins, 2 m bins up to 100 m
+            range=[[0.0, 1.0], [20.0, 300.0]],
+            norm=LogNorm()
+        )
+
+        plt.colorbar(label="Count (log scale)")
+
+        # Compute bin centers
+        xcenters = 0.5 * (xedges[:-1] + xedges[1:])
+        ycenters = 0.5 * (yedges[:-1] + yedges[1:])
+
+        # Annotate each bin with count
+        for i, x in enumerate(xcenters):
+            for j, y in enumerate(ycenters):
+                count = counts[i, j]
+                if count > 0:  # avoid cluttering empty bins
+                    plt.text(
+                        x, y,
+                        f"{int(count)}",
+                        color="white",
+                        ha="center",
+                        va="center",
+                        fontsize=5
+                    )
+
+        plt.xlabel("Probability of Obstruction")
+        plt.ylabel("True Double Differenced Pseudorange Error (m)")
+        plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
+        plt.grid()
+        plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Zoomed (Heatmap).png"),dpi=300,bbox_inches="tight")
+        plt.close()
+except:
+    pass
+
+try:
+    # Probability Histogram
+    plt.figure()
+    plt.hist(sol_stats["prob"], bins=20, range=(0.0, 1.0))
+    plt.xlabel("Probability of Obstruction")
+    plt.ylabel("Count")
+    plt.title("Distribution of Estimated Obstruction Probability")
+    plt.grid()
+    plt.savefig(os.path.join(out_dir, "Obstruction Probability Histogram.png"), dpi=300, bbox_inches="tight")
+    plt.close()
+
+    plt.show()
+except:
+    pass
 
 
+try:
+    theta = np.deg2rad(sol_stats_primary["az"])
+    r = 90 - sol_stats_primary["el"]
 
-plt.figure()
-counts, xedges, yedges, im = plt.hist2d(
-    sol_stats_primary["prob"],
-    abs(sol_stats_primary["resp"]),
-    bins=[20, 20],     # probability bins, 2 m bins up to 100 m
-    range=[[0.0, 1.0], [20.0, 300.0]],
-    norm=LogNorm()
-)
+    # Classification masks
+    tn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] < 3)
+    tp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] >= 3)
+    fp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] < 3)
+    fn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] >= 3)
 
-plt.colorbar(label="Count (log scale)")
+    fig = plt.figure(figsize=(7, 7))
+    ax = plt.subplot(111, polar=True)
 
-# Compute bin centers
-xcenters = 0.5 * (xedges[:-1] + xedges[1:])
-ycenters = 0.5 * (yedges[:-1] + yedges[1:])
+    ax.set_theta_zero_location("N")
+    ax.set_theta_direction(-1)
+    ax.set_rlim(0, 90)
 
-# Annotate each bin with count
-for i, x in enumerate(xcenters):
-    for j, y in enumerate(ycenters):
-        count = counts[i, j]
-        if count > 0:  # avoid cluttering empty bins
-            plt.text(
-                x, y,
-                f"{int(count)}",
-                color="white",
-                ha="center",
-                va="center",
-                fontsize=5
-            )
+    ax.scatter(theta[tn], r[tn], s=12, label="True Negative")
+    ax.scatter(theta[tp], r[tp], s=12, label="True Positive")
+    ax.scatter(theta[fp], r[fp], s=12, label="False Positive")
+    ax.scatter(theta[fn], r[fn], s=12, label="False Negative")
 
-plt.xlabel("Probability of Obstruction")
-plt.ylabel("True Double Differenced Pseudorange Error (m)")
-plt.title("Primary Pseudorange Errors at Estimated Probability Levels")
-plt.grid()
-plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Zoomed (Heatmap).png"),dpi=300,bbox_inches="tight")
-plt.close()
+    ax.set_rgrids([0, 30, 60, 90], labels=["0", "30", "60°", "90°"])
+    ax.set_title("Skyplot: Probability vs Residual Classification", pad=20)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
 
+    plt.savefig(os.path.join(out_dir, "Pseudorange Residuals.png"), dpi=300, bbox_inches="tight")
+    plt.close()
+    plt.show()
 
-# Probability Histogram
-plt.figure()
-plt.hist(sol_stats["prob"], bins=20, range=(0.0, 1.0))
-plt.xlabel("Probability of Obstruction")
-plt.ylabel("Count")
-plt.title("Distribution of Estimated Obstruction Probability")
-plt.grid()
-plt.savefig(os.path.join(out_dir, "Obstruction Probability Histogram.png"), dpi=300, bbox_inches="tight")
-plt.close()
+    theta = np.deg2rad(sol_stats_primary["az"])
+    r = 90 - sol_stats_primary["el"]
 
-plt.show()
+    fig = plt.figure(figsize=(7, 7))
+    ax = plt.subplot(111, polar=True)
 
-theta = np.deg2rad(sol_stats_primary["az"])
-r = 90 - sol_stats_primary["el"]
+    ax.set_theta_zero_location("N")
+    ax.set_theta_direction(-1)
+    ax.set_rlim(0, 90)
 
-# Classification masks
-tn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] < 3)
-tp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] >= 3)
-fp = (sol_stats_primary["prob"] >= 0.95) & (sol_stats_primary["resp"] < 3)
-fn = (sol_stats_primary["prob"] < 0.95) & (sol_stats_primary["resp"] >= 3)
+    for sat in sorted(sol_stats_primary["sat"].unique()):
+        mask = sol_stats_primary["sat"] == sat
+        ax.scatter(theta[mask], r[mask], s=12, label=sat)
 
-fig = plt.figure(figsize=(7, 7))
-ax = plt.subplot(111, polar=True)
+    ax.set_rgrids([0, 30, 60, 90], labels=["90°", "60°", "30°", "0°"])
+    ax.set_title("Skyplot by Satellite", pad=20)
 
-ax.set_theta_zero_location("N")
-ax.set_theta_direction(-1)
-ax.set_rlim(0, 90)
+    ax.legend(
+        loc="upper right",
+        bbox_to_anchor=(1.35, 1.1),
+        title="Satellite",
+        fontsize=8
+    )
 
-ax.scatter(theta[tn], r[tn], s=12, label="True Negative")
-ax.scatter(theta[tp], r[tp], s=12, label="True Positive")
-ax.scatter(theta[fp], r[fp], s=12, label="False Positive")
-ax.scatter(theta[fn], r[fn], s=12, label="False Negative")
+    plt.savefig(
+        os.path.join(out_dir, "Skyplot_by_Satellite.png"),
+        dpi=300,
+        bbox_inches="tight"
+    )
 
-ax.set_rgrids([0, 30, 60, 90], labels=["0", "30", "60°", "90°"])
-ax.set_title("Skyplot: Probability vs Residual Classification", pad=20)
-ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
+    plt.close()
+    plt.show()
+except:
+    pass
 
-plt.savefig(os.path.join(out_dir, "Pseudorange Residuals.png"), dpi=300, bbox_inches="tight")
-plt.close()
-plt.show()
+try:
+    with open(os.path.join(out_dir, "Pseudorange Error Summary.txt"), "w") as file:
+        total = sol_stats_primary.shape[0]
 
-theta = np.deg2rad(sol_stats_primary["az"])
-r = 90 - sol_stats_primary["el"]
-
-fig = plt.figure(figsize=(7, 7))
-ax = plt.subplot(111, polar=True)
-
-ax.set_theta_zero_location("N")
-ax.set_theta_direction(-1)
-ax.set_rlim(0, 90)
-
-for sat in sorted(sol_stats_primary["sat"].unique()):
-    mask = sol_stats_primary["sat"] == sat
-    ax.scatter(theta[mask], r[mask], s=12, label=sat)
-
-ax.set_rgrids([0, 30, 60, 90], labels=["90°", "60°", "30°", "0°"])
-ax.set_title("Skyplot by Satellite", pad=20)
-
-ax.legend(
-    loc="upper right",
-    bbox_to_anchor=(1.35, 1.1),
-    title="Satellite",
-    fontsize=8
-)
-
-plt.savefig(
-    os.path.join(out_dir, "Skyplot_by_Satellite.png"),
-    dpi=300,
-    bbox_inches="tight"
-)
-
-plt.close()
-plt.show()
-
-with open(os.path.join(out_dir, "Pseudorange Error Summary.txt"), "w") as file:
-    total = sol_stats_primary.shape[0]
-
-    file.write(f"Total Observations: {total}\n")
-    file.write(f"TN: {sol_stats_primary[tn].shape[0]} : {100 * sol_stats_primary[tn].shape[0] / total:.2f}%\n")
-    file.write(f"TP: {sol_stats_primary[tp].shape[0]} : {100 * sol_stats_primary[tp].shape[0] / total:.2f}%\n")
-    file.write(f"FN: {sol_stats_primary[fn].shape[0]} : {100 * sol_stats_primary[fn].shape[0] / total:.2f}%\n")
-    file.write(f"FP: {sol_stats_primary[fp].shape[0]} : {100 * sol_stats_primary[fp].shape[0] / total:.2f}%\n")
-
+        file.write(f"Total Observations: {total}\n")
+        file.write(f"TN: {sol_stats_primary[tn].shape[0]} : {100 * sol_stats_primary[tn].shape[0] / total:.2f}%\n")
+        file.write(f"TP: {sol_stats_primary[tp].shape[0]} : {100 * sol_stats_primary[tp].shape[0] / total:.2f}%\n")
+        file.write(f"FN: {sol_stats_primary[fn].shape[0]} : {100 * sol_stats_primary[fn].shape[0] / total:.2f}%\n")
+        file.write(f"FP: {sol_stats_primary[fp].shape[0]} : {100 * sol_stats_primary[fp].shape[0] / total:.2f}%\n")
+except:
+    pass
 
 #Trajectory map
 # Create GeoDataFrame for RTK
@@ -696,6 +730,23 @@ for q in sorted(rtk["Q"].dropna().unique()):
         "solution_rate": float(solution_rate),
     })
 
+vals = rtk.loc[True, "Horz_err"].astype(float).values
+vals = vals[np.isfinite(vals)]
+
+q_rows.append({
+    "Q": "All",
+    "n": int(vals.size),
+    "P50": float(np.nanpercentile(vals, 50)),
+    "P95": float(np.nanpercentile(vals, 95)),
+    "P99": float(np.nanpercentile(vals, 99)),
+    "Max": float(np.nanmax(vals)),
+
+    # --- NEW columns in the CSV ---
+    "epochs_with_solution": epochs_with_solution,
+    "total_epochs": total_epochs,
+    "solution_rate": float(solution_rate),
+})
+
 q_table = pd.DataFrame(q_rows)
 q_table.to_csv(os.path.join(out_dir, "HorzError_percentiles_by_Q.csv"), index=False)
 
@@ -712,6 +763,9 @@ print("\n==== Horz_err percentiles by Q ====")
 print(q_table_print.to_string(index=False))
 
 print(f"\nSolution availability: {epochs_with_solution} / {total_epochs} = {solution_rate:.3%}")
+
+
+
 
 #CDF Plotting
 CDF_PCT = 99

@@ -175,9 +175,9 @@ int main(int argc, char **argv)
         /* set DEM options */
         prcopt.DSM.max_distance = 2000; // Only search for buildings up to 2km away
         prcopt.DSM.antenna_dem_offset = 1.5; // Assuming antenna is 2m above DEM //TODO-DC, get a better number
-        prcopt.DSM.use_dem_height_only = 1; //Use solved GNSS height as height origin for traverses
-        prcopt.DSM.rejection_threshold = 0.98; // Reject sats with more than 50% probability of obstruction
-        prcopt.DSM.antenna_dem_offset_var = 1; // 1m^2 variance in vehicle height
+        prcopt.DSM.use_dem_height_only = 0; //Use solved GNSS height as height origin for traverses
+        prcopt.DSM.rejection_threshold = 1.1; // Reject sats with more than 50% probability of obstruction
+        prcopt.DSM.antenna_dem_offset_var = 0.5; // 1m^2 variance in vehicle height
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 100; // Scale errors to a max of 20 times
         prcopt.DSM.building_height_margin = 1; //Unused
