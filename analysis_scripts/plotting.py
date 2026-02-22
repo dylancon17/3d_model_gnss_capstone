@@ -81,6 +81,20 @@ for c in ["GPSTime", "Lat_deg", "Lon_deg", "Height_m", "Q", "ns"]:
 # Relative time (seconds from start)
 rtk["t"] = rtk["GPSTime"] - rtk["GPSTime"].iloc[0]
 
+# Time-based solution availability
+start_time = rtk["GPSTime_abs"].iloc[0]
+end_time = rtk["GPSTime_abs"].iloc[-1]
+duration = end_time - start_time
+
+epochs = len(rtk)
+
+if duration > 0:
+    solution_rate_time = epochs / duration
+else:
+    solution_rate_time = float("nan")
+
+print(f"\nTime-based solution availability: {solution_rate_time:.3f} epochs/sec")
+
 
 # ============================
 # LOAD RTKLIB $SAT STATS FILE
@@ -812,20 +826,6 @@ for q in sorted(rtk["Q"].dropna().unique()):
 vals = rtk["Horz_err"].astype(float).values
 vals = vals[np.isfinite(vals)]
 
-# Build table
-q_table = pd.DataFrame(q_rows)
-
-# Nice formatting for console
-q_table_print = q_table.sort_values("Q").copy()
-q_table_print[["P50", "P95", "P99", "Max", "solution_rate"]] = q_table_print[
-    ["P50", "P95", "P99", "Max", "solution_rate"]
-].round(4)
-
-print("\n==== Horz_err percentiles by Q ====")
-print(q_table_print.to_string(index=False))
-
-print(f"\nSolution availability: {epochs_with_solution} / {total_epochs} = {solution_rate:.3%}")
-
 
 q_rows.append({
     "Q": "All",
@@ -844,6 +844,19 @@ q_rows.append({
 q_table = pd.DataFrame(q_rows)
 q_table.to_csv(os.path.join(out_dir, "HorzError_percentiles_by_Q.csv"), index=False)
 
+
+# Build table
+q_table = pd.DataFrame(q_rows)
+
+# Nice formatting for console
+q_table[["P50", "P95", "P99", "Max", "solution_rate"]] = q_table[
+    ["P50", "P95", "P99", "Max", "solution_rate"]
+].round(4)
+
+print("\n==== Horz_err percentiles by Q ====")
+print(q_table.to_string(index=False))
+
+print(f"\nSolution availability: {epochs_with_solution} / {total_epochs} = {solution_rate:.3%}")
 
 
 
