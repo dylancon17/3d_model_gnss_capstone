@@ -61,20 +61,20 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     int i, nrej=0;
     int rej_idx[MAXOBS];
-    const double *rr = rtk->sol.rr; // TODO add filtering for if the estimated position is poor
+    const double *spp_rr = rtk->sol.rr; // TODO add filtering for if the estimated position is poor
 
     // Converts ECEF to LLH
-    double pos[3];
-    ecef2pos(rr, pos);
+    double spp_pos[3];
+    ecef2pos(spp_rr, spp_pos);
     
     // Converts ECEF covars to LLH
-    double P[9]; // 3x3 ENU
-    double Q[9];
+    double spp_P[9]; // 3x3 ENU
+    double spp_Q[9];
     
-    soltocov_rtk(&(rtk->sol), P);
-    covenu(pos, P, Q);
+    soltocov_rtk(&(rtk->sol), spp_P);
+    covenu(spp_pos, spp_P, spp_P);
 
-    lat_long ll = { pos[0] * 180 / M_PI, pos[1] * 180 / M_PI};
+    lat_long ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI};
     // printf("\nRelative origin latitude: %f\n", ll.latitude);
     // printf("\nRelative origin longitude: %f\n", ll.longitude);
 
@@ -125,8 +125,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         return 0;
     }
 
-    double origin_height = pos[2];
-    double origin_vertical_variance = Q[8];
+    double origin_height = spp_pos[2];
+    double origin_vertical_variance = spp_Q[8];
     origin_vertical_variance = 1.0;
 
     // compute y and local probability p_i
@@ -139,7 +139,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     origin_vertical_variance = pow((current_DTM_height - origin_height) / 0.68, 2);
 
 
-    if (abs(current_DTM_height - origin_height) > 50000 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+    if (abs(current_DTM_height - origin_height) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
         // Heights don't match. Incorrect starting height and therefore position
         reset_scaling(rtk, ns, sat);
         return 0;
@@ -151,7 +151,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
         //fprintf(stderr, "Checking satellite %d\n", i);
 
-        r = geodist(rs + i * 6, rr, e); //TODO how is rs indexed
+        r = geodist(rs + i * 6, spp_rr, e); //TODO how is rs indexed
 
             /* geodist failure check */
         if (r <= 0) {
@@ -166,12 +166,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             continue;
         }
 
-        satazel(pos, e, azel);
+        satazel(spp_pos, e, azel);
         
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], pos[0], pos[1], pos[2], Q[0] + Q[4], origin_vertical_variance, &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], spp_pos[0], spp_pos[1], spp_pos[2], spp_Q[0] + spp_Q[4], origin_vertical_variance, &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
