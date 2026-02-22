@@ -8,7 +8,7 @@ import geopandas as gpd
 import contextily as ctx
 from shapely.geometry import Point
 from matplotlib.colors import LogNorm
-
+import traceback
 # ============================
 # CDF / Diagnostics helpers
 # ============================
@@ -115,7 +115,8 @@ sat_cols = [
     "rejc",   # reject count
     "scal",   # observation weight scaling
     "prob",   # obstruction probability
-    "idx"     # Index
+    "idx",     # Index
+    "dHeight" #
 ]
 
 try:
@@ -127,7 +128,7 @@ try:
         "resp", "resc",
         "vsat", "snr", "fix", "slip",
         "lock", "outc", "slipc", "rejc",
-        "scal", "prob", "idx"
+        "scal", "prob", "idx", "dHeight"
     ]
 
     sol_stats[numeric_cols] = sol_stats[numeric_cols].apply(
@@ -179,7 +180,7 @@ try:
     mask = sol_stats["resc"] == 0
     sol_stats.loc[mask, "resc"] = group_min[mask].fillna(1e-6)
 except:
-    pass
+    traceback.print_exc()
 
 
 # ============================
@@ -457,7 +458,7 @@ try:
     plt.savefig(os.path.join(out_dir, "Primary_vs_Secondary_Carrier_Phase_Errors_vs_Obstruction_Probability.png"), dpi=300, bbox_inches="tight")
     plt.close()
 except:
-    pass
+    traceback.print_exc()
 
 try:
     if sol_stats.empty:
@@ -498,11 +499,11 @@ try:
         plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability (Heatmap).png"), dpi=300, bbox_inches="tight")
         plt.close()
 except:
-    pass
+    traceback.print_exc()
 
 try:
     plt.figure()
-    if sol_stats.empty:
+    if sol_stats_primary.empty:
         pass
     else:
         counts, xedges, yedges, im = plt.hist2d(
@@ -540,7 +541,8 @@ try:
         plt.savefig(os.path.join(out_dir, "Pseudorange Errors vs Obstruction Probability Zoomed (Heatmap).png"),dpi=300,bbox_inches="tight")
         plt.close()
 except:
-    pass
+    traceback.print_exc()
+
 
 try:
     # Probability Histogram
@@ -555,7 +557,7 @@ try:
 
     plt.show()
 except:
-    pass
+    traceback.print_exc()
 
 
 try:
@@ -621,7 +623,7 @@ try:
     plt.close()
     plt.show()
 except:
-    pass
+    traceback.print_exc()
 
 try:
     with open(os.path.join(out_dir, "Pseudorange Error Summary.txt"), "w") as file:
@@ -632,8 +634,85 @@ try:
         file.write(f"TP: {sol_stats_primary[tp].shape[0]} : {100 * sol_stats_primary[tp].shape[0] / total:.2f}%\n")
         file.write(f"FN: {sol_stats_primary[fn].shape[0]} : {100 * sol_stats_primary[fn].shape[0] / total:.2f}%\n")
         file.write(f"FP: {sol_stats_primary[fp].shape[0]} : {100 * sol_stats_primary[fp].shape[0] / total:.2f}%\n")
+
+        # One entry per time (tow): take satellite with max residual magnitude
+        sol_stats_primary_1pt = (
+            sol_stats_primary
+            .assign(abs_resp=lambda df: np.abs(df["resp"]))
+            .sort_values("abs_resp", ascending=False)
+            .drop_duplicates(subset="tow", keep="first")
+            .drop(columns="abs_resp")
+        )
+        # Recompute masks on 1-entry-per-time dataframe
+        tn = (sol_stats_primary_1pt["prob"] < 0.95) & (sol_stats_primary_1pt["resp"] < 3)
+        tp = (sol_stats_primary_1pt["prob"] >= 0.95) & (sol_stats_primary_1pt["resp"] >= 3)
+        fp = (sol_stats_primary_1pt["prob"] >= 0.95) & (sol_stats_primary_1pt["resp"] < 3)
+        fn = (sol_stats_primary_1pt["prob"] < 0.95) & (sol_stats_primary_1pt["resp"] >= 3)
+
+        dH = sol_stats_primary_1pt["dHeight"].astype(float)
+
+        dH.to_csv(
+            os.path.join(out_dir, "dHeight.csv"),
+            index=False,
+            header=["dHeight"]
+        )
+
+        dH_tn = dH[tn]
+        dH_tp = dH[tp]
+        dH_fn = dH[fn]
+        dH_fp = dH[fp]
+
+        
 except:
-    pass
+    traceback.print_exc()
+
+try:
+    bins_full = np.linspace(-2000, 2000, 81)  # 50 m bins
+
+    plt.figure(figsize=(10, 6))
+    plt.hist(dH_tn, bins=bins_full, alpha=0.6, label="TN")
+    plt.hist(dH_tp, bins=bins_full, alpha=0.6, label="TP")
+    plt.hist(dH_fn, bins=bins_full, alpha=0.6, label="FN")
+    plt.hist(dH_fp, bins=bins_full, alpha=0.6, label="FP")
+
+    plt.xlabel("dHeight (m)")
+    plt.ylabel("Count")
+    plt.title("Classification Counts vs Height (-2000 to 2000 m)")
+    plt.legend()
+    plt.grid()
+
+    plt.savefig(
+        os.path.join(out_dir, "dHeight_Classification_Hist_Full.png"),
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()
+except:
+    traceback.print_exc()
+
+try:
+    bins_zoom = np.linspace(-200, 200, 81)  # 5 m bins
+
+    plt.figure(figsize=(10, 6))
+    plt.hist(dH_tn, bins=bins_zoom, alpha=0.6, label="TN")
+    plt.hist(dH_tp, bins=bins_zoom, alpha=0.6, label="TP")
+    plt.hist(dH_fn, bins=bins_zoom, alpha=0.6, label="FN")
+    plt.hist(dH_fp, bins=bins_zoom, alpha=0.6, label="FP")
+
+    plt.xlabel("dHeight (m)")
+    plt.ylabel("Count")
+    plt.title("Classification Counts vs Height (-200 to 200 m)")
+    plt.legend()
+    plt.grid()
+
+    plt.savefig(
+        os.path.join(out_dir, "dHeight_Classification_Hist_Zoom.png"),
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()
+except:
+    traceback.print_exc()
 
 #Trajectory map
 # Create GeoDataFrame for RTK
@@ -730,8 +809,23 @@ for q in sorted(rtk["Q"].dropna().unique()):
         "solution_rate": float(solution_rate),
     })
 
-vals = rtk.loc[True, "Horz_err"].astype(float).values
+vals = rtk["Horz_err"].astype(float).values
 vals = vals[np.isfinite(vals)]
+
+# Build table
+q_table = pd.DataFrame(q_rows)
+
+# Nice formatting for console
+q_table_print = q_table.sort_values("Q").copy()
+q_table_print[["P50", "P95", "P99", "Max", "solution_rate"]] = q_table_print[
+    ["P50", "P95", "P99", "Max", "solution_rate"]
+].round(4)
+
+print("\n==== Horz_err percentiles by Q ====")
+print(q_table_print.to_string(index=False))
+
+print(f"\nSolution availability: {epochs_with_solution} / {total_epochs} = {solution_rate:.3%}")
+
 
 q_rows.append({
     "Q": "All",
@@ -749,20 +843,6 @@ q_rows.append({
 
 q_table = pd.DataFrame(q_rows)
 q_table.to_csv(os.path.join(out_dir, "HorzError_percentiles_by_Q.csv"), index=False)
-
-# Build table
-q_table = pd.DataFrame(q_rows)
-
-# Nice formatting for console
-q_table_print = q_table.sort_values("Q").copy()
-q_table_print[["P50", "P95", "P99", "Max", "solution_rate"]] = q_table_print[
-    ["P50", "P95", "P99", "Max", "solution_rate"]
-].round(4)
-
-print("\n==== Horz_err percentiles by Q ====")
-print(q_table_print.to_string(index=False))
-
-print(f"\nSolution availability: {epochs_with_solution} / {total_epochs} = {solution_rate:.3%}")
 
 
 
