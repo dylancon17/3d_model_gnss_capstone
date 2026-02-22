@@ -41,6 +41,8 @@ void determine_DTM_height_var(double* var, struct DSMData* DSM);
 void determine_sat_height_var(double* var, double origin_horizontal_variance, double origin_vertical_variance, double sat_vertical_slope, struct DSMData* DTM);
 void soltocov_rtk(sol_t* sol, double* P);
 double phi_from_standardized(double y); // safe phi wrapper
+void reset_scaling(rtk_t* rtk, int* ns, int* sat);
+
 
 /* los update ---------------------------------------------------
 * check and update observations based off of line of sight
@@ -92,9 +94,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double r;
     double probability_of_obstruction = 0;
 
-    double current_DTM_height;
-
     if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+        reset_scaling(rtk, ns, sat);
         return 0;
     }
 
@@ -109,6 +110,34 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
     }
     else {
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
+    double current_DTM_height;
+    int origin_x = 0, origin_y = 0;
+    double dummy_distance = 0.0;
+    get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+
+    double origin_height = pos[2];
+    double origin_vertical_variance = Q[8];
+
+    // compute y and local probability p_i
+    double denom_var = 10 + origin_vertical_variance + rtk->opt.DSM.antenna_dem_offset_var; // General noise added in to the test, needs to be a clear lack of intercept
+    double y = (origin_height - (rtk->opt.DSM.antenna_dem_offset + current_DTM_height)) / sqrt(denom_var);
+    double p_i_0 = phi_from_standardized(y);
+    double p_diff = 2.0 * fmin(p_i_0, 1.0 - p_i_0); // Two tailed setup
+
+
+    if (p_diff < 0.05 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 7)) {
+        // Heights don't match. Incorrect starting height and therefore position
+        reset_scaling(rtk, ns, sat);
+        return 0;
+    }
+
+    if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
+        fprintf(stderr, "Theoretically impossible out of bounds hit");
+        reset_scaling(rtk, ns, sat);
         return 0;
     }
 
@@ -199,6 +228,14 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
     return  nrej;
     
+}
+
+void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
+    // Undo any scaling
+    for (int i = 0;i < *ns && i < MAXOBS;i++) {
+        rtk->ssat[sat[i] - 1].obstruction_scaling = 1.0;
+    }
+    return;
 }
 
 //Assumes relative origin already set
