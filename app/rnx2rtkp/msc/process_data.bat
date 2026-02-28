@@ -122,7 +122,6 @@ for %%D in (!DATASET_LIST!) do (
         wpr -stop !OUTPATHETL!
         wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
         ren "!OUTDIR!\CPU_Usage_(Precise)_Utilization_by_Process,_Thread,_Stack.csv" "!FINAL_PREFIX!solution_!TIMESTAMP!.perf"
-        del /Q !OUTPATHETL!
     )
     echo RTKLIB complete. Dataset: !SPECIFICDATASET! DEM Flag: !ARG_DEM! Output Name: !OUTPATH!
     if "!DO_PLOT!"=="1" (
