@@ -235,7 +235,12 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             scaling = rtk->opt.DSM.max_noise_scaling;
         }
 
-        if (probability_of_obstruction < 0.5) {
+        double min_threshold = 0.5;
+        if (rtk->opt.DSM.processing_type == 6) {
+            min_threshold = 0.7;
+        }
+
+        if (probability_of_obstruction < min_threshold) {
             scaling = 1;
         }
 
@@ -437,8 +442,9 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             }
         }
         else {
+            p_i = p_i * 0.75;
             if (probability_of_obstruction <= 0.0) {
-                probability_of_obstruction = p_i * 0.5; // Set max gain per cell when combining cells
+                probability_of_obstruction = p_i; // Set max gain per cell when combining cells
             }
 
             probability_of_obstruction = 1.0 - (1.0 - probability_of_obstruction) * (1.0 - p_i);
