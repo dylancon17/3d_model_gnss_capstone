@@ -125,7 +125,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     }
 
 
-    if (abs(current_DTM_height - kf_pos[2]) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+    if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - kf_pos[2]) > 5 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
         // Heights don't match. Incorrect starting height and therefore position
         //Try the single point position instead
         lat_long spp_ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI };
@@ -145,7 +145,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             return 0;
         }
 
-        if (abs(current_DTM_height - spp_pos[2]) > 50 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+        if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - spp_pos[2]) > 5 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
             //Both positions are incorrect. Just raise the variance and deal with it.
             //reset_scaling(rtk, ns, sat);
             //return 0;
@@ -196,7 +196,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], max(kf_Q[8],25), &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
