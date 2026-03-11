@@ -133,6 +133,10 @@ static int compute_dop_at_pos(
 
     ecef2pos(rcv_ecef, pos_llh);
 
+    // TODO set los origin
+
+    popt->DSM.use_dem_height_only == 1;
+
     for (int sat = 1; sat <= MAXSAT; sat++) {
 
         int sys = satsys(sat, NULL);
@@ -154,6 +158,24 @@ static int compute_dop_at_pos(
         satazel(pos_llh, e, azel_i);
 
         if (azel_i[1] < elmin_rad) continue;
+
+        double obstruction_prob = check_los(
+            azel_i[0],
+            azel_i[1],
+            0.0, // Technically fine, but bad practice
+            0.0, // Technically fine, but bad practice
+            0.0, // Ignored as long as DSM->use_dem_height_only is 1
+            2.0, // This variance value has been used and tuned against truth positions
+            1.0, // This variance value has been used and tuned against truth positions
+            &(popt->DSM),
+            &(popt->tiles_dataset),
+            double traverse_origin_x_grid,
+            double traverse_origin_y_grid,
+            int debug);
+
+        if (obstruction_prob > 0.5 || obstruction_prob < 0) {
+            continue;
+        }
 
         azel[ns][0] = azel_i[0];
         azel[ns][1] = azel_i[1];
