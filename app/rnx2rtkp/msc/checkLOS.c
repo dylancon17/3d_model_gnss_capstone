@@ -75,18 +75,18 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
 
 
-    int i, nrej = 0;
+    int i, nrej=0;
     int rej_idx[MAXOBS];
-    const double* spp_rr = rtk->sol.rr;
+    const double *spp_rr = rtk->sol.rr; 
 
     // Converts ECEF to LLH
     double spp_pos[3];
     ecef2pos(spp_rr, spp_pos);
-
+    
     // Converts ECEF covars to LLH
     double spp_P[9]; // 3x3 ENU
     double spp_Q[9];
-
+    
     soltocov_rtk(&(rtk->sol), spp_P);
     covenu(spp_pos, spp_P, spp_Q);
 
@@ -97,16 +97,16 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double kf_pos[3];
     ecef2pos(kf_rr, kf_pos);
 
-    for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
+    for (int i = 0; i < 3; i++) 
+        for (int j = 0; j < 3; j++) 
             kf_P[i + 3 * j] = rtk->P[i + j * rtk->nx];
 
     covenu(kf_pos, kf_P, kf_Q);
 
-    lat_long kf_ll = { kf_pos[0] * 180 / M_PI, kf_pos[1] * 180 / M_PI };
+    lat_long kf_ll = { kf_pos[0] * 180 / M_PI, kf_pos[1] * 180 / M_PI};
 
     int out_of_bounds = 0;
-    set_relative_origin(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &kf_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+    set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &kf_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
     if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
         reset_scaling(rtk, ns, sat);
@@ -198,7 +198,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         }
 
         satazel(spp_pos, e, azel);
-
+        
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
@@ -274,7 +274,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
 
 
     return  nrej;
-
+    
 }
 
 void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
@@ -368,7 +368,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         //fprintf(stderr, "---DTM Height: %lf, dE: %d: dN %d, out_of_bounds: %d---", current_DTM_height, line.E, line.N, out_of_bounds);
         // if we've exceeded max_distance_grid_units stop as original did
         double d_grid = (ray.t + ray.tPrev) / 2;
-
+        
         if (d_grid > max_distance_grid_units) {
             if (debug) fprintf(stderr, "max distance travelled\n");
 
@@ -427,7 +427,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         double dw = compute_cell_weight(&ray, ray.ix, ray.iy, DSM);
         double p_i = p_i_0 * dw;
 
-
+        
 
         if (debug) {
             fprintf(stderr, "Checking prob for: %lf, with original prob of %lf and deweighting of %lf using vars of %lf, %lf\n", p_i, p_i_0, dw, sat_height_var, DTM_height_var);
@@ -555,7 +555,7 @@ void determine_sat_height_var(double* var, double origin_horizontal_variance, do
     //  KF Source - use the estimated filter variance
     // double distance_var = pow(0.34 * DSM->step_size, 2) + origin_horizontal_variance;
     // *var = *var + pow(sat_vertical_slope, 2) * distance_var;
-    * var = origin_vertical_variance;
+    *var = origin_vertical_variance;
     //fprintf(stderr, "Sat Height Var Calculated Using: Origin Vertical Variance: %lf, Origin Horizontal Variance: %lf, Distance Variance: %lf, Calced Variance, %lf\n", origin_vertical_variance, origin_horizontal_variance, distance_var, *var);
     return;
 }
@@ -589,6 +589,6 @@ void soltocov_rtk(sol_t* sol, double* P)
     P[4] = sol->qr[1]; /* yy or nn */
     P[8] = sol->qr[2]; /* zz or uu */
     P[1] = P[3] = sol->qr[3]; /* xy or en */
-    P[5] = P[7] = sol->qr[4]; /* yz or nu */
+    P[5] = P[7] = sol->qr[4]; /* yz or nu */        
     P[2] = P[6] = sol->qr[5]; /* zx or ue */
 }
