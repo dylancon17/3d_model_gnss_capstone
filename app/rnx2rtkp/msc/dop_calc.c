@@ -122,7 +122,8 @@ static int compute_dop_at_pos(
     double elmin_rad,
     int navsys,
     double dop_out[4],
-    int* ns_out)
+    int* ns_out,
+    const prcopt_t* popt)
 {
     double pos_llh[3];
     double azel[MAXSAT][2];
@@ -173,7 +174,8 @@ int dop_csv(const prcopt_t* prcopt,
     const char* dop_outdir,
     double dop_step_sec,
     double dop_grid_m,
-    double dop_h_m)
+    double dop_h_m,
+    const prcopt_t* popt)
 {
     obs_t obs = { 0 };
     nav_t nav0 = { 0 };
@@ -199,7 +201,7 @@ int dop_csv(const prcopt_t* prcopt,
     freeobs(&obs);
     freenav(&nav0, 0);
 
-    const char* python_exe = "C:\\Users\\cronu\\anaconda3\\python.exe";
+    const char* python_exe = "python.exe";
     const char* script_path = "C:\\capstone\\3d_model_gnss_capstone\\analysis_scripts\\fetch_brdc.py";
     const char* fetch_outdir = "C:\\capstone\\tmp";
 
@@ -277,7 +279,7 @@ int dop_csv(const prcopt_t* prcopt,
 
                 if (!compute_dop_at_pos(&nav, t, rcv_ecef,
                     prcopt->elmin, prcopt->navsys,
-                    dop, &ns_used)) {
+                    dop, &ns_used, popt)) {
                     continue;
                 }
 

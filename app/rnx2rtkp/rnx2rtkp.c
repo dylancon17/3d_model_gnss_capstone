@@ -234,7 +234,7 @@ int main(int argc, char** argv)
     }
 
     if (dop_enable) {
-        dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, dop_h_m);
+        dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, dop_h_m, &prcopt);
     }
     else {
         // No point in processing if our goal is just to generate the dop graphs
