@@ -517,28 +517,32 @@ typedef struct file_BIN {
 typedef struct DSMData {
     double max_dsm_height; /* Max DSM height. Allows for calculating how far to search*/
     int max_distance; /* Hardcoded distance (meters) to not search farther than that, in the event the max height is unreasonable far*/
-    int processing_type; /* 
-                         -4 = Calculate true psuedorange and probability and use reference satellite selection and height interpolation
+    int processing_type; /*
+                         -4 = Calculate true psuedorange and probability and use reference satellite selection and use max prob
                          -3 = Calculate true pseduorange and probability and use reference satellite selection based on probability threshold
                          -2 = Calculate true pseudorange and probabilities
                          -1 = Calculate true pseudorange errors
-                         0 = don't do anything with the DEM. 
-                         1 = do boolean observation rejection. 
-                         2 = do observation rejection based on probability threshold. 
+                         0 = don't do anything with the DEM.
+                         1 = do boolean observation rejection.
+                         2 = do observation rejection based on probability threshold.
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         7 = do observation deweighting, rejection, reference sat selection, observed to expected and height interpolation
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >6 or <-3 for height interpolation */
+                         6 = do observation deweighting, rejection, reference sat selection, height based change rejection
+                         7 = do observation deweighting, rejection, reference sat selection, max prob selection
+                         8 = do observation deweighting, rejection, reference sat selection, max prob selection, height based change rejection
+                         9 = do observation deweighting, reference sat selection, max prob selection, height based change rejection
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 and !=9 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for max prob selection, 5 or >7 for height based change rejection */
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
-    double antenna_dem_offset_var; 
+    double antenna_dem_offset_var;
     int use_dem_height_only; /* Start the traverse always using the DEM height instead of GNSS height*/
     double vertical_point_variance; /* The vertical variance (precision) of each coordinate*/
     int max_noise_scaling; /*Scale the noise by a maximum of n time*/
 
     east_north origin_dsm; /* Origin of the digital surface model used for out of bounds checking and indexing */
     east_north relative_origin_traverse; /* Origin of the traversal algorithm */
+    east_north relative_origin_traverse_true; /* Origin of the traversal algorithm not on a nice coordinate*/
 
     int n_rows; /* Number of rows in the elevation (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
     int n_columns; /* Number of columns in the (square/rectangular) dataset. This code could be changed if the program can be upgraded to accept non-square/rectangle bounds */
@@ -1214,13 +1218,13 @@ typedef struct {        /* satellite status type */
     double resp[NFREQ]; /* residuals of pseudorange (m) */
     double resc[NFREQ]; /* residuals of carrier-phase (m) */
     unsigned char vsat[NFREQ]; /* valid satellite flag */
-    unsigned char snr [NFREQ]; /* signal strength (0.25 dBHz) */
-    unsigned char fix [NFREQ]; /* ambiguity fix flag (1:fix,2:float,3:hold) */
+    unsigned char snr[NFREQ]; /* signal strength (0.25 dBHz) */
+    unsigned char fix[NFREQ]; /* ambiguity fix flag (1:fix,2:float,3:hold) */
     unsigned char slip[NFREQ]; /* cycle-slip flag */
-    unsigned int lock [NFREQ]; /* lock counter of phase */
-    unsigned int outc [NFREQ]; /* obs outage counter of phase */
+    unsigned int lock[NFREQ]; /* lock counter of phase */
+    unsigned int outc[NFREQ]; /* obs outage counter of phase */
     unsigned int slipc[NFREQ]; /* cycle-slip counter */
-    unsigned int rejc [NFREQ]; /* reject counter */
+    unsigned int rejc[NFREQ]; /* reject counter */
     double  gf;         /* geometry-free phase L1-L2 (m) */
     double  gf2;        /* geometry-free phase L1-L5 (m) */
     double  phw;        /* phase windup (cycle) */
@@ -1228,7 +1232,9 @@ typedef struct {        /* satellite status type */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
     double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
     double obstruction_probability; /* probability of obstruction*/
+    double height_offset; /* Mismatch between DSM and GNSS heights*/
 } ssat_t;
+
 
 typedef struct {        /* ambiguity control type */
     gtime_t epoch[4];   /* last epoch */
@@ -1862,6 +1868,8 @@ extern double check_los(
     double origin_vertical_variance,
     struct DSMData* DTM,
     TilesDataset* tiles_dataset,
+    double traverse_origin_x_grid,
+    double traverse_origin_y_grid,
     int debug);
 
 extern int los_update(
@@ -1878,11 +1886,11 @@ extern int los_update(
 extern void initialize_tiles_dataset
 (
     TilesDataset* td,
-    int num_tiles_x, 
-    int num_tiles_y, 
-    int tiles_dimension_x, 
-    int tiles_dimension_y, 
-    double top_left_tile_origin_x, 
+    int num_tiles_x,
+    int num_tiles_y,
+    int tiles_dimension_x,
+    int tiles_dimension_y,
+    double top_left_tile_origin_x,
     double top_left_tile_origin_y
 );
 
