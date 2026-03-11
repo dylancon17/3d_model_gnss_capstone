@@ -206,12 +206,13 @@ int main(int argc, char** argv)
         // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -17000.00, 5673000.00);
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5673000_-17000_5N_5E.bin", &(prcopt.DSM), -17000.000, 5673000.000, 1, 25000);
 
-        /* Your tile */
-        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
-        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth.bin", &(prcopt.DSM),
-            -15989.47, 5672949.28, 1, 25000);
+        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth.bin", &(prcopt.DSM),
+        //    -15989.47, 5672949.28, 1, 25000);
 
- 
+        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
+
         // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 35000, 45000, -22000.00, 5678000.00);
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombined.bin", &(prcopt.DSM), -22000.000, 5678000.000, 1, 35000);
 
@@ -232,9 +233,13 @@ int main(int argc, char** argv)
         prcopt.ellip.second_eccentricity = (a * a - b * b) / (b * b);
     }
 
-    if(dop_enable) dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, dop_h_m);
-
-    ret = postpos(ts, te, tint, 0.0, &prcopt, &solopt, &filopt, infile, n, outfile, "", "");
+    if (dop_enable) {
+        dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, dop_h_m);
+    }
+    else {
+        // No point in processing if our goal is just to generate the dop graphs
+        ret = postpos(ts, te, tint, 0.0, &prcopt, &solopt, &filopt, infile, n, outfile, "", "");
+    }
 
     free(prcopt.DSM.heights_array);
 
