@@ -185,7 +185,7 @@ static int compute_dop_at_pos(
         ns++;
     }
 
-    if (ns < 4) return 0;
+    if (ns < 4) return 1;
 
     dops(ns, azel, elmin_rad, dop_out);
     if (ns_out) *ns_out = ns;
@@ -323,6 +323,11 @@ int dop_csv(prcopt_t* prcopt,
                 pos2ecef(pos_llh, rcv_ecef);
 
                 double dop[4];
+                dop[0] = -1.0;
+                dop[1] = -1.0;
+                dop[2] = -1.0;
+                dop[3] = -1.0;
+
                 int ns_used = 0;
 
                 if (!compute_dop_at_pos(&nav, t, rcv_ecef, &ll,
