@@ -306,7 +306,7 @@ int dop_csv(prcopt_t* prcopt,
 
         fprintf(fp, "lat_deg,lon_deg,vdop,hdop,pdop,num_sats\n");
 
-        for (double NN = N0; NN <= N0 + size_m; NN += dop_grid_m) {
+        for (double NN = N0; NN <= N0 - size_m; NN -= dop_grid_m) {
             for (double EE = E0; EE <= E0 + size_m; EE += dop_grid_m) {
 
                 double pos_llh[3];
