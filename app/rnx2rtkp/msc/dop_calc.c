@@ -226,7 +226,7 @@ int dop_csv(prcopt_t* prcopt,
     int month = (int)ep0[1];
     int day = (int)ep0[2];
 
-    fprintf(stderr, "Read Obs Time Successfully\n");
+    // fprintf(stderr, "Read Obs Time Successfully\n");
 
 
     freeobs(&obs);
@@ -264,7 +264,7 @@ int dop_csv(prcopt_t* prcopt,
 
     t1 = timeadd(t0, 86400.0);
 
-    fprintf(stderr, "Set End Time\n");
+    // fprintf(stderr, "Set End Time\n");
 
 
     const double E0 = -6675.47;
@@ -275,7 +275,7 @@ int dop_csv(prcopt_t* prcopt,
 
     ensure_dir_exists(dop_outdir);
 
-    fprintf(stderr, "Past Dir Exists. Starting at Time %lf %lf with Time Step of: %lf\n", t0.sec, t0.time, dop_step_sec);
+    // fprintf(stderr, "Past Dir Exists. Starting at Time %lf %lf with Time Step of: %lf\n", t0.sec, t0.time, dop_step_sec);
 
 
     for (gtime_t t = t0; timediff(t, t1) <= 0.0; t = timeadd(t, dop_step_sec)) {
@@ -300,7 +300,7 @@ int dop_csv(prcopt_t* prcopt,
 
         char out_folder[1024];
         snprintf(out_folder, sizeof(out_folder), "%s\\%s", dop_outdir, day_folder);
-        ensure_dir_exists(out_folder);
+         ensure_dir_exists(out_folder);
 
         char out_file[1024];
         snprintf(out_file, sizeof(out_file),
@@ -312,12 +312,10 @@ int dop_csv(prcopt_t* prcopt,
             fprintf(stderr, "Failed on fp\n");
             continue;
         }
-        fprintf(fp, "lat_deg,lon_deg,vdop,hdop,pdop,num_sats\n");
+        fprintf(fp, "lat_deg,lon_deg,vdop,hdop,pdop,num_sats,E,N\n");
 
         for (double NN = N0; NN >= N0 - length_N; NN -= dop_grid_m) {
-            fprintf(stderr, "Loop at North %lf\n", NN);
             for (double EE = E0; EE <= E0 + length_E; EE += dop_grid_m) {
-                fprintf(stderr, "Loop at East %lf\n", EE);
 
                 double pos_llh[3];
                 if (!en_to_ll(prcopt, EE, NN, pos_llh)) {
@@ -370,11 +368,13 @@ int dop_csv(prcopt_t* prcopt,
                     continue;
                 }
 
-                fprintf(fp, "%.10f,%.10f,%.8f,%.8f,%.8f,%d\n",
+                fprintf(fp, "%.10f,%.10f,%.8f,%.8f,%.8f,%d,%.3f,%.3f\n",
                     ll.latitude,
                     ll.longitude,
                     dop[3], dop[2], dop[1],
-                    ns_used);
+                    ns_used,
+                    EE,
+                    NN);
             }
         }
 
