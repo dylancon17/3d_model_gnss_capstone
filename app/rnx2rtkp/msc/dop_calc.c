@@ -197,8 +197,7 @@ int dop_csv(prcopt_t* prcopt,
     int n,
     char** infile,
     const char* dop_outdir,
-    double dop_step_sec,
-    double dop_grid_m)
+    dop_traverse* traverse)
 {
 
     fprintf(stderr, "In dop_csv\n");
@@ -266,19 +265,12 @@ int dop_csv(prcopt_t* prcopt,
 
     // fprintf(stderr, "Set End Time\n");
 
-
-    const double E0 = -6675.47;
-    const double N0 = 5656200.28;
-    const double length_E = 2000.0;
-    const double length_N = 3500.0;
-
-
     ensure_dir_exists(dop_outdir);
 
     // fprintf(stderr, "Past Dir Exists. Starting at Time %lf %lf with Time Step of: %lf\n", t0.sec, t0.time, dop_step_sec);
 
 
-    for (gtime_t t = t0; timediff(t, t1) <= 0.0; t = timeadd(t, dop_step_sec)) {
+    for (gtime_t t = t0; timediff(t, t1) <= 0.0; t = timeadd(t, traverse->dop_step_sec)) {
         
         double ep[6];
         time2epoch(gpst2utc(t), ep);
@@ -314,8 +306,8 @@ int dop_csv(prcopt_t* prcopt,
         }
         fprintf(fp, "lat_deg,lon_deg,vdop,hdop,pdop,num_sats,E,N\n");
 
-        for (double NN = N0; NN >= N0 - length_N; NN -= dop_grid_m) {
-            for (double EE = E0; EE <= E0 + length_E; EE += dop_grid_m) {
+        for (double NN = traverse->N0; NN >= traverse->N0 - traverse->length_N; NN -= traverse->dop_grid_m) {
+            for (double EE = traverse->E0; EE <= traverse->E0 + traverse->length_E; EE += traverse->dop_grid_m) {
 
                 double pos_llh[3];
                 if (!en_to_ll(prcopt, EE, NN, pos_llh)) {

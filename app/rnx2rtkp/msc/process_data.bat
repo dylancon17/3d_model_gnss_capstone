@@ -16,10 +16,6 @@ REM --------------------------------------------------------------------
 REM Enable delayed expansion for variables modified inside loops
 setlocal enabledelayedexpansion
 
-set "DO_DOP=0"
-for %%A in (%*) do (
-    if /I "%%~A"=="DOP" set "DO_DOP=1"
-)
 
 REM ------------------ Parse arguments with defaults --------------------
 REM Arg order: Dataset, DEM, PLOT, PREFIX
@@ -29,11 +25,14 @@ set "ARG_PLOT=%~3"
 set "ARG_PERFORMANCE=%~4"
 set "ARG_ANALYZE=%~5"
 set "ARG_PREFIX=%~6"
+set "ARG_DOP=%~7"
 
 if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
 if "!ARG_DEM!"=="" set "ARG_DEM=0"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
+if "!ARG_DOP!"=="" set "ARG_DOP=0"
+
 REM ARG_PREFIX default is empty
 REM ARG_PERFORMANCE default is empty
 
@@ -123,7 +122,7 @@ for %%D in (!DATASET_LIST!) do (
         wpr -start CPU.Light -filemode
     )
 
-    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! !DOP_ARGS! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         wpr -stop !OUTPATHETL!
@@ -165,7 +164,7 @@ exit /b 0
 echo.
 echo ===================================================================
 echo Usage:
-echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX] (DOP)
+echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX] [DOP]
 echo.
 echo DEM Options:
 echo    -4 = Calculate true pseudorange and probability, use reference satellite selection, use max prob (must run before any positive option to set truth; all negative options require truth hardcoded in postpos)
@@ -211,17 +210,19 @@ echo    Added to all output file names
 echo.
 echo DOP:
 echo    Added at end of command, previous args not required. 
-echo    Calculate the satellite DOP given the building obstructions
+echo    1 = Downtown
+echo    2 = University
+echo    3 = Calgary
 echo.
 echo Examples:
 echo   process_data.bat 1 2
 echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
 echo.
-echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE DOP
+echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
 echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
 echo.
-echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4 DOP
-echo        - Runs datasets 1 to 6 with full processing and prefix RUN4 and runs using DOP calcs, not normal processing
+echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4 1
+echo        - Runs datasets 1 to 6 with full processing and prefix RUN4 and runs using DOP calcs for downtown, not normal processing
 echo ===================================================================
 echo.
 goto :EOF

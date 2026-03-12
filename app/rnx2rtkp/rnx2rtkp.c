@@ -68,7 +68,7 @@ static const char* help[] = {
 " -y level  output soltion status (0:off,1:states,2:residuals) [0]",
 " -x level  debug trace level (0:off) [0]",
 " -dem      use a dem to aid in the solution output",
-" -dopout        export DOP grid CSVs [off]",
+" -dopout        export DOP grid to area [off]",
 " -dopstep sec   DOP export timestep in seconds [900]",
 " -dopgrid m     DOP grid spacing in meters [500]"
 };
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "-d") && i + 1 < argc) solopt.timeu = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.DSM.processing_type = atoi(argv[++i]);
 
-        else if (!strcmp(argv[i], "-dopout")) dop_enable = 1;
+        else if (!strcmp(argv[i], "-dopout") && i + 1 < argc) dop_enable = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-dopstep") && i + 1 < argc) dop_step_sec = atof(argv[++i]);
         else if (!strcmp(argv[i], "-dopgrid") && i + 1 < argc) dop_grid_m = atof(argv[++i]);
 
@@ -235,11 +235,47 @@ int main(int argc, char** argv)
         prcopt.ellip.second_eccentricity = (a * a - b * b) / (b * b);
     }
 
-    if (dop_enable) {
+    if (dop_enable > 0) {
         // As all other heights are meaningless
         prcopt.DSM.use_dem_height_only = 1;
 
-        dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, &prcopt);
+        dop_traverse traverse;
+
+        if (dop_enable == 1) { // Downtown
+            traverse.N0 = 5656200.28;
+            traverse.E0 = -6675.47;
+            traverse.length_N = 2000.0;
+            traverse.length_E = 3500.0;
+            traverse.dop_grid_m = 5.0;
+            traverse.dop_step_sec = dop_step_sec;
+        }
+        else {
+            if (dop_enable == 2) { // University
+                traverse.N0 = 5660700.28;
+                traverse.E0 = -10789.47;
+                traverse.length_N = 1000.0;
+                traverse.length_E = 2500.0;
+                traverse.dop_grid_m = 5.0;
+                traverse.dop_step_sec = dop_step_sec;
+            }
+            else {
+                if (dop_enable == 3) { // Calgary
+                    traverse.N0 = 5670449.28;
+                    traverse.E0 = -13489.47;
+                    traverse.length_N = 20000.0;
+                    traverse.length_E = 20000.0;
+                    traverse.dop_grid_m = 100.0;
+                    traverse.dop_step_sec = dop_step_sec;
+                }
+                else {
+                    fprintf(stderr, "Unrecognized area. Crashing program");
+                    free(prcopt.DSM.heights_array);
+                    return 1;
+                }
+            }
+        }
+
+        dop_csv(&prcopt, ts, n, infile, dop_outdir, &traverse);
     }
     else {
         // No point in processing if our goal is just to generate the dop graphs
