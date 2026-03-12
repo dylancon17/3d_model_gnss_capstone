@@ -1,3 +1,4 @@
+
 #include "rtklib.h"
 #include <stdio.h>
 #include <stdint.h>   // for uint16_t
@@ -9,11 +10,11 @@
 void initialize_tiles_dataset
 (
     TilesDataset* td,
-    int num_tiles_x, 
-    int num_tiles_y, 
-    int tiles_dimension_x, 
-    int tiles_dimension_y, 
-    double top_left_tile_origin_x, 
+    int num_tiles_x,
+    int num_tiles_y,
+    int tiles_dimension_x,
+    int tiles_dimension_y,
+    double top_left_tile_origin_x,
     double top_left_tile_origin_y
 )
 {
@@ -27,7 +28,7 @@ void initialize_tiles_dataset
     td->y_limit = td->top_left_tile_origin.northing - (td->tiles_dimension_y * td->num_tiles_y);
 }
 
-int64_t open_BIN(file_BIN* file, const char* fileName) 
+int64_t open_BIN(file_BIN* file, const char* fileName)
 {
 
     //Set file to be empty
@@ -47,7 +48,7 @@ int64_t open_BIN(file_BIN* file, const char* fileName)
     return (int64_t)(file->file_size / sizeof(uint16_t)); // Return the number of data points in the .bin file
 }
 
-int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n) 
+int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n)
 {
     if (!file || !file->file_ptr || !buffer) return -1;
 
@@ -174,12 +175,12 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
 
 void retrieve_new_file_name
 (
-    char* new_file_name, 
+    char* new_file_name,
     size_t new_file_name_size,
-    const east_north* tile_origin_coords, 
-    const char* file_path, 
-    const char* file_prefix, 
-    const char* file_extension) 
+    const east_north* tile_origin_coords,
+    const char* file_path,
+    const char* file_prefix,
+    const char* file_extension)
 {
     char tile_origin_coords_char_E[100];
     char tile_origin_coords_char_N[100];
@@ -194,14 +195,14 @@ void retrieve_new_file_name
     }
 
     if (snprintf(
-            new_file_name, 
-            new_file_name_size, 
-            "%s%s_%sE_%sN%s", 
-            file_path, 
-            file_prefix, 
-            tile_origin_coords_char_E, 
-            tile_origin_coords_char_N, 
-            file_extension) < 0) 
+        new_file_name,
+        new_file_name_size,
+        "%s%s_%sE_%sN%s",
+        file_path,
+        file_prefix,
+        tile_origin_coords_char_E,
+        tile_origin_coords_char_N,
+        file_extension) < 0)
     {
         fprintf(stderr, "Error converting double to string.\n");
         return;
@@ -226,7 +227,7 @@ void initialize_dsm_tile
     //printf("\nOpening file name %s\n", file_name);
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
-    int64_t n_samples = open_BIN(&file,file_name);
+    int64_t n_samples = open_BIN(&file, file_name);
     if (n_samples < 0) {
         fprintf(stderr, "\nFailed to open DSM file\n");
     }
@@ -251,7 +252,7 @@ void initialize_dsm_tile
         fclose(file.file_ptr);
         return;
     }
-    else { 
+    else {
         //printf("\nmalloc to a new tile successful"); 
     }
 
@@ -281,7 +282,7 @@ steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData
 {
     const int steps_from_DSM_origin_E = (int)((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
     const int steps_from_DSM_origin_N = (int)(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
-    steps_XY steps; 
+    steps_XY steps;
     steps.steps_X = steps_from_DSM_origin_E;
     steps.steps_Y = steps_from_DSM_origin_N;
     return steps;
@@ -307,7 +308,7 @@ int out_of_bounds_check_tiles_dataset(east_north* traverse, TilesDataset* tiles_
     else if (traverse->northing > tiles_dataset->top_left_tile_origin.northing) return 1;
     else if (traverse->northing < tiles_dataset->y_limit) return 1;
 
-    else return 0; 
+    else return 0;
 }
 
 int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
@@ -341,7 +342,7 @@ void set_relative_origin
     //printf("\nSetting relative origin\n");
     project_latitude_longitude_to_UTM
     (
-        &DSM->relative_origin_traverse,
+        &DSM->relative_origin_traverse_true,
         relative_origin_degrees,
         proj,
         e
@@ -349,10 +350,10 @@ void set_relative_origin
     //printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
     //fprintf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
 
-    const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse, DSM);
+    const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse_true, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
-    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
+    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse_true, tiles_dataset);
 
     //printf("\nout_of_bounds: %d\n",*out_of_bounds);
    // printf("out_of_bounds_tiles_dataset: %d\n\n", out_of_bounds_tiles_dataset);
@@ -361,7 +362,7 @@ void set_relative_origin
         //printf("\nCoordinate is within the tile bounds. Computing to be continued.\n");
         //printf("Press any key to continue...\n");
         //_getch();
-        DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse, DSM);
+        DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse_true, DSM);
         //printf("\nRelative origin easting: %f", DSM->relative_origin_traverse.easting);
         //printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
         //fprintf(stderr, "Relative Origin Set As: %lf %lf and is %d %d steps from tile corner\n", DSM->relative_origin_traverse.easting, DSM->relative_origin_traverse.northing, steps.steps_X, steps.steps_Y);
@@ -374,7 +375,7 @@ void set_relative_origin
         //printf("Press any key to continue...\n");
         //_getch();
 
-        east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse, tiles_dataset);
+        east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse_true, tiles_dataset);
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";
@@ -384,10 +385,10 @@ void set_relative_origin
         //fprintf(stderr, "Loading new tile in relative origin ->");
         retrieve_new_file_name(new_file_name, sizeof(new_file_name), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
         //printf("\nnew_file_name: %s\n", new_file_name);
-        
+
         //printf("\nRe-initializing DSM\n");
 
-        
+
         initialize_dsm_tile(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
         //fprintf(stderr, "Success\n");
 
@@ -395,23 +396,23 @@ void set_relative_origin
         double tile_limit_y = traverse_to_tile_origin.northing - DSM->n_rows;
         //printf("\nDSM tile easting bounds\n: %f to %f", traverse_to_tile_origin.easting, tile_limit_x);
         //printf("\nDSM tile northing bounds\n: %f to %f\n", traverse_to_tile_origin.northing,tile_limit_y);
-        
+
         // Try setting the relative origin again
         //printf("\Try setting the relative origin again after connecting to a new tile...\n");
         //printf("Press any key to continue...\n");
         //_getch();
-        set_relative_origin(DSM,tiles_dataset,relative_origin_degrees,proj,e,out_of_bounds);
+        set_relative_origin(DSM, tiles_dataset, relative_origin_degrees, proj, e, out_of_bounds);
 
     }
-    else if (out_of_bounds_tiles_dataset == 1) { 
-        printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n") ;
+    else if (out_of_bounds_tiles_dataset == 1) {
+        printf("\WARNING: RELATIVE ORIGIN IS OUTSIDE THE DSM TILES DATASET\n");
         printf("Press any key to continue...\n");
-        _getch();
+        // _getch();
     }
     else if (*out_of_bounds != 0 && *out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
         printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
         printf("Press any key to continue...\n");
-        _getch();
+        // _getch();
     }
 }
 
@@ -452,14 +453,14 @@ void get_relative_height
         *h = calculate_true_height_meters(DSM, index);
         // fprintf(stderr, "Got relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d and index as %d: %lf\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset, index, *h);
 
-        
+
         apply_curvature_correction(h, (*d * DSM->step_size));
         //printf("Relative height: %f\n", *h);
         //printf("\nRelative height calculated: %f\n", *h);
         //printf("Press any key to continue...\n");
         //_getch();
     }
-    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) { 
+    else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) {
         //printf("\nRelative height needs to be calculated with a new DSM tile.\n");
         east_north relative_point_to_tile_origin = round_to_tile_origin(&traverse, tiles_dataset);
 
@@ -486,9 +487,9 @@ void get_relative_height
         //printf("\nTry getting the relative height again after changing tile connection...\n");
         //printf("Press any key to continue...\n");
         //_getch();
-        get_relative_height(DSM,tiles_dataset,steps_E,steps_N,d,h,out_of_bounds);
+        get_relative_height(DSM, tiles_dataset, steps_E, steps_N, d, h, out_of_bounds);
     }
-    else if (out_of_bounds_tiles_dataset == 1) { 
+    else if (out_of_bounds_tiles_dataset == 1) {
         printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
         printf("Press any key to continue...\n");
         _getch();
