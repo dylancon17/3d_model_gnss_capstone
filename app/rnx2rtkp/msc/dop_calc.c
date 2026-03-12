@@ -312,6 +312,9 @@ int dop_csv(prcopt_t* prcopt,
                 double dummy_distance = 0.0;
                 get_relative_height(&(prcopt->DSM), &(prcopt->tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
+                // Asssume that the antenna is 1m off the ground
+                current_DTM_height = current_DTM_height + 1.0;
+
                 if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
                     fprintf(stderr, "Theoretically impossible out of bounds hit in dop_calc");
                     continue;
