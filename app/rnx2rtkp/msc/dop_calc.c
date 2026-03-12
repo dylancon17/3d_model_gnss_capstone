@@ -271,9 +271,11 @@ int dop_csv(prcopt_t* prcopt,
 
     t1 = timeadd(t0, 86400.0);
 
-    const double E0 = -15989.47;
-    const double N0 = 5672949.28;
-    const double size_m = 25000.0;
+    const double E0 = -6675.47;
+    const double N0 = 5656200.28;
+    const double length_E = 2000.0;
+    const double length_N = 3500.0;
+
 
     ensure_dir_exists(dop_outdir);
 
@@ -306,8 +308,8 @@ int dop_csv(prcopt_t* prcopt,
 
         fprintf(fp, "lat_deg,lon_deg,vdop,hdop,pdop,num_sats\n");
 
-        for (double NN = N0; NN <= N0 - size_m; NN -= dop_grid_m) {
-            for (double EE = E0; EE <= E0 + size_m; EE += dop_grid_m) {
+        for (double NN = N0; NN <= N0 - length_N; NN -= dop_grid_m) {
+            for (double EE = E0; EE <= E0 + length_E; EE += dop_grid_m) {
 
                 double pos_llh[3];
                 if (!en_to_llh(prcopt, EE, NN, dop_h_m, pos_llh)) continue;
