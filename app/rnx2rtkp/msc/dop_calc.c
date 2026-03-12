@@ -104,7 +104,7 @@ static int run_python_fetch_brdc(
     return system(cmd) == 0;
 }
 
-static int en_to_llh(const prcopt_t* opt, double E, double N, double h, double pos_llh[3])
+static int en_to_ll(const prcopt_t* opt, double E, double N, double pos_llh[3])
 {
     double lat, lon;
 
@@ -114,7 +114,7 @@ static int en_to_llh(const prcopt_t* opt, double E, double N, double h, double p
 
     pos_llh[0] = lat;
     pos_llh[1] = lon;
-    pos_llh[2] = h;
+    pos_llh[2] = 0.0;
     return 1;
 }
 
@@ -122,39 +122,23 @@ static int compute_dop_at_pos(
     const nav_t* nav,
     gtime_t t,
     const double rcv_ecef[3],
+    lat_long *ll,
     double elmin_rad,
     int navsys,
     double dop_out[4],
     int* ns_out,
     prcopt_t* popt)
 {
-    double pos_llh[3];
     double azel[MAXSAT][2];
     int ns = 0;
 
     if (ns_out) *ns_out = 0;
-
-    ecef2pos(rcv_ecef, pos_llh);
-
-    // Lat Long in degrees
-    lat_long ll = { pos_llh[0] * 180 / M_PI, pos_llh[1] * 180 / M_PI };
-
-    int out_of_bounds = 0;
-
-    set_relative_origin(&(popt->DSM), &(popt->tiles_dataset), &ll, &(popt->UTM), &(popt->ellip), &out_of_bounds);
-
-    if (out_of_bounds == 1) { //If origin is out of bounds
-        fprintf(stderr, "Searching in the wrong area");
-        return 0;
-    }
 
     double traverse_origin_relative_m_x = popt->DSM.relative_origin_traverse_true.easting - popt->DSM.relative_origin_traverse.easting;
     double traverse_origin_relative_m_y = popt->DSM.relative_origin_traverse_true.northing - popt->DSM.relative_origin_traverse.northing;
 
     double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / popt->DSM.step_size;
     double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / popt->DSM.step_size;
-    
-    popt->DSM.use_dem_height_only = 1;
 
     for (int sat = 1; sat <= MAXSAT; sat++) {
 
@@ -174,15 +158,15 @@ static int compute_dop_at_pos(
         if (r <= 0.0) continue;
 
         double azel_i[2];
-        satazel(pos_llh, e, azel_i);
+        satazel(ll, e, azel_i);
 
         if (azel_i[1] < elmin_rad) continue;
 
         double obstruction_prob = check_los(
             azel_i[0],
             azel_i[1],
-            0.0, // Technically fine, but bad practice
-            0.0, // Technically fine, but bad practice
+            ll->latitude, // Technically fine, but bad practice
+            ll->longitude, // Technically fine, but bad practice
             0.0, // Ignored as long as DSM->use_dem_height_only is 1
             2.0, // This variance value has been used and tuned against truth positions
             1.0, // This variance value has been used and tuned against truth positions
@@ -214,9 +198,7 @@ int dop_csv(prcopt_t* prcopt,
     char** infile,
     const char* dop_outdir,
     double dop_step_sec,
-    double dop_grid_m,
-    double dop_h_m,
-    const prcopt_t* popt)
+    double dop_grid_m)
 {
     obs_t obs = { 0 };
     nav_t nav0 = { 0 };
@@ -312,7 +294,30 @@ int dop_csv(prcopt_t* prcopt,
             for (double EE = E0; EE <= E0 + length_E; EE += dop_grid_m) {
 
                 double pos_llh[3];
-                if (!en_to_llh(prcopt, EE, NN, dop_h_m, pos_llh)) continue;
+                if (!en_to_ll(prcopt, EE, NN, pos_llh)) continue;
+
+                lat_long ll = { pos_llh[0] * 180 / M_PI, pos_llh[1] * 180 / M_PI };
+
+                int out_of_bounds = 0;
+
+                set_relative_origin(&(prcopt->DSM), &(prcopt->tiles_dataset), &ll, &(prcopt->UTM), &(prcopt->ellip), &out_of_bounds);
+
+                if (out_of_bounds == 1) { //If origin is out of bounds
+                    fprintf(stderr, "Searching in the wrong area. Bad Configuration");
+                    continue;
+                }
+
+                double current_DTM_height;
+                int origin_x = 0, origin_y = 0;
+                double dummy_distance = 0.0;
+                get_relative_height(&(prcopt->DSM), &(prcopt->tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+
+                if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
+                    fprintf(stderr, "Theoretically impossible out of bounds hit in dop_calc");
+                    continue;
+                }
+
+                pos_llh[2] = current_DTM_height;
 
                 double rcv_ecef[3];
                 pos2ecef(pos_llh, rcv_ecef);
@@ -320,15 +325,15 @@ int dop_csv(prcopt_t* prcopt,
                 double dop[4];
                 int ns_used = 0;
 
-                if (!compute_dop_at_pos(&nav, t, rcv_ecef,
+                if (!compute_dop_at_pos(&nav, t, rcv_ecef, &ll,
                     prcopt->elmin, prcopt->navsys,
-                    dop, &ns_used, popt)) {
+                    dop, &ns_used, prcopt)) {
                     continue;
                 }
 
                 fprintf(fp, "%.10f,%.10f,%.8f,%.8f,%.8f,%d\n",
-                    pos_llh[0] * R2D,
-                    pos_llh[1] * R2D,
+                    ll.latitude,
+                    ll.longitude,
                     dop[3], dop[2], dop[1],
                     ns_used);
             }

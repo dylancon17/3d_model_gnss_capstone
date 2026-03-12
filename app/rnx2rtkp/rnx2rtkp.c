@@ -115,7 +115,6 @@ int main(int argc, char** argv)
     const char* dop_outdir = "C:\\capstone\\tmp";
     double dop_step_sec = 60.0 * 15.0;
     double dop_grid_m = 1.0;
-    double dop_h_m = 1100.0;
 
     /* load options from configuration file */
     for (i = 1;i < argc;i++) {
@@ -237,7 +236,10 @@ int main(int argc, char** argv)
     }
 
     if (dop_enable) {
-        dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, dop_h_m, &prcopt);
+        // As all other heights are meaningless
+        prcopt.DSM.use_dem_height_only = 1;
+
+        dop_csv(&prcopt, ts, n, infile, dop_outdir, dop_step_sec, dop_grid_m, &prcopt);
     }
     else {
         // No point in processing if our goal is just to generate the dop graphs
