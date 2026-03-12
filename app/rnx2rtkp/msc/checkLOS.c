@@ -1,10 +1,10 @@
-#define _USE_MATH_DEFINES
-#include <math.h>
-
+﻿#define _USE_MATH_DEFINES
 
 #include "rtklib.h"
 
 #include <stdlib.h>
+
+#include <math.h>
 
 
 

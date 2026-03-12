@@ -173,7 +173,7 @@ static gtime_t time_stat={0};    /* rtk status file time */
 *          rejc     : data reject (outlier) count
 *          scal     : Weight scaling of observations due to obstruction probability
 *          prob     : probability of obstruction [0-1]
-*          
+*          dh       : DSM height - GNSS height
 *
 *-----------------------------------------------------------------------------*/
 extern int rtkopenstat(const char *file, int level)
@@ -324,11 +324,11 @@ static void outsolstat(rtk_t *rtk)
         if (!ssat->vs) continue;
         satno2id(i+1,id);
         for (j=0;j<nfreq;j++) {
-            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%lf,%lf,%d\n",
+            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%lf,%lf,%d,%lf\n",
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp [j],ssat->resc[j],  ssat->vsat[j],ssat->snr[j]*0.25,
                     ssat->fix  [j],ssat->slip[j]&3,ssat->lock[j],ssat->outc[j],
-                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i);
+                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i,ssat->height_offset);
         }
     }
 }
@@ -1091,28 +1091,68 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
     for (f=opt->mode>PMODE_DGPS?0:nf;f<nf*2;f++) {
         
         /* search reference satellite with highest elevation */
-        for (i=-1, best_noise_ratio=0,j=0;j<ns;j++) {
-            sysi=rtk->ssat[sat[j]-1].sys;
-            if (!test_sys(sysi,m)) continue;
-            if (!validobs(iu[j],ir[j],f,nf,y)) continue;
+        int i_noise = -1, i_elev = -1;
+        double best_noise_ratio = 0.0;
 
-            if (opt->DSM.processing_type > 4 || opt->DSM.processing_type < -2) {
-                // Pick reference satellite that minimizes noise scaling (obstruction scaling / sin (elev)). 
-                current_noise_ratio = rtk->ssat[sat[j] - 1].obstruction_scaling / sin(azel[1 + iu[j] * 2]);
-                if (i < 0 || current_noise_ratio <= best_noise_ratio) {
-                    i = j;
-                    best_noise_ratio = current_noise_ratio;
-                }
-            }
-            else {
-                // Pick reference satellite that has max elevation satellite
-                if (i < 0 || azel[1 + iu[j] * 2] >= azel[1 + iu[i] * 2]){
-                    i = j;
-                }
+        /* search reference satellite */
+        for (j = 0; j < ns; j++) {
+
+            sysi = rtk->ssat[sat[j] - 1].sys;
+            if (!test_sys(sysi, m)) continue;
+            if (!validobs(iu[j], ir[j], f, nf, y)) continue;
+
+            double elev = azel[1 + iu[j] * 2];
+
+            /* --- elevation-based master --- */
+            if (i_elev < 0 || elev >= azel[1 + iu[i_elev] * 2]) {
+                i_elev = j;
             }
 
+            /* --- noise-ratio–based master --- */
+            double current_noise_ratio =
+                rtk->ssat[sat[j] - 1].obstruction_scaling / sin(elev);
+
+            if (i_noise < 0 || current_noise_ratio <= best_noise_ratio) {
+                i_noise = j;
+                best_noise_ratio = current_noise_ratio;
+            }
         }
-        if (i<0) continue;
+
+        /* choose final master based on processing_type */
+        int i;
+        if (opt->DSM.processing_type > 4 || opt->DSM.processing_type < -2) {
+            i = i_noise;
+        }
+        else {
+            i = i_elev;
+        }
+
+        if (i < 0) continue;
+
+
+        /* --- diagnostic message if the choice differs --- */
+/* --- diagnostic message if the choice differs --- */
+
+        double elev_elev_rad = azel[1 + iu[i_elev] * 2];
+        double elev_noise_rad = azel[1 + iu[i_noise] * 2];
+
+        double elev_elev_deg = elev_elev_rad * 180.0 / 3.1415926;
+        double elev_noise_deg = elev_noise_rad * 180.0 / 3.1415926;
+
+        double scale_elev = rtk->ssat[sat[i_elev] - 1].obstruction_scaling;
+        double scale_noise = rtk->ssat[sat[i_noise] - 1].obstruction_scaling;
+
+        double ratio_elev = scale_elev / sin(elev_elev_rad);
+        double ratio_noise = scale_noise / sin(elev_noise_rad);
+
+        /* fprintf(stderr,
+            "DSM master changed by noise-scaling:\n"
+            "  elev-based:  idx=%d sat=%d  elev=%.2f deg  scale=%.3f  ratio=%.3f\n"
+            "  noise-based: idx=%d sat=%d  elev=%.2f deg  scale=%.3f  ratio=%.3f\n",
+            i_elev, sat[i_elev], elev_elev_deg, scale_elev, ratio_elev,
+            i_noise, sat[i_noise], elev_noise_deg, scale_noise, ratio_noise
+        ); */
+
         
         /* make double difference */
         for (j=0;j<ns;j++) {
