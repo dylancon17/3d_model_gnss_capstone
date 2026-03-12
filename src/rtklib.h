@@ -563,6 +563,7 @@ typedef struct DSMData {
 
 } DSMData;
 
+
 typedef struct TilesDataset {
     int num_tiles_x;
     int num_tiles_y;
@@ -586,6 +587,14 @@ typedef struct {
     double  rr[3];   /* ECEF truth position */
 } truth_t;
 
+typedef struct {
+    double N0;
+    double E0;
+    double length_E;
+    double length_N;
+    double dop_grid_m;
+    double dop_step_sec;
+} dop_traverse;
 
 /* type definitions ----------------------------------------------------------*/
 
