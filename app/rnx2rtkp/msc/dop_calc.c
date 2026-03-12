@@ -1,3 +1,5 @@
+﻿﻿#define _USE_MATH_DEFINES
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -133,21 +135,23 @@ static int compute_dop_at_pos(
 
     ecef2pos(rcv_ecef, pos_llh);
 
+    // Lat Long in degrees
+    lat_long ll = { pos_llh[0] * 180 / M_PI, pos_llh[1] * 180 / M_PI };
 
     int out_of_bounds = 0;
 
-    set_relative_origin(&(popt->DSM), &(popt->tiles_dataset), &kf_ll, &(popt->UTM), &(popt->ellip), &out_of_bounds);
+    set_relative_origin(&(popt->DSM), &(popt->tiles_dataset), &ll, &(popt->UTM), &(popt->ellip), &out_of_bounds);
 
     if (out_of_bounds == 1) { //If origin is out of bounds
         fprintf(stderr, "Searching in the wrong area");
         return 0;
     }
 
-    double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
-    double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
+    double traverse_origin_relative_m_x = popt->DSM.relative_origin_traverse_true.easting - popt->DSM.relative_origin_traverse.easting;
+    double traverse_origin_relative_m_y = popt->DSM.relative_origin_traverse_true.northing - popt->DSM.relative_origin_traverse.northing;
 
-    double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / rtk->opt.DSM.step_size;
-    double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / rtk->opt.DSM.step_size;
+    double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / popt->DSM.step_size;
+    double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / popt->DSM.step_size;
 
     popt->DSM.use_dem_height_only == 1;
 
