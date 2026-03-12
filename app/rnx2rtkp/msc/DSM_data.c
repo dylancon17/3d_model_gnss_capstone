@@ -35,7 +35,7 @@ int64_t open_BIN(file_BIN* file, const char* fileName)
     memset(file, 0, sizeof(*file));
     file->file_ptr = fopen(fileName, "rb");
     if (!file->file_ptr) {
-        perror("\nOpening file unsuccessful\n");
+        fprintf(stderr, "\nOpening file unsuccessful %s\n", fileName);
         return -1;
     }
 
