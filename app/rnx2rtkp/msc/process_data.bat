@@ -166,17 +166,34 @@ exit /b 0
 echo.
 echo ===================================================================
 echo Usage:
-echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
+echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX] (DOP)
 echo.
 echo DEM Options:
-echo	-2 = no DEM processing, calculate true signal errors and obstruction probability using truth position (must also change line 338 in postpos.c)
-echo	-1 = no DEM processing, calculate true signal errors using truth position (must also change line 338 in postpos.c)
-echo    0 = no DEM processing
-echo    1 = boolean observation rejection
-echo    2 = probability-threshold observation rejection
-echo    3 = deweighting + rejection (probability threshold)
-echo    4 = deweighting only
-echo    5 = deweighting + rejection + reference satellite selection
+echo    -4 = Calculate true pseudorange and probability, use reference satellite selection, use max prob (must run before any positive option to set truth; all negative options require truth hardcoded in postpos)
+echo    -3 = Calculate true pseudorange and probability, use reference satellite selection based on probability threshold
+echo    -2 = Calculate true pseudorange and probabilities
+echo    -1 = Calculate true pseudorange errors
+echo     0 = no DEM processing
+echo     1 = boolean observation rejection
+echo     2 = observation rejection based on probability threshold
+echo     3 = observation deweighting + rejection (probability threshold)
+echo     4 = observation deweighting only (probability threshold)
+echo     5 = observation deweighting + rejection + reference satellite selection (probability threshold)
+echo     6 = observation deweighting + rejection + reference sat selection + height‑based change rejection  (BEST option)
+echo     7 = observation deweighting + rejection + reference sat selection + max‑prob selection
+echo     8 = observation deweighting + rejection + reference sat selection + max‑prob selection + height‑based change rejection
+echo     9 = observation deweighting + reference sat selection + max‑prob selection + height‑based change rejection (second BEST option)
+echo
+echo "Currently treated in code as:"
+echo "  0 = do nothing"
+echo "  >1 or < -1 = probability calculations"
+echo "  >2 = deweighting"
+echo "  !=4 and !=9 = rejection"
+echo "  >4 = reference satellite selection"
+echo "  <0 = true pseudorange output"
+echo "  <-1 = true LOS calculations"
+echo "  >=7 or <= -4 = max probability selection"
+echo "  5 or >7 = height‑based change rejection"
 echo.
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots
@@ -193,15 +210,19 @@ echo.
 echo PREFIX:
 echo    Added to all output file names
 echo.
+echo DOP:
+echo    Added at end of command, previous args not required. 
+echo    Calculate the satellite DOP given the building obstructions
+echo.
 echo Examples:
 echo   process_data.bat 1 2
 echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
 echo.
-echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
+echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE DOP
 echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
 echo.
-echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4
-echo        - Runs datasets 1 to 6 with full processing and prefix RUN4
+echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4 DOP
+echo        - Runs datasets 1 to 6 with full processing and prefix RUN4 and runs using DOP calcs, not normal processing
 echo ===================================================================
 echo.
 goto :EOF
