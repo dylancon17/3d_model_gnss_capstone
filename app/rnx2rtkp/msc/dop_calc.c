@@ -200,6 +200,8 @@ int dop_csv(prcopt_t* prcopt,
     double dop_step_sec,
     double dop_grid_m)
 {
+
+    fprintf(stderr, "In dop_csv\n");
     obs_t obs = { 0 };
     nav_t nav0 = { 0 };
     sta_t sta0 = { 0 };
@@ -211,6 +213,9 @@ int dop_csv(prcopt_t* prcopt,
         return 0;
     }
 
+    fprintf(stderr, "Read RINEX\n");
+
+
     gtime_t obs_start = obs.data[0].time;
 
     gtime_t utc = gpst2utc(obs_start);
@@ -221,6 +226,9 @@ int dop_csv(prcopt_t* prcopt,
     int month = (int)ep0[1];
     int day = (int)ep0[2];
 
+    fprintf(stderr, "Read Obs Time Successfully\n");
+
+
     freeobs(&obs);
     freenav(&nav0, 0);
 
@@ -229,11 +237,14 @@ int dop_csv(prcopt_t* prcopt,
     const char* fetch_outdir = "C:\\capstone\\tmp";
 
     if (!run_python_fetch_brdc(python_exe, script_path, fetch_outdir, year, month, day)) {
+        fprintf(stderr, "Python Fetch BRDC Failed\n");
+
         return 0;
     }
 
     nav_t nav = { 0 };
     if (!readrnx("C:\\capstone\\tmp\\brdc.rnx", 0, "", NULL, &nav, NULL)) {
+        fprintf(stderr, "Read BRDC Failed\n");
         freenav(&nav, 0);
         return 0;
     }
@@ -253,6 +264,9 @@ int dop_csv(prcopt_t* prcopt,
 
     t1 = timeadd(t0, 86400.0);
 
+    fprintf(stderr, "Set End Time\n");
+
+
     const double E0 = -6675.47;
     const double N0 = 5656200.28;
     const double length_E = 2000.0;
@@ -261,7 +275,15 @@ int dop_csv(prcopt_t* prcopt,
 
     ensure_dir_exists(dop_outdir);
 
+    fprintf(stderr, "Past Dir Exists. Starting at Time %lf %lf with Time Step of: %lf\n", t0.sec, t0.time, dop_step_sec);
+
+
     for (gtime_t t = t0; timediff(t, t1) <= 0.0; t = timeadd(t, dop_step_sec)) {
+        
+        double ep[6];
+        time2epoch(gpst2utc(t), ep);
+        fprintf(stderr, "%04.0f-%02.0f-%02.0f %02.0f:%02.0f\n",
+            ep[0], ep[1], ep[2], ep[3], ep[4]);
 
         gtime_t utc_t = gpst2utc(t);
         double epu[6];
@@ -286,15 +308,22 @@ int dop_csv(prcopt_t* prcopt,
             out_folder, yyyy, mm, dd, HH, MN);
 
         FILE* fp = fopen(out_file, "w");
-        if (!fp) continue;
-
+        if (!fp) {
+            fprintf(stderr, "Failed on fp\n");
+            continue;
+        }
         fprintf(fp, "lat_deg,lon_deg,vdop,hdop,pdop,num_sats\n");
 
-        for (double NN = N0; NN <= N0 - length_N; NN -= dop_grid_m) {
+        for (double NN = N0; NN >= N0 - length_N; NN -= dop_grid_m) {
+            fprintf(stderr, "Loop at North %lf\n", NN);
             for (double EE = E0; EE <= E0 + length_E; EE += dop_grid_m) {
+                fprintf(stderr, "Loop at East %lf\n", EE);
 
                 double pos_llh[3];
-                if (!en_to_ll(prcopt, EE, NN, pos_llh)) continue;
+                if (!en_to_ll(prcopt, EE, NN, pos_llh)) {
+                    fprintf(stderr, "East North to LL failed\n");
+                    continue;
+                }
 
                 lat_long ll = { pos_llh[0] * 180 / M_PI, pos_llh[1] * 180 / M_PI };
 
@@ -303,7 +332,7 @@ int dop_csv(prcopt_t* prcopt,
                 set_relative_origin(&(prcopt->DSM), &(prcopt->tiles_dataset), &ll, &(prcopt->UTM), &(prcopt->ellip), &out_of_bounds);
 
                 if (out_of_bounds == 1) { //If origin is out of bounds
-                    fprintf(stderr, "Searching in the wrong area. Bad Configuration");
+                    fprintf(stderr, "Searching in the wrong area. Bad Configuration\n");
                     continue;
                 }
 
@@ -316,7 +345,7 @@ int dop_csv(prcopt_t* prcopt,
                 current_DTM_height = current_DTM_height + 1.0;
 
                 if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
-                    fprintf(stderr, "Theoretically impossible out of bounds hit in dop_calc");
+                    fprintf(stderr, "Theoretically impossible out of bounds hit in dop_calc\n");
                     continue;
                 }
 
@@ -336,6 +365,8 @@ int dop_csv(prcopt_t* prcopt,
                 if (!compute_dop_at_pos(&nav, t, rcv_ecef, &ll,
                     prcopt->elmin, prcopt->navsys,
                     dop, &ns_used, prcopt)) {
+                    fprintf(stderr, "Compute DOP at POS failed\n");
+
                     continue;
                 }
 
