@@ -104,7 +104,7 @@ int main(int argc, char** argv)
     char* infile[MAXFILE], * outfile = "";
 
     prcopt.mode = PMODE_KINEMA;
-    prcopt.navsys = SYS_GPS | SYS_GLO;
+    prcopt.navsys = SYS_ALL;
     prcopt.refpos = 1;
     prcopt.glomodear = 1;
     solopt.timef = 0;
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     int dop_enable = 0;
     const char* dop_outdir = "C:\\capstone\\tmp";
     double dop_step_sec = 60.0 * 15.0;
-    double dop_grid_m = 100.0;
+    double dop_grid_m = 1.0;
     double dop_h_m = 1100.0;
 
     /* load options from configuration file */
@@ -184,6 +184,9 @@ int main(int argc, char** argv)
         showmsg("error : no input file");
         return -2;
     }
+
+    prcopt.navsys = SYS_ALL;
+
 
     /* Initialize DSM and related objects */
     if (prcopt.DSM.processing_type != 0) {
