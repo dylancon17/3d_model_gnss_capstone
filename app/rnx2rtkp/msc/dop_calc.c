@@ -1,9 +1,10 @@
-﻿﻿#define _USE_MATH_DEFINES
-
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define _USE_MATH_DEFINES
 #include <math.h>
+
 #include <direct.h>
 #include <errno.h>
 #include "rtklib.h"
@@ -125,7 +126,7 @@ static int compute_dop_at_pos(
     int navsys,
     double dop_out[4],
     int* ns_out,
-    const prcopt_t* popt)
+    prcopt_t* popt)
 {
     double pos_llh[3];
     double azel[MAXSAT][2];
@@ -152,8 +153,8 @@ static int compute_dop_at_pos(
 
     double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / popt->DSM.step_size;
     double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / popt->DSM.step_size;
-
-    popt->DSM.use_dem_height_only == 1;
+    
+    popt->DSM.use_dem_height_only = 1;
 
     for (int sat = 1; sat <= MAXSAT; sat++) {
 
@@ -207,7 +208,7 @@ static int compute_dop_at_pos(
     return 1;
 }
 
-int dop_csv(const prcopt_t* prcopt,
+int dop_csv(prcopt_t* prcopt,
     gtime_t ts,
     int n,
     char** infile,
