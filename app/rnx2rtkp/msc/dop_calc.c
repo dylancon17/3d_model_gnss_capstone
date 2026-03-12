@@ -133,7 +133,21 @@ static int compute_dop_at_pos(
 
     ecef2pos(rcv_ecef, pos_llh);
 
-    // TODO set los origin
+
+    int out_of_bounds = 0;
+
+    set_relative_origin(&(popt->DSM), &(popt->tiles_dataset), &kf_ll, &(popt->UTM), &(popt->ellip), &out_of_bounds);
+
+    if (out_of_bounds == 1) { //If origin is out of bounds
+        fprintf(stderr, "Searching in the wrong area");
+        return 0;
+    }
+
+    double traverse_origin_relative_m_x = rtk->opt.DSM.relative_origin_traverse_true.easting - rtk->opt.DSM.relative_origin_traverse.easting;
+    double traverse_origin_relative_m_y = rtk->opt.DSM.relative_origin_traverse_true.northing - rtk->opt.DSM.relative_origin_traverse.northing;
+
+    double traverse_origin_relative_grid_x = traverse_origin_relative_m_x / rtk->opt.DSM.step_size;
+    double traverse_origin_relative_grid_y = traverse_origin_relative_m_y / rtk->opt.DSM.step_size;
 
     popt->DSM.use_dem_height_only == 1;
 
@@ -169,9 +183,9 @@ static int compute_dop_at_pos(
             1.0, // This variance value has been used and tuned against truth positions
             &(popt->DSM),
             &(popt->tiles_dataset),
-            double traverse_origin_x_grid,
-            double traverse_origin_y_grid,
-            int debug);
+            traverse_origin_relative_grid_x,
+            traverse_origin_relative_grid_y,
+            0);
 
         if (obstruction_prob > 0.5 || obstruction_prob < 0) {
             continue;
