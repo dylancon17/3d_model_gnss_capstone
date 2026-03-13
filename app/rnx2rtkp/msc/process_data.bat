@@ -16,6 +16,7 @@ REM --------------------------------------------------------------------
 REM Enable delayed expansion for variables modified inside loops
 setlocal enabledelayedexpansion
 
+
 REM ------------------ Parse arguments with defaults --------------------
 REM Arg order: Dataset, DEM, PLOT, PREFIX
 set "ARG_DATASET=%~1"
@@ -24,11 +25,14 @@ set "ARG_PLOT=%~3"
 set "ARG_PERFORMANCE=%~4"
 set "ARG_ANALYZE=%~5"
 set "ARG_PREFIX=%~6"
+set "ARG_DOP=%~7"
 
 if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
 if "!ARG_DEM!"=="" set "ARG_DEM=0"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
+if "!ARG_DOP!"=="" set "ARG_DOP=0"
+
 REM ARG_PREFIX default is empty
 REM ARG_PERFORMANCE default is empty
 
@@ -66,10 +70,7 @@ if /I "!ARG_PLOT!"=="PLOT" (
 )
 
 REM ------------------ Generate one timestamp for entire run -----------
-for /f %%a in ('wmic os get localdatetime ^| find "."') do set DTS=%%a
-set TIMESTAMP=%DTS:~0,8%_%DTS:~8,6%
-
-
+for /f %%a in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TIMESTAMP=%%a"
 
 REM ---------------- Elevate if needed for performance monitoring --------------------
 net session >nul 2>&1
@@ -108,16 +109,21 @@ for %%D in (!DATASET_LIST!) do (
     set "OUTPATH_DEM="
     set "OUTPATH_NODEM="
 
-
     set "FINAL_PREFIX=!CUSTOM_PREFIX!_!ARG_DEM!"
     set "OUTFILE=solution_!TIMESTAMP!.pos"
     set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
     echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: !ARG_DEM! Output Name: !OUTPATH!
+
+    set "DOP_ARGS="
+    if "!DO_DOP!"=="1" set "DOP_ARGS=-dopout"
+
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
         wpr -start CPU.Light -filemode
     )
-    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+
+    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         wpr -stop !OUTPATHETL!
         wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
@@ -158,22 +164,34 @@ exit /b 0
 echo.
 echo ===================================================================
 echo Usage:
-echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX]
+echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX] [DOP]
 echo.
 echo DEM Options:
-echo    -4 = Calculate true pseudorange and probability and use reference satellite selection and use max prob
-echo    -3 = Calculate true pseudorange and probability and use reference satellite selection based on probability threshold
+echo    -4 = Calculate true pseudorange and probability, use reference satellite selection, use max prob (must run before any positive option to set truth; all negative options require truth hardcoded in postpos)
+echo    -3 = Calculate true pseudorange and probability, use reference satellite selection based on probability threshold
 echo    -2 = Calculate true pseudorange and probabilities
 echo    -1 = Calculate true pseudorange errors
-echo     0 = don't do anything with the DEM.
-echo     1 = do boolean observation rejection.
-echo     2 = do observation rejection based on probability threshold.
-echo     3 = do observation deweighting and rejection based on probability threshold
-echo     4 = do observation deweighting based on probability threshold
-echo     5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-echo     6 = do observation deweighting, rejection, reference sat selection, height based change rejection
-echo     7 = do observation deweighting, rejection, reference sat selection, max prob selection
-echo     8 = do observation deweighting, rejection, reference sat selection, max prob selection, height based change rejection
+echo     0 = no DEM processing
+echo     1 = boolean observation rejection
+echo     2 = observation rejection based on probability threshold
+echo     3 = observation deweighting + rejection (probability threshold)
+echo     4 = observation deweighting only (probability threshold)
+echo     5 = observation deweighting + rejection + reference satellite selection (probability threshold)
+echo     6 = observation deweighting + rejection + reference sat selection + height‑based change rejection  (BEST option)
+echo     7 = observation deweighting + rejection + reference sat selection + max‑prob selection
+echo     8 = observation deweighting + rejection + reference sat selection + max‑prob selection + height‑based change rejection
+echo     9 = observation deweighting + reference sat selection + max‑prob selection + height‑based change rejection (second BEST option)
+echo
+echo "Currently treated in code as:"
+echo "  0 = do nothing"
+echo "  >1 or < -1 = probability calculations"
+echo "  >2 = deweighting"
+echo "  !=4 and !=9 = rejection"
+echo "  >4 = reference satellite selection"
+echo "  <0 = true pseudorange output"
+echo "  <-1 = true LOS calculations"
+echo "  >=7 or <= -4 = max probability selection"
+echo "  5 or >7 = height‑based change rejection"
 echo.
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots
@@ -190,6 +208,12 @@ echo.
 echo PREFIX:
 echo    Added to all output file names
 echo.
+echo DOP:
+echo    Added at end of command, previous args not required. 
+echo    1 = Downtown
+echo    2 = University
+echo    3 = Calgary
+echo.
 echo Examples:
 echo   process_data.bat 1 2
 echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
@@ -197,8 +221,8 @@ echo.
 echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
 echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
 echo.
-echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4
-echo        - Runs datasets 1 to 6 with full processing and prefix RUN4
+echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4 1
+echo        - Runs datasets 1 to 6 with full processing and prefix RUN4 and runs using DOP calcs for downtown, not normal processing
 echo ===================================================================
 echo.
 goto :EOF
