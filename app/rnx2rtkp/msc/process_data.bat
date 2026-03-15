@@ -185,6 +185,8 @@ echo    10 = same as 9 but no reference satellite selection.
 echo    11 = same as 9 but rejection instead of deweighting.
 echo    12 = same as 9 but search radius limited to 500m.
 echo    13 = same as 9 but no height‑based change rejection.
+echo    14 = same as 9 but rejection and deweighting.
+
 echo
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots

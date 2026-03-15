@@ -536,6 +536,7 @@ typedef struct DSMData {
                          11 = 9 but rejection instead of deweighting - Done
                          12 = 9 but search radius limited to 500m - Done
                          13 = 9 but no height based change rejection, use whatever - Done
+                         14 = 9 but rejection and deweighting - Done
                          currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 and !=9 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for max prob selection, 5 or >7 for height based change rejection  + special handling for 9+*/
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
