@@ -120,7 +120,8 @@ double calc_max_height(const DSMData* DSM) {
             max_height_index = i;
         }
     }
-    double max_height_true = calculate_true_height_meters(DSM, max_height_index);
+    double out_of_bounds;
+    double max_height_true = calculate_true_height_meters(DSM, max_height_index, &out_of_bounds);
     fprintf(stderr, "Max height: %lf", max_height_true);
     return max_height_true;
 }

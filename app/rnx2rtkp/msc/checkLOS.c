@@ -175,7 +175,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double e[3], azel[2]; //warning gets overwritten each satellite. Should be fine?
     double r;
     double probability_of_obstruction = 0;
-
+    double obstruction_distance = -1.0;
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
 
@@ -202,7 +202,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug);
+        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug, &obstruction_distance);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
@@ -215,6 +215,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             fprintf(stderr, "Setting ssat at index %d with probability: %lf\n", sat[i] - 1, probability_of_obstruction);
         }
 
+        rtk->ssat[sat[i] - 1].obstruction_distance = probability_of_obstruction;
         rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
 
         if (probability_of_obstruction == 1.0) { // Avoid a divide by 0 error
@@ -286,7 +287,7 @@ void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug, double* obstruction_distance) {
     if (debug) {
         fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
             sat_az * 180 / M_PI,
@@ -301,6 +302,8 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     int out_of_bounds = 0;
     double current_DTM_height = 0;
     double sat_vertical_slope = tan(sat_elev);
+
+    *obstruction_distance = -1.0;
 
     // get starting grid coordinates and DTM height
     int origin_x = 0, origin_y = 0;
@@ -436,6 +439,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         if (DSM->processing_type >= 7 || DSM->processing_type <= -4) {
             if (p_i > probability_of_obstruction) {
                 probability_of_obstruction = p_i;
+                *obstruction_distance = d_grid;
                 if (debug) {
                     fprintf(stderr, "Updating prob to new max\n");
                 }
