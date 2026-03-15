@@ -171,28 +171,21 @@ echo    -4 = Calculate true pseudorange and probability, use reference satellite
 echo    -3 = Calculate true pseudorange and probability, use reference satellite selection based on probability threshold
 echo    -2 = Calculate true pseudorange and probabilities
 echo    -1 = Calculate true pseudorange errors
-echo     0 = no DEM processing
-echo     1 = boolean observation rejection
-echo     2 = observation rejection based on probability threshold
-echo     3 = observation deweighting + rejection (probability threshold)
-echo     4 = observation deweighting only (probability threshold)
-echo     5 = observation deweighting + rejection + reference satellite selection (probability threshold)
-echo     6 = observation deweighting + rejection + reference sat selection + height‑based change rejection  (BEST option)
-echo     7 = observation deweighting + rejection + reference sat selection + max‑prob selection
-echo     8 = observation deweighting + rejection + reference sat selection + max‑prob selection + height‑based change rejection
-echo     9 = observation deweighting + reference sat selection + max‑prob selection + height‑based change rejection (second BEST option)
+echo     0 = don't do anything with the DEM.
+echo     1 = do boolean observation rejection.
+echo     2 = do observation rejection based on probability threshold.
+echo     3 = do observation deweighting and rejection based on probability threshold.
+echo     4 = do observation deweighting based on probability threshold.
+echo     5 = do observation deweighting, rejection, and reference satellite selection based on probability threshold.
+echo     6 = same as 9 but combining probabilities instead of taking max.
+echo     7 = do observation deweighting, rejection, reference satellite selection, and max‑prob selection.
+echo     8 = do observation deweighting, rejection, reference satellite selection, max‑prob selection, and height‑based change rejection.
+echo     9 = do observation deweighting, reference satellite selection, max‑prob selection, height‑based change rejection (BEST).
+echo    10 = same as 9 but no reference satellite selection.
+echo    11 = same as 9 but rejection instead of deweighting.
+echo    12 = same as 9 but search radius limited to 500m.
+echo    13 = same as 9 but no height‑based change rejection.
 echo
-echo "Currently treated in code as:"
-echo "  0 = do nothing"
-echo "  >1 or < -1 = probability calculations"
-echo "  >2 = deweighting"
-echo "  !=4 and !=9 = rejection"
-echo "  >4 = reference satellite selection"
-echo "  <0 = true pseudorange output"
-echo "  <-1 = true LOS calculations"
-echo "  >=7 or <= -4 = max probability selection"
-echo "  5 or >7 = height‑based change rejection"
-echo.
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots
 echo    NOPLOT     = do not open RTKLIB plots
