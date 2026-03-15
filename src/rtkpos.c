@@ -324,11 +324,11 @@ static void outsolstat(rtk_t *rtk)
         if (!ssat->vs) continue;
         satno2id(i+1,id);
         for (j=0;j<nfreq;j++) {
-            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%lf,%lf,%d,%lf,%lf\n",
+            fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%lf,%lf,%d,%lf,%lf,%lf\n",
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp [j],ssat->resc[j],  ssat->vsat[j],ssat->snr[j]*0.25,
                     ssat->fix  [j],ssat->slip[j]&3,ssat->lock[j],ssat->outc[j],
-                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i,ssat->height_offset,ssat->obstruction_distance);
+                    ssat->slipc[j],ssat->rejc[j], ssat->obstruction_scaling, ssat->obstruction_probability,i,ssat->height_offset,ssat->obstruction_distance,ssat->search_distance);
         }
     }
 }
@@ -1120,7 +1120,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
 
         /* choose final master based on processing_type */
         int i;
-        if (opt->DSM.processing_type > 4 || opt->DSM.processing_type < -2) {
+        if ((opt->DSM.processing_type > 4 || opt->DSM.processing_type < -2) && opt->DSM.processing_type != 10) {
             i = i_noise;
         }
         else {

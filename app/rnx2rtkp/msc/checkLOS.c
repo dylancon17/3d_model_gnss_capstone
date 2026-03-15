@@ -125,7 +125,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     }
 
 
-    if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - kf_pos[2]) > 25 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+    if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - kf_pos[2]) > 25 && ((rtk->opt.DSM.processing_type > 7 && rtk->opt.DSM.processing_type < 13) || rtk->opt.DSM.processing_type == 6)) {
         // Heights don't match. Incorrect starting height and therefore position
         //Try the single point position instead
         lat_long spp_ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI };
@@ -145,7 +145,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             return 0;
         }
 
-        if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - spp_pos[2]) > 25 && (rtk->opt.DSM.processing_type > 7 || rtk->opt.DSM.processing_type == 6)) {
+        if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - spp_pos[2]) > 25 && ((rtk->opt.DSM.processing_type > 7 && rtk->opt.DSM.processing_type < 13) || rtk->opt.DSM.processing_type == 6)) {
             //Both positions are incorrect. No point in doing a traverse
             reset_scaling(rtk, ns, sat);
             return 0;
@@ -176,6 +176,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double r;
     double probability_of_obstruction = 0;
     double obstruction_distance = -1.0;
+    double max_possible_distance_m = -1.0;
 
     for (i = 0;i < *ns && i < MAXOBS;i++) {
 
@@ -202,7 +203,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug, &obstruction_distance);
+        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug, &obstruction_distance, &max_possible_distance_m);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
@@ -215,7 +216,8 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             fprintf(stderr, "Setting ssat at index %d with probability: %lf\n", sat[i] - 1, probability_of_obstruction);
         }
 
-        rtk->ssat[sat[i] - 1].obstruction_distance = probability_of_obstruction;
+        rtk->ssat[sat[i] - 1].search_distance = max_possible_distance_m;
+        rtk->ssat[sat[i] - 1].obstruction_distance = obstruction_distance;
         rtk->ssat[sat[i] - 1].obstruction_probability = probability_of_obstruction;
 
         if (probability_of_obstruction == 1.0) { // Avoid a divide by 0 error
@@ -259,7 +261,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     //fprintf(stdout, "%d possible sats\n", *ns);
 
     // If deterministic or probabilistic rejection
-    if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4 && rtk->opt.DSM.processing_type != 9) {
+    if (rtk->opt.DSM.processing_type > 0 && rtk->opt.DSM.processing_type != 4 && rtk->opt.DSM.processing_type != 6 && rtk->opt.DSM.processing_type != 9 && rtk->opt.DSM.processing_type != 10 && rtk->opt.DSM.processing_type != 12 && rtk->opt.DSM.processing_type != 13) {
         // Remove the rejected indices
         for (i = nrej - 1; i >= 0; i--) {
             int idx = rej_idx[i];
@@ -287,7 +289,7 @@ void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug, double* obstruction_distance) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug, double* obstruction_distance, double* max_possible_distance_m) {
     if (debug) {
         fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
             sat_az * 180 / M_PI,
@@ -337,8 +339,9 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         }
     }
     // Only search until a distance where you're guranteed to hit a building, or you've searched a ways
-    double max_distance_m = (DSM->max_dsm_height - origin_height) / sat_vertical_slope;
-    if (max_distance_m > DSM->max_distance) {
+    *max_possible_distance_m = (DSM->max_dsm_height - origin_height) / sat_vertical_slope;
+    double max_distance_m = *max_possible_distance_m;
+    if (max_distance_m > DSM->max_distance && DSM->processing_type == 12) {
         max_distance_m = DSM->max_distance;
     }
 
