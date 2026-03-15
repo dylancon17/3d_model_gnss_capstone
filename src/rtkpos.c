@@ -409,7 +409,7 @@ static double varerr(int sat, int sys, double el, double bl, double dt, int f,
     }
 
     // modified to include the rover sat scaling. Instead of 2 x A do A + A / (1-p) + d * d. One A is for base noise, one for rover noise
-    if (opt->DSM.processing_type > 2 && opt->DSM.processing_type == 11) {
+    if (opt->DSM.processing_type > 2 && opt->DSM.processing_type != 11) {
         double signal_noise = (opt->ionoopt == IONOOPT_IFLC ? 3.0 : 1.0) * (a * a + b * b / sinel / sinel + c * c);
 
         // linearlly scale sd, square the variance resultingly
