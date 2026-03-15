@@ -9,6 +9,8 @@ import geopandas as gpd
 import contextily as ctx
 from matplotlib.colors import LogNorm
 
+import traceback
+
 # ============================================================
 # Small utilities
 # ============================================================
