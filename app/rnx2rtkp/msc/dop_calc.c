@@ -162,6 +162,9 @@ static int compute_dop_at_pos(
 
         if (azel_i[1] < elmin_rad) continue;
 
+        double tmp;
+        double tmp2;
+
         double obstruction_prob = check_los(
             azel_i[0],
             azel_i[1],
@@ -174,7 +177,9 @@ static int compute_dop_at_pos(
             &(popt->tiles_dataset),
             traverse_origin_relative_grid_x,
             traverse_origin_relative_grid_y,
-            0);
+            0,
+            &tmp,
+            &tmp2);
 
         if (obstruction_prob > 0.5 || obstruction_prob < 0) {
             continue;
