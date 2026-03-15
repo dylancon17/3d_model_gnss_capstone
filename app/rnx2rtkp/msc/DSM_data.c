@@ -98,10 +98,11 @@ void apply_curvature_correction(double* h, double d) { // https://labs.landsurve
 }
 
 
-double calculate_true_height_meters(const DSMData* DSM, const int index)
+double calculate_true_height_meters(const DSMData* DSM, const int index, int* out_of_bounds)
 {
     if ((double)(DSM->heights_array[index] == 50000.0)) {
-        fprintf(stderr, "5000000000000000000000000000000000000000000000000000 hit!!!!!!!!!!!!!!!!!!!!!1\n");
+        *out_of_bounds = 1.0;
+        return -1.0f; // Also return a fake height just to be safe
     }
 
     const double val = (double)(DSM->heights_array[index]);
@@ -450,7 +451,12 @@ void get_relative_height
         //printf("\nCoordinate is within bounds. Computing relative height.\n");
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
 
-        *h = calculate_true_height_meters(DSM, index);
+        *h = calculate_true_height_meters(DSM, index, out_of_bounds);
+        if (*out_of_bounds) {
+            // No data exists for this point
+            // Point is in a tile but coord does not exist, move on
+            return;
+        }
         // fprintf(stderr, "Got relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d and index as %d: %lf\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset, index, *h);
 
 
@@ -490,15 +496,12 @@ void get_relative_height
         get_relative_height(DSM, tiles_dataset, steps_E, steps_N, d, h, out_of_bounds);
     }
     else if (out_of_bounds_tiles_dataset == 1) {
-        printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        // printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
         *h = -1.0f;
     }
     else if (*out_of_bounds != 0 && *out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
-        printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        // printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
+        return;
     }
 }
 
