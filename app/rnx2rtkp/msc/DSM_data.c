@@ -98,10 +98,11 @@ void apply_curvature_correction(double* h, double d) { // https://labs.landsurve
 }
 
 
-double calculate_true_height_meters(const DSMData* DSM, const int index)
+double calculate_true_height_meters(const DSMData* DSM, const int index, int* out_of_bounds)
 {
     if ((double)(DSM->heights_array[index] == 50000.0)) {
-        fprintf(stderr, "5000000000000000000000000000000000000000000000000000 hit!!!!!!!!!!!!!!!!!!!!!1\n");
+        *out_of_bounds = 1.0;
+        return -1.0f; // Also return a fake height just to be safe
     }
 
     const double val = (double)(DSM->heights_array[index]);
@@ -119,7 +120,8 @@ double calc_max_height(const DSMData* DSM) {
             max_height_index = i;
         }
     }
-    double max_height_true = calculate_true_height_meters(DSM, max_height_index);
+    double out_of_bounds;
+    double max_height_true = calculate_true_height_meters(DSM, max_height_index, &out_of_bounds);
     fprintf(stderr, "Max height: %lf", max_height_true);
     return max_height_true;
 }
@@ -300,7 +302,8 @@ int out_of_bounds_check_tiles_dataset(east_north* traverse, TilesDataset* tiles_
     //printf("\nx_limit: %f\n", tiles_dataset->x_limit);
     //printf("\ny_limit: %f\n", tiles_dataset->y_limit);
 
-    // fprintf(stderr, "Comparing %lf %lf to %lf %lf to %lf %lf\n", traverse->easting, traverse->northing, tiles_dataset->top_left_tile_origin.easting, tiles_dataset->top_left_tile_origin.northing, tiles_dataset->x_limit, tiles_dataset->y_limit);
+    //fprintf(stderr, "Comparing %lf %lf to %lf %lf to %lf %lf\n", traverse->easting, traverse->northing, tiles_dataset->top_left_tile_origin.easting, tiles_dataset->top_left_tile_origin.northing, tiles_dataset->x_limit, tiles_dataset->y_limit);
+   
 
     if (traverse->easting < tiles_dataset->top_left_tile_origin.easting) return 1;
     else if (traverse->easting > tiles_dataset->x_limit) return 1;
@@ -375,6 +378,7 @@ void set_relative_origin
         //printf("Press any key to continue...\n");
         //_getch();
 
+        fprintf(stderr, "Opening a new tile in set_relative origin\n");
         east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse_true, tiles_dataset);
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
@@ -440,17 +444,23 @@ void get_relative_height
     const steps_XY steps = calculate_steps_from_tile_corner(&traverse, DSM);
 
     *out_of_bounds = out_of_bounds_check(steps.steps_X, steps.steps_Y, DSM);
-    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse, tiles_dataset);
+    int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&traverse, tiles_dataset);
 
     //printf("\nout_of_bounds: %d\n", *out_of_bounds);
     //printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
+    //fprintf(stderr, "Calculating Height at: %d E %d N with 3TM of %lf E %lf N with steps from corner of %d E %d N and out of bounds as: %d %d\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         //printf("\nCoordinate is within bounds. Computing relative height.\n");
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
 
-        *h = calculate_true_height_meters(DSM, index);
+        *h = calculate_true_height_meters(DSM, index, out_of_bounds);
+        if (*out_of_bounds) {
+            // No data exists for this point
+            // Point is in a tile but coord does not exist, move on
+            return;
+        }
         // fprintf(stderr, "Got relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d and index as %d: %lf\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset, index, *h);
 
 
@@ -463,6 +473,9 @@ void get_relative_height
     else if (*out_of_bounds == 1 && out_of_bounds_tiles_dataset == 0) {
         //printf("\nRelative height needs to be calculated with a new DSM tile.\n");
         east_north relative_point_to_tile_origin = round_to_tile_origin(&traverse, tiles_dataset);
+
+        fprintf(stderr, "Opening a new tile in get_relative_height\n");
+
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";
@@ -490,15 +503,12 @@ void get_relative_height
         get_relative_height(DSM, tiles_dataset, steps_E, steps_N, d, h, out_of_bounds);
     }
     else if (out_of_bounds_tiles_dataset == 1) {
-        printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        // printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
         *h = -1.0f;
     }
     else if (*out_of_bounds != 0 && *out_of_bounds != 1 && out_of_bounds_tiles_dataset != 0 && out_of_bounds_tiles_dataset != 1) {
-        printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
-        printf("Press any key to continue...\n");
-        _getch();
+        // printf("\n Out of bounds indicators are both not equal to 0 or 1.\n");
+        return;
     }
 }
 

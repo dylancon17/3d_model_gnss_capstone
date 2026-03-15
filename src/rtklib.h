@@ -528,11 +528,16 @@ typedef struct DSMData {
                          3 = do observation deweighting and rejection based on probability threshold
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
-                         6 = do observation deweighting, rejection, reference sat selection, height based change rejection (the BEST option)
-                         7 = do observation deweighting, rejection, reference sat selection, max prob selection
-                         8 = do observation deweighting, rejection, reference sat selection, max prob selection, height based change rejection
-                         9 = do observation deweighting, reference sat selection, max prob selection, height based change rejection (second BEST option)
-                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 and !=9 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for max prob selection, 5 or >7 for height based change rejection */
+                         6 = 9 but with combining probabilities instead of taking max - Done
+                         7 = Deprecated
+                         8 = Deprecated
+                         9 = do observation deweighting, reference sat selection, max prob selection, height based change rejection (BEST)
+                         10 = 9 but no reference sat selection - Done
+                         11 = 9 but rejection instead of deweighting - Done
+                         12 = 9 but search radius limited to 500m - Done
+                         13 = 9 but no height based change rejection, use whatever - Done
+                         14 = 9 but rejection and deweighting - Done
+                         currently treated in code as 0 = do nothing, > 1  or < -1 = probability calcs, > 2 = deweighting, !=4 and !=9 for rejection, > 4 for reference sat selection, <0 for true pseudorange output, <-1 for true LOS calcs, >=7 or <=-4 for max prob selection, 5 or >7 for height based change rejection  + special handling for 9+*/
     double rejection_threshold;
     int antenna_dem_offset; /* Height of antenna above DEM (probably 1-2m)*/
     double antenna_dem_offset_var;
@@ -1242,6 +1247,8 @@ typedef struct {        /* satellite status type */
     double obstruction_scaling; /* amount to scale by due to likelihood of multipath*/
     double obstruction_probability; /* probability of obstruction*/
     double height_offset; /* Mismatch between DSM and GNSS heights*/
+    double obstruction_distance; /* Distance between the origin and the object with the highest probability of obstruction*/
+    double search_distance;
 } ssat_t;
 
 
@@ -1879,7 +1886,9 @@ extern double check_los(
     TilesDataset* tiles_dataset,
     double traverse_origin_x_grid,
     double traverse_origin_y_grid,
-    int debug);
+    int debug, 
+    double* obstruction_distance, 
+    double* max_possible_distance_m);
 
 extern int los_update(
     rtk_t* rtk,
