@@ -246,8 +246,8 @@ int main(int argc, char** argv)
             traverse.E0 = -6675.47;
             traverse.length_N = 2000.0;
             traverse.length_E = 3500.0;
-            traverse.dop_grid_m = 5.0;
-            traverse.dop_step_sec = dop_step_sec;
+            traverse.dop_grid_m = 2.0;
+            traverse.dop_step_sec = 30.0 * 60.0;
         }
         else {
             if (dop_enable == 2) { // University
