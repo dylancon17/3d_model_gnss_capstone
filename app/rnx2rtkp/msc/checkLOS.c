@@ -125,7 +125,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     }
 
 
-    if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - kf_pos[2]) > 25 && ((rtk->opt.DSM.processing_type > 7 && rtk->opt.DSM.processing_type < 13) || rtk->opt.DSM.processing_type == 6 || rtk->opt.DSM.processing_type == 1)) {
+    if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - kf_pos[2]) > 25 && ((rtk->opt.DSM.processing_type > 5 && rtk->opt.DSM.processing_type != 13) || rtk->opt.DSM.processing_type == 1)) {
         // Heights don't match. Incorrect starting height and therefore position
         //Try the single point position instead
         lat_long spp_ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI };
@@ -145,7 +145,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
             return 0;
         }
 
-        if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - spp_pos[2]) > 25 && ((rtk->opt.DSM.processing_type > 7 && rtk->opt.DSM.processing_type < 13) || rtk->opt.DSM.processing_type == 6 || rtk->opt.DSM.processing_type == 1)) {
+        if (abs(current_DTM_height + rtk->opt.DSM.antenna_dem_offset - spp_pos[2]) > 25 && ((rtk->opt.DSM.processing_type > 5 && rtk->opt.DSM.processing_type != 13) || rtk->opt.DSM.processing_type == 1)) {
             //Both positions are incorrect. No point in doing a traverse
             reset_scaling(rtk, ns, sat);
             return 0;

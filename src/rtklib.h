@@ -529,8 +529,8 @@ typedef struct DSMData {
                          4 = do observation deweighting based on probability threshold
                          5 = do observation deweighting, rejection and reference satellite selection based on probability threshold
                          6 = 9 but with combining probabilities instead of taking max - Done
-                         7 = do observation deweighting, rejection, reference sat selection, max prob selection
-                         8 = do observation deweighting, rejection, reference sat selection, max prob selection, height based change rejection
+                         7 = Deprecated
+                         8 = Deprecated
                          9 = do observation deweighting, reference sat selection, max prob selection, height based change rejection (BEST)
                          10 = 9 but no reference sat selection - Done
                          11 = 9 but rejection instead of deweighting - Done
