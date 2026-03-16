@@ -9,6 +9,8 @@ import geopandas as gpd
 import contextily as ctx
 from matplotlib.colors import LogNorm
 
+import traceback
+
 # ============================================================
 # Small utilities
 # ============================================================
@@ -139,7 +141,9 @@ sat_cols = [
     "scal",   # observation weight scaling
     "prob",   # obstruction probability
     "idx",     # Index
-    "dHeight" #
+    "dHeight",
+    "dprob", #
+    "dsearchmax"
 ]
 
 try:
@@ -151,7 +155,7 @@ try:
         "resp", "resc",
         "vsat", "snr", "fix", "slip",
         "lock", "outc", "slipc", "rejc",
-        "scal", "prob", "idx", "dHeight"
+        "scal", "prob", "idx", "dHeight", "dprob", "dsearchmax"
     ]
 
     sol_stats[numeric_cols] = sol_stats[numeric_cols].apply(
@@ -648,7 +652,178 @@ try:
     )
 
     plt.close()
-    plt.show()
+    # ============================================================
+    # Shared dprob histogram bounds and bins
+    # ============================================================
+    try:
+        all_dprob = sol_stats_primary["dprob"].dropna()
+
+        xmin = all_dprob.min()
+        xmax = all_dprob.max()
+
+        bins = np.linspace(xmin, xmax, 101)  # 100 equal-width bins
+    except:
+        traceback.print_exc()
+
+
+    # ============================================================
+    # dprob Histogram — True Negative
+    # ============================================================
+    try:
+        data = sol_stats_primary.loc[tn, "dprob"].dropna()
+        count = len(data)
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(data, bins=bins, alpha=0.8)
+
+        plt.xlim(xmin, xmax)
+        plt.xlabel("Largest Obstruction Distance (dprob)")
+        plt.ylabel("Count")
+        plt.title(f"Largest Obstruction Distance Distribution — True Negative (n={count})")
+        plt.grid()
+
+        plt.savefig(
+            os.path.join(out_dir, "dprob_histogram_true_negative.png"),
+            dpi=300,
+            bbox_inches="tight"
+        )
+        plt.close()
+    except:
+        traceback.print_exc()
+
+
+    # ============================================================
+    # dprob Histogram — True Positive
+    # ============================================================
+    try:
+        data = sol_stats_primary.loc[tp, "dprob"].dropna()
+        count = len(data)
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(data, bins=bins, alpha=0.8)
+
+        plt.xlim(xmin, xmax)
+        plt.xlabel("Largest Obstruction Distance (dprob)")
+        plt.ylabel("Count")
+        plt.title(f"Largest Obstruction Distance Distribution — True Positive (n={count})")
+        plt.grid()
+
+        plt.savefig(
+            os.path.join(out_dir, "dprob_histogram_true_positive.png"),
+            dpi=300,
+            bbox_inches="tight"
+        )
+        plt.close()
+    except:
+        traceback.print_exc()
+
+
+    # ============================================================
+    # dprob Histogram — False Negative
+    # ============================================================
+    try:
+        data = sol_stats_primary.loc[fn, "dprob"].dropna()
+        count = len(data)
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(data, bins=bins, alpha=0.8)
+
+        plt.xlim(xmin, xmax)
+        plt.xlabel("Largest Obstruction Distance (dprob)")
+        plt.ylabel("Count")
+        plt.title(f"Largest Obstruction Distance Distribution — False Negative (n={count})")
+        plt.grid()
+
+        plt.savefig(
+            os.path.join(out_dir, "dprob_histogram_false_negative.png"),
+            dpi=300,
+            bbox_inches="tight"
+        )
+        plt.close()
+    except:
+        traceback.print_exc()
+
+
+    # ============================================================
+    # dprob Histogram — False Positive
+    # ============================================================
+    try:
+        data = sol_stats_primary.loc[fp, "dprob"].dropna()
+        count = len(data)
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(data, bins=bins, alpha=0.8)
+
+        plt.xlim(xmin, xmax)
+        plt.xlabel("Largest Obstruction Distance (dprob)")
+        plt.ylabel("Count")
+        plt.title(f"Largest Obstruction Distance Distribution — False Positive (n={count})")
+        plt.grid()
+
+        plt.savefig(
+            os.path.join(out_dir, "dprob_histogram_false_positive.png"),
+            dpi=300,
+            bbox_inches="tight"
+        )
+        plt.close()
+    except:
+        traceback.print_exc()
+
+    plt.figure(figsize=(10, 6))
+
+    plt.scatter(
+        sol_stats_primary.loc[tn, "dprob"],
+        sol_stats_primary.loc[tn, "el"],
+        s=8,
+        alpha=0.6,
+        label="True Negative"
+    )
+
+    plt.scatter(
+        sol_stats_primary.loc[tp, "dprob"],
+        sol_stats_primary.loc[tp, "el"],
+        s=8,
+        alpha=0.6,
+        label="True Positive"
+    )
+
+    plt.scatter(
+        sol_stats_primary.loc[fp, "dprob"],
+        sol_stats_primary.loc[fp, "el"],
+        s=8,
+        alpha=0.6,
+        label="False Positive"
+    )
+
+    plt.scatter(
+        sol_stats_primary.loc[fn, "dprob"],
+        sol_stats_primary.loc[fn, "el"],
+        s=8,
+        alpha=0.6,
+        label="False Negative"
+    )
+
+    plt.scatter(
+        sol_stats_primary.loc[tn | tp | fp | fn, "dsearchmax"],
+        sol_stats_primary.loc[tn | tp | fp | fn, "el"],
+        s=8,
+        alpha=0.6,
+        label="Max Distance Search"
+    )
+
+    plt.xlabel("dprob")
+    plt.ylabel("Satellite Elevation (deg)")
+    plt.title("dprob vs Satellite Elevation (Primary Frequency)")
+    plt.grid()
+    plt.legend()
+
+    plt.savefig(
+        os.path.join(out_dir, "dprob_vs_satellite_elevation.png"),
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()
+
 except:
     traceback.print_exc()
 

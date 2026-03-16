@@ -198,11 +198,11 @@ echo     5 = do observation deweighting, rejection, and reference satellite sele
 echo     6 = same as 9 but combining probabilities instead of taking max.
 echo     7 = Deprecated
 echo     8 = Deprecated
-echo     9 = do observation deweighting, reference satellite selection, max-prob selection, height-based change rejection (BEST).
+echo     9 = do observation deweighting, reference satellite selection, max‑prob selection, height‑based change rejection (BEST).
 echo    10 = same as 9 but no reference satellite selection.
 echo    11 = same as 9 but rejection instead of deweighting.
 echo    12 = same as 9 but search radius limited to 500m.
-echo    13 = same as 9 but no height-based change rejection.
+echo    13 = same as 9 but no height‑based change rejection.
 echo    14 = same as 9 but rejection and deweighting.
 
 echo
