@@ -6,7 +6,7 @@ if /I "%~1"=="--help" goto :show_help
 
 REM ---------------- Configuration (edit paths if necessary) -----------
 set "ROOT=C:\capstone\ToShare"
-set "DATAYEAR=26"
+set "DATAYEAR=23"
 set "RTKLIB_EXE=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\Release\rnx2rtkp_vc.exe"
 set "RTKPLOT_EXE=C:\capstone\3d_model_gnss_capstone\app\rtkplot\rtkplot.exe"
 set "CONFIG=C:\capstone\3d_model_gnss_capstone\app\rnx2rtkp\msc\config.conf"
