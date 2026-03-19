@@ -242,12 +242,12 @@ int main(int argc, char** argv)
         dop_traverse traverse;
 
         if (dop_enable == 1) { // Downtown
-            traverse.N0 = 5656200.28;
-            traverse.E0 = -6675.47;
-            traverse.length_N = 2000.0;
-            traverse.length_E = 3500.0;
-            traverse.dop_grid_m = 5.0;
-            traverse.dop_step_sec = dop_step_sec;
+            traverse.N0 = 5658000.0;
+            traverse.E0 = -5400.0;
+            traverse.length_N = 1500.0;
+            traverse.length_E = 2500.0;
+            traverse.dop_grid_m = 1.0;
+            traverse.dop_step_sec = 60 * 120.0;
         }
         else {
             if (dop_enable == 2) { // University
