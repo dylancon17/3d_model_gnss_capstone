@@ -7,6 +7,27 @@
 #include <math.h>
 #include <conio.h>
 
+void initialize_DSM_file_structure(
+    DSMFileStruct* DSM_file_struct,
+    char input_file_path,
+    char input_file_prefix,
+    char input_file_extension
+)
+{
+    // initialize file path
+    strncpy(DSM_file_struct->file_path, input_file_path, sizeof(DSM_file_struct->file_path) - 1);
+    DSM_file_struct->file_path[sizeof(DSM_file_struct->file_path) - 1] = '\0';
+
+    // initialize file prefix
+    strncpy(DSM_file_struct->file_prefix, input_file_prefix, sizeof(DSM_file_struct->file_prefix) - 1);
+    DSM_file_struct->file_prefix[sizeof(DSM_file_struct->file_prefix) - 1] = '\0';
+
+    // initialize file extension
+    strncpy(DSM_file_struct->file_extension, input_file_extension, sizeof(DSM_file_struct->file_extension) - 1);
+    DSM_file_struct->file_extension[sizeof(DSM_file_struct->file_extension) - 1] = '\0';
+
+}
+
 void initialize_tiles_dataset
 (
     TilesDataset* td,
@@ -55,9 +76,6 @@ int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n)
     int64_t read = (int64_t)fread(buffer, sizeof(uint16_t), n, file->file_ptr);
     return (read == n) ? 0 : -1;
 }
-
-
-
 
 double retrieve_anchor_decimal(const double num)
 {
@@ -196,15 +214,7 @@ void retrieve_new_file_name
         return;
     }
 
-    if (snprintf(
-        new_file_name,
-        new_file_name_size,
-        "%s%s_%sE_%sN%s",
-        file_path,
-        file_prefix,
-        tile_origin_coords_char_E,
-        tile_origin_coords_char_N,
-        file_extension) < 0)
+    if (snprintf(new_file_name, new_file_name_size, "%s%s_%sE_%sN%s", file_path, file_prefix, tile_origin_coords_char_E, tile_origin_coords_char_N, file_extension) < 0)
     {
         fprintf(stderr, "Error converting double to string.\n");
         return;
@@ -389,7 +399,6 @@ void set_relative_origin
         //fprintf(stderr, "Loading new tile in relative origin ->");
         retrieve_new_file_name(new_file_name, sizeof(new_file_name), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
         //printf("\nnew_file_name: %s\n", new_file_name);
-
         //printf("\nRe-initializing DSM\n");
 
 
@@ -424,6 +433,7 @@ void set_relative_origin
 void get_relative_height
 (
     const DSMData* DSM,
+    const DSMFileStruct* DSM_file_struct,
     const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
@@ -476,13 +486,16 @@ void get_relative_height
 
         fprintf(stderr, "Opening a new tile in get_relative_height\n");
 
-
-        char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
-        char file_prefix[100] = "DSM_CGY_5x5km_res1m";
-        char file_extension[100] = ".bin";
-
         char new_file_name[100];
-        retrieve_new_file_name(new_file_name, sizeof(new_file_name), &relative_point_to_tile_origin, file_path, file_prefix, file_extension);
+        retrieve_new_file_name
+        (
+            new_file_name, 
+            sizeof(new_file_name), 
+            &relative_point_to_tile_origin, 
+            DSM_file_struct->file_path, 
+            DSM_file_struct->file_prefix, 
+            DSM_file_struct->file_extension
+        );
         //printf("\nnew_file_name: %s\n", new_file_name);
 
         //printf("\nRe-initializing DSM\n");

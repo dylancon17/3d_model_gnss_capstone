@@ -33,7 +33,7 @@ if "!ARG_DEM!"=="" set "ARG_DEM=0"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 if "!ARG_DOP!"=="" set "ARG_DOP=0"
-if "!ARG_DSM_OPT!"=="" set "ARG_DSM_OPT=1"
+if "!ARG_DSM_OPT!"=="" set "ARG_DSM_OPT=0"
 
 REM ARG_PREFIX default is empty
 REM ARG_PERFORMANCE default is empty
@@ -213,6 +213,7 @@ echo    2 = University
 echo    3 = Calgary
 echo
 echo DSM_OPT:
+echo 	0 = Original - not modified
 echo 	1 = 1m resolution, North section
 echo 	2 = 2m resolution, North section
 echo	3 = 5m resolution, North section
