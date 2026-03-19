@@ -26,12 +26,14 @@ set "ARG_PERFORMANCE=%~4"
 set "ARG_ANALYZE=%~5"
 set "ARG_PREFIX=%~6"
 set "ARG_DOP=%~7"
+set "ARG_DSM_OPT=%~8"
 
 if "!ARG_DATASET!"=="" set "ARG_DATASET=ALL_DATA"
 if "!ARG_DEM!"=="" set "ARG_DEM=0"
 if "!ARG_PLOT!"=="" set "ARG_PLOT=NOPLOT"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 if "!ARG_DOP!"=="" set "ARG_DOP=0"
+if "!ARG_DSM_OPT!"=="" set "ARG_DSM_OPT=1"
 
 REM ARG_PREFIX default is empty
 REM ARG_PERFORMANCE default is empty
@@ -122,7 +124,7 @@ for %%D in (!DATASET_LIST!) do (
         wpr -start CPU.Light -filemode
     )
 
-    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
+    "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -dsmopt !ARG_DSM_OPT! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         wpr -stop !OUTPATHETL!
@@ -151,7 +153,8 @@ for %%D in (!DATASET_LIST!) do (
 
 	echo.
         echo Running plotting script for dataset !SPECIFICDATASET!:
-        py -3.10 "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
+        echo python "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
+		python "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
 	echo.
     )
 )
@@ -164,7 +167,7 @@ exit /b 0
 echo.
 echo ===================================================================
 echo Usage:
-echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX] [DOP]
+echo   process_data.bat [Dataset] [DEM_FLAG] [PLOT] [PERFORMANCE] [ANALYZE] [PREFIX] [DOP] [DSM_OPT]
 echo.
 echo DEM Options:
 echo    -4 = Calculate true pseudorange and probability, use reference satellite selection, use max prob (must run before any positive option to set truth; all negative options require truth hardcoded in postpos)
@@ -208,13 +211,23 @@ echo    Added at end of command, previous args not required.
 echo    1 = Downtown
 echo    2 = University
 echo    3 = Calgary
-echo.
+echo
+echo DSM_OPT:
+echo 	1 = 1m resolution, North section
+echo 	2 = 2m resolution, North section
+echo	3 = 5m resolution, North section
+echo	4 = 10m resolution, North section
+echo	5 = 1m resolution, Tiling
+echo	6 = 2m resolution, Tiling
+echo	7 = 5m resolution, Tiling
+echo	8 = 10m resolution, Tiling
+echo
 echo Examples:
 echo   process_data.bat 1 2
 echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
 echo.
-echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE
-echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis
+echo   process_data.bat 123 1 NOPLOT NOPERFORMANCE NOANALYZE RUN4 0 1
+echo        - Runs datasets 1,2,3 with DEM=1, no plot/perf/analysis, RUN4 prefix, no DOP calcs, 1m resolution North section
 echo.
 echo   process_data.bat ALL_DATA 2 PLOT PERFORMANCE ANALYZE RUN4 1
 echo        - Runs datasets 1 to 6 with full processing and prefix RUN4 and runs using DOP calcs for downtown, not normal processing
