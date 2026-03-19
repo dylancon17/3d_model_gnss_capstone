@@ -189,8 +189,7 @@ echo    11 = same as 9 but rejection instead of deweighting.
 echo    12 = same as 9 but search radius limited to 500m.
 echo    13 = same as 9 but no height‑based change rejection.
 echo    14 = same as 9 but rejection and deweighting.
-
-echo
+echo.
 echo PLOT Options:
 echo    PLOT       = open RTKLIB plots
 echo    NOPLOT     = do not open RTKLIB plots
@@ -211,7 +210,7 @@ echo    Added at end of command, previous args not required.
 echo    1 = Downtown
 echo    2 = University
 echo    3 = Calgary
-echo
+echo.
 echo DSM_OPT:
 echo 	0 = Original - not modified
 echo 	1 = 1m resolution, North section
@@ -222,7 +221,7 @@ echo	5 = 1m resolution, Tiling
 echo	6 = 2m resolution, Tiling
 echo	7 = 5m resolution, Tiling
 echo	8 = 10m resolution, Tiling
-echo
+echo.
 echo Examples:
 echo   process_data.bat 1 2
 echo        - Runs datasets 1,2,3 with DEM=2, no plot, no perf, no analysis
