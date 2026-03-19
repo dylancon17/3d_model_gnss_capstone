@@ -1159,6 +1159,7 @@ typedef struct {        /* processing options type */
     UTM_projection UTM;
     ellipsoid ellip;
     TilesDataset tiles_dataset;
+    DSMFileStruct DSM_file_struct; /* DSM File Structure */
 } prcopt_t;
 
 typedef struct {        /* solution options type */

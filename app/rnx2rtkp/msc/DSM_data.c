@@ -7,11 +7,13 @@
 #include <math.h>
 #include <conio.h>
 
-void initialize_DSM_file_structure(
+// This function should only be required for tiling
+void initialize_DSM_file_structure
+(
     DSMFileStruct* DSM_file_struct,
-    char input_file_path,
-    char input_file_prefix,
-    char input_file_extension
+    char* input_file_path,
+    char* input_file_prefix,
+    char* input_file_extension
 )
 {
     // initialize file path

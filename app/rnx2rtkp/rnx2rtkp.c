@@ -69,6 +69,7 @@ static const char* help[] = {
 " -x level  debug trace level (0:off) [0]",
 " -dem      use a dem to aid in the solution output",
 " -dopout        export DOP grid to area [off]",
+" -dsmopt        DSM resolution/tiling options",
 " -dopstep sec   DOP export timestep in seconds [900]",
 " -dopgrid m     DOP grid spacing in meters [500]"
 };
@@ -112,6 +113,7 @@ int main(int argc, char** argv)
     sprintf(filopt.trace, "%s.trace", PROGNAME);
 
     int dop_enable = 0;
+    int dsmopt = 1;
     const char* dop_outdir = "C:\\capstone\\tmp";
     double dop_step_sec = 60.0 * 15.0;
     double dop_grid_m = 1.0;
@@ -151,6 +153,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.DSM.processing_type = atoi(argv[++i]);
 
         else if (!strcmp(argv[i], "-dopout") && i + 1 < argc) dop_enable = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-dsmopt") && i + 1 < argc) dsmopt = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-dopstep") && i + 1 < argc) dop_step_sec = atof(argv[++i]);
         else if (!strcmp(argv[i], "-dopgrid") && i + 1 < argc) dop_grid_m = atof(argv[++i]);
 
@@ -198,6 +201,82 @@ int main(int argc, char** argv)
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 100; // Scale errors to a max of 20 times
         prcopt.DSM.building_height_margin = 1; //Unused
+
+        // Original North Tile
+        if (dsmopt == 0) {
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
+        }
+
+        // Other North Tiles
+        if (dsmopt == 1) {
+            // 1m res
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15989.47, 5672949.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_1m.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 30000);
+        }
+        if (dsmopt == 2) {
+            // 2m res
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15988.97, 5672948.78);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 15000);
+        }
+        if (dsmopt == 3) {
+            // 5m res
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15987.47, 5672947.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5m.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 6000);
+        }
+        if (dsmopt == 4) {
+            // 10m res
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15984.97, 5672944.78);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_10m.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 3000);
+        }
+
+        // Smaller 5x5 km Tiles
+        if (dsmopt == 5) {
+            // 1m res
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_1mResolution\\";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_1mResolution_SnappedProperly";
+            char input_file_extension[100] = ".bin";
+
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15989.47, 5672949.28);
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_1mResolution\\DSM_CGY_5x5km_1mResolution_SnappedProperly_-15989.47E_5672949.28N.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 5000);
+        }
+
+        if (dsmopt == 6) {
+            // 2m res
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_2mResolution\\";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_2mResolution_SnappedProperly";
+            char input_file_extension[100] = ".bin";
+
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15988.97, 5672948.78);
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_2mResolution\\DSM_CGY_5x5km_2mResolution_SnappedProperly_-15988.97E_5672948.78N.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 2500);
+        }
+
+        if (dsmopt == 7) {
+            // 5m res
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_5mResolution\\";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_5mResolution_SnappedProperly";
+            char input_file_extension[100] = ".bin";
+
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15987.47, 5672947.28);
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_5mResolution\\DSM_CGY_5x5km_5mResolution_SnappedProperly_-15987.47E_5672947.28N.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 1000);
+        }
+
+        if (dsmopt == 8) {
+            // 10m res
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_10mResolution\\";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_10mResolution_SnappedProperly";
+            char input_file_extension[100] = ".bin";
+
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15984.97, 5672944.78);
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_10mResolution\\DSM_CGY_5x5km_10mResolution_SnappedProperly_-15984.97E_5672944.78N.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 500);
+        }
+
+
+
       
         //initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 8, 5000, 5000, -22000.00, 5678000.00);
         //initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
@@ -212,8 +291,8 @@ int main(int argc, char** argv)
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth.bin", &(prcopt.DSM),
         //    -15989.47, 5672949.28, 1, 25000);
 
-        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
-        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
+        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
 
         // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 35000, 45000, -22000.00, 5678000.00);
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombined.bin", &(prcopt.DSM), -22000.000, 5678000.000, 1, 35000);
