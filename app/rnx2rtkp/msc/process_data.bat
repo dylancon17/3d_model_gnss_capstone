@@ -212,15 +212,15 @@ echo    2 = University
 echo    3 = Calgary
 echo.
 echo DSM_OPT:
-echo 	0 = Original - not modified
-echo 	1 = 1m resolution - north section
-echo 	2 = 2m resolution - north section
-echo	3 = 5m resolution - north section
-echo	4 = 10m resolution - north section
-echo	5 = 1m resolution - 5km by 5 km tiling all Calgary
-echo	6 = 2m resolution - 5km by 5 km tiling all Calgary
-echo	7 = 5m resolution - 5km by 5 km tiling all Calgary
-echo	8 = 10m resolution - 5km by 5 km tiling all Calgary
+echo 0 = Original - not modified
+echo 1 = 1m resolution - north section
+echo 2 = 2m resolution - north section
+echo 3 = 5m resolution - north section
+echo 4 = 10m resolution - north section
+echo 5 = 1m resolution - 5km by 5 km tiling all Calgary
+echo 6 = 2m resolution - 5km by 5 km tiling all Calgary
+echo 7 = 5m resolution - 5km by 5 km tiling all Calgary
+echo 8 = 10m resolution - 5km by 5 km tiling all Calgary
 echo.
 echo Examples:
 echo   process_data.bat 1 2
