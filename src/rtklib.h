@@ -568,6 +568,12 @@ typedef struct DSMData {
 
 } DSMData;
 
+typedef struct DSMFileStruct {
+    char file_path[100];
+    char file_prefix[100];
+    char file_extension[100];
+} DSMFileStruct;
+
 
 typedef struct TilesDataset {
     int num_tiles_x;
@@ -1936,6 +1942,13 @@ extern void initialize_dsm_tile
     double N_origin_DSM, /* Input northing origin of the DSM (ex. top left location northing of the DSM)*/
     int step_size, /* DSM raster spatial resolution (ex. 5m spatial resolution) */
     int n_columns /* Number of columns in the DSM grid */
+);
+
+extern void initialize_DSM_file_structure(
+    DSMFileStruct* DSM_file_struct,
+    char input_file_path,
+    char input_file_prefix,
+    char input_file_extension
 );
 
 extern double calculate_true_height_meters(const DSMData* DSM, int index);
