@@ -1947,9 +1947,9 @@ extern void initialize_dsm_tile
 
 extern void initialize_DSM_file_structure(
     DSMFileStruct* DSM_file_struct,
-    char input_file_path,
-    char input_file_prefix,
-    char input_file_extension
+    char* input_file_path,
+    char* input_file_prefix,
+    char* input_file_extension
 );
 
 extern double calculate_true_height_meters(const DSMData* DSM, int index);
