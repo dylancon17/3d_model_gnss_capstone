@@ -96,6 +96,7 @@ static void printhelp(void)
 /* rnx2rtkp main -------------------------------------------------------------*/
 int main(int argc, char** argv)
 {
+    printf("\n Start of rnx2rtkp main \n");
     prcopt_t prcopt = prcopt_default;
     solopt_t solopt = solopt_default;
     filopt_t filopt = { "" };
@@ -204,75 +205,107 @@ int main(int argc, char** argv)
 
         // Original North Tile
         if (dsmopt == 0) {
+            printf("\nDSM option 0 chosen\n");
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\";
+            char input_file_prefix[100] = "DTMCombinedNorth_5672949.28_-15989.47_5N_5E";
+            char input_file_extension[100] = ".bin";
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15989.47, 5672949.28, 1, 25000);
         }
 
         // Other North Tiles
         if (dsmopt == 1) {
             // 1m res
+            printf("\nDSM option 1 chosen\n");
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\";
+            char input_file_prefix[100] = "DTMCombinedNorth_1m";
+            char input_file_extension[100] = ".bin";
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15989.47, 5672949.28);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_1m.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 30000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15989.47, 5672949.28, 1, 30000);
         }
         if (dsmopt == 2) {
             // 2m res
+            printf("\nDSM option 2 chosen\n");
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\";
+            char input_file_prefix[100] = "DTMCombinedNorth_2m";
+            char input_file_extension[100] = ".bin";
+
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15988.97, 5672948.78);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 15000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15988.97, 5672948.78, 2, 15000);
         }
         if (dsmopt == 3) {
             // 5m res
+            printf("\nDSM option 3 chosen\n");
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\";
+            char input_file_prefix[100] = "DTMCombinedNorth_5m";
+            char input_file_extension[100] = ".bin";
+
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15987.47, 5672947.28);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5m.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 6000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15987.47, 5672947.28, 5, 6000);
         }
         if (dsmopt == 4) {
             // 10m res
+            printf("\nDSM option 4 chosen\n");
+            char input_file_path[100] = "C:\\capstone\\dsm_tiles\\";
+            char input_file_prefix[100] = "DTMCombinedNorth_10m";
+            char input_file_extension[100] = ".bin";
+
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15984.97, 5672944.78);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_10m.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 3000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15984.97, 5672944.78, 10, 3000);
         }
 
         // Smaller 5x5 km Tiles
         if (dsmopt == 5) {
             // 1m res
+            printf("\nDSM option 5 chosen\n");
             char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_1mResolution\\";
-            char input_file_prefix[100] = "DSM_CGY_5x5km_1mResolution_SnappedProperly";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_1mResolution_SnappedProperly_-989.47E_5637949.28N";
             char input_file_extension[100] = ".bin";
 
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15989.47, 5672949.28);
-            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_1mResolution\\DSM_CGY_5x5km_1mResolution_SnappedProperly_-15989.47E_5672949.28N.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 5000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15989.47, 5672949.28, 1, 5000);
         }
 
         if (dsmopt == 6) {
             // 2m res
+            printf("\nDSM option 6 chosen\n");
             char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_2mResolution\\";
-            char input_file_prefix[100] = "DSM_CGY_5x5km_2mResolution_SnappedProperly";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_2mResolution_SnappedProperly_-988.97E_5637948.78N";
             char input_file_extension[100] = ".bin";
 
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15988.97, 5672948.78);
-            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_2mResolution\\DSM_CGY_5x5km_2mResolution_SnappedProperly_-15988.97E_5672948.78N.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 2500);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15988.97, 5672948.78, 2, 2500);
         }
 
         if (dsmopt == 7) {
             // 5m res
+            printf("\nDSM option 7 chosen\n");
             char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_5mResolution\\";
-            char input_file_prefix[100] = "DSM_CGY_5x5km_5mResolution_SnappedProperly";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_5mResolution_SnappedProperly_-987.47E_5637947.28N";
             char input_file_extension[100] = ".bin";
 
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15987.47, 5672947.28);
-            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_5mResolution\\DSM_CGY_5x5km_5mResolution_SnappedProperly_-15987.47E_5672947.28N.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 1000);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15987.47, 5672947.28, 5, 1000);
         }
 
         if (dsmopt == 8) {
             // 10m res
+            printf("\nDSM option 8 chosen\n");
             char input_file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_10mResolution\\";
-            char input_file_prefix[100] = "DSM_CGY_5x5km_10mResolution_SnappedProperly";
+            char input_file_prefix[100] = "DSM_CGY_5x5km_10mResolution_SnappedProperly_-984.97E_5637944.78N";
             char input_file_extension[100] = ".bin";
 
+            initialize_DSM_file_structure(&prcopt.DSM_file_struct, input_file_path, input_file_prefix, input_file_extension);
             initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 9, 5000, 5000, -15984.97, 5672944.78);
-            initialize_DSM_file_structure(&prcopt.DSM_file_struct, &input_file_path, &input_file_prefix, &input_file_extension);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_10mResolution\\DSM_CGY_5x5km_10mResolution_SnappedProperly_-15984.97E_5672944.78N.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 500);
+            initialize_dsm_tile(&prcopt.DSM_file_struct, &prcopt.DSM, -15984.97, 5672944.78, 10, 500);
         }
 
         /* Calgary 114W 3TM */
