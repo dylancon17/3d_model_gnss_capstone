@@ -146,8 +146,8 @@ double calc_max_height(const DSMData* DSM) {
 }
 
 east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset) {
-    double tile_origin_easting = round_to_anchor_step(input->easting, -2000, tiles_dataset->tiles_dimension_x);
-    double tile_origin_northing = round_to_anchor_step(input->northing, 3000, tiles_dataset->tiles_dimension_y);
+    double tile_origin_easting = round_to_anchor_step(input->easting, tiles_dataset->top_left_tile_origin.easting, tiles_dataset->tiles_dimension_x);
+    double tile_origin_northing = round_to_anchor_step(input->northing, tiles_dataset->top_left_tile_origin.northing, tiles_dataset->tiles_dimension_y);
 
     
     printf("\nInput easting: %f\n", input->easting);
@@ -314,8 +314,8 @@ void initialize_dsm_tile
 
 steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM)
 {
-    const int steps_from_DSM_origin_E = (int)((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
-    const int steps_from_DSM_origin_N = (int)(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
+    const int steps_from_DSM_origin_E = (int)llround((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
+    const int steps_from_DSM_origin_N = (int)llround(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
     steps_XY steps;
     steps.steps_X = steps_from_DSM_origin_E;
     steps.steps_Y = steps_from_DSM_origin_N;
@@ -422,11 +422,11 @@ void set_relative_origin
         //printf("\nRe-initializing DSM\n");
 
 
-        initialize_dsm_tile(DSM_file, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
+        initialize_dsm_tile(DSM_file, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, DSM->step_size, DSM->n_columns);
         //fprintf(stderr, "Success\n");
 
-        double tile_limit_x = traverse_to_tile_origin.easting + DSM->n_columns;
-        double tile_limit_y = traverse_to_tile_origin.northing - DSM->n_rows;
+        double tile_limit_x = traverse_to_tile_origin.easting + DSM->n_columns * DSM->step_size;
+        double tile_limit_y = traverse_to_tile_origin.northing - DSM->n_rows * DSM->step_size;
         //printf("\nDSM tile easting bounds\n: %f to %f", traverse_to_tile_origin.easting, tile_limit_x);
         //printf("\nDSM tile northing bounds\n: %f to %f\n", traverse_to_tile_origin.northing,tile_limit_y);
 
@@ -452,7 +452,7 @@ void set_relative_origin
 /* get_relative_height ---------------------------------------------------*/
 void get_relative_height
 (
-    const DSMData* DSM,
+    DSMData* DSM,
     DSMFileStruct* DSM_file_struct,
     const TilesDataset* tiles_dataset,
     const int* steps_E,
@@ -514,9 +514,9 @@ void get_relative_height
         //printf("Press any key to continue...\n");
         //_getch();
         //fprintf(stderr, "Initializing DSM tile in get height->");
-        initialize_dsm_tile(DSM_file_struct, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
-        double tile_limit_x = relative_point_to_tile_origin.easting + DSM->n_columns;
-        double tile_limit_y = relative_point_to_tile_origin.northing - DSM->n_rows;
+        initialize_dsm_tile(DSM_file_struct, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, DSM->step_size, DSM->n_columns);
+        double tile_limit_x = relative_point_to_tile_origin.easting + DSM->n_columns * DSM->step_size;
+        double tile_limit_y = relative_point_to_tile_origin.northing - DSM->n_rows * DSM->step_size;
         //fprintf(stderr, "Success\n");
         //printf("\nDSM tile easting bounds:\n %f to %f", relative_point_to_tile_origin.easting, tile_limit_x);
         //printf("\nDSM tile northing bounds:\n %f to %f\n", relative_point_to_tile_origin.northing, tile_limit_y);

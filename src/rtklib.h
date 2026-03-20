@@ -1986,7 +1986,7 @@ extern void set_relative_origin
 
 extern void get_relative_height
 (
-    const DSMData* DSM,
+    DSMData* DSM,
     DSMFileStruct* DSM_file_struct,
     const TilesDataset* tiles_dataset,
     const int* steps_E,
