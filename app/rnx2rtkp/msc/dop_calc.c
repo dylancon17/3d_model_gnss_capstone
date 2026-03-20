@@ -174,6 +174,7 @@ static int compute_dop_at_pos(
             2.0, // This variance value has been used and tuned against truth positions
             1.0, // This variance value has been used and tuned against truth positions
             &(popt->DSM),
+            &(popt->DSM_file_struct),
             &(popt->tiles_dataset),
             traverse_origin_relative_grid_x,
             traverse_origin_relative_grid_y,

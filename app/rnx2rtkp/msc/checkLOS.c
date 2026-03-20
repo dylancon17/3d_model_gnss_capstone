@@ -203,7 +203,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         if (debug) {
             fprintf(stderr, "Requesting probability: %d\n", sat[i]);
         }
-        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug, &obstruction_distance, &max_possible_distance_m);
+        probability_of_obstruction = check_los(azel[0], azel[1], kf_pos[0], kf_pos[1], kf_pos[2], kf_Q[0] + kf_Q[4], kf_Q[8], &(rtk->opt.DSM), &(rtk->opt.DSM_file_struct), & (rtk->opt.tiles_dataset), traverse_origin_relative_grid_x, traverse_origin_relative_grid_y, debug, &obstruction_distance, &max_possible_distance_m);
         if (debug) {
             fprintf(stderr, "%lf\n", probability_of_obstruction);
         }
