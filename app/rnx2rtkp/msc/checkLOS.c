@@ -106,7 +106,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     lat_long kf_ll = { kf_pos[0] * 180 / M_PI, kf_pos[1] * 180 / M_PI};
 
     int out_of_bounds = 0;
-    set_relative_origin(&(rtk->opt.DSM),&(rtk->opt.tiles_dataset), &kf_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+    set_relative_origin(&(rtk->opt.DSM_file_struct), &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &kf_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
     if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
         reset_scaling(rtk, ns, sat);
@@ -116,7 +116,7 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
     double current_DTM_height;
     int origin_x = 0, origin_y = 0;
     double dummy_distance = 0.0;
-    get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+    get_relative_height(&(rtk->opt.DSM), &(rtk->opt.DSM_file_struct), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
     if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that. Edge case that won't happen
         fprintf(stderr, "Theoretically impossible out of bounds hit");
@@ -130,14 +130,14 @@ extern int los_update(rtk_t* rtk, const obsd_t* obs, int* sat, int* iu, int* ir,
         //Try the single point position instead
         lat_long spp_ll = { spp_pos[0] * 180 / M_PI, spp_pos[1] * 180 / M_PI };
 
-        set_relative_origin(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &spp_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
+        set_relative_origin(&(rtk->opt.DSM_file_struct), &(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &spp_ll, &(rtk->opt.UTM), &(rtk->opt.ellip), &out_of_bounds);
 
         if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
             reset_scaling(rtk, ns, sat);
             return 0;
         }
 
-        get_relative_height(&(rtk->opt.DSM), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+        get_relative_height(&(rtk->opt.DSM), &(rtk->opt.DSM_file_struct), &(rtk->opt.tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
         if (out_of_bounds == 1) { //If origin is out of bounds, don't search farther than that
             fprintf(stderr, "Theoretically impossible out of bounds hit");
@@ -289,7 +289,7 @@ void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
 }
 
 //Assumes relative origin already set
-extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug, double* obstruction_distance, double* max_possible_distance_m) {
+extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance,DSMData* DSM, DSMFileStruct* DSM_file_struct, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug, double* obstruction_distance, double* max_possible_distance_m) {
     if (debug) {
         fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
             sat_az * 180 / M_PI,
@@ -310,7 +310,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
     // get starting grid coordinates and DTM height
     int origin_x = 0, origin_y = 0;
     double dummy_distance = 0.0;
-    get_relative_height(DSM, tiles_dataset, &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+    get_relative_height(DSM, DSM_file_struct, tiles_dataset, &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
     if (debug) {
         fprintf(stderr, "Origin Height: %lf, DEM Height: %lf, Out of Bounds %d\n",
@@ -381,7 +381,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
             return probability_of_obstruction;
         }
 
-        get_relative_height(DSM, tiles_dataset, &ray.ix, &ray.iy, &d_grid, &current_DTM_height, &out_of_bounds);
+        get_relative_height(DSM, DSM_file_struct, tiles_dataset, &ray.ix, &ray.iy, &d_grid, &current_DTM_height, &out_of_bounds);
 
         if (out_of_bounds) {
             // If we run off the DSM, behavior: LOS clear beyond DSM

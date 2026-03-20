@@ -324,7 +324,7 @@ int dop_csv(prcopt_t* prcopt,
 
                 int out_of_bounds = 0;
 
-                set_relative_origin(&(prcopt->DSM), &(prcopt->tiles_dataset), &ll, &(prcopt->UTM), &(prcopt->ellip), &out_of_bounds);
+                set_relative_origin(&(prcopt->DSM_file_struct), &(prcopt->DSM), &(prcopt->tiles_dataset), &ll, &(prcopt->UTM), &(prcopt->ellip), &out_of_bounds);
 
                 if (out_of_bounds == 1) { //If origin is out of bounds
                     fprintf(stderr, "Searching in the wrong area. Bad Configuration\n");
@@ -334,7 +334,7 @@ int dop_csv(prcopt_t* prcopt,
                 double current_DTM_height;
                 int origin_x = 0, origin_y = 0;
                 double dummy_distance = 0.0;
-                get_relative_height(&(prcopt->DSM), &(prcopt->tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
+                get_relative_height(&(prcopt->DSM), &(prcopt->DSM_file_struct), & (prcopt->tiles_dataset), &origin_x, &origin_y, &dummy_distance, &current_DTM_height, &out_of_bounds);
 
                 // Asssume that the antenna is 1m off the ground
                 current_DTM_height = current_DTM_height + 1.0;

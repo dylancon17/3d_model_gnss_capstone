@@ -27,7 +27,6 @@ void initialize_DSM_file_structure
     // initialize file extension
     strncpy(DSM_file_struct->file_extension, input_file_extension, sizeof(DSM_file_struct->file_extension) - 1);
     DSM_file_struct->file_extension[sizeof(DSM_file_struct->file_extension) - 1] = '\0';
-
 }
 
 void initialize_tiles_dataset
@@ -150,13 +149,13 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
     double tile_origin_easting = round_to_anchor_step(input->easting, -2000, tiles_dataset->tiles_dimension_x);
     double tile_origin_northing = round_to_anchor_step(input->northing, 3000, tiles_dataset->tiles_dimension_y);
 
-    /*
+    
     printf("\nInput easting: %f\n", input->easting);
     printf("Input northing: %f\n\n", input->northing);
 
     printf("Tile origin easting before if statements: %f\n", tile_origin_easting);
     printf("Tile origin northing before if statements: %f\n\n", tile_origin_northing);
-    */
+    
 
     if (tile_origin_easting > tiles_dataset->x_limit - tiles_dataset->tiles_dimension_x) { tile_origin_easting -= tiles_dataset->tiles_dimension_x; }
     if (tile_origin_northing < tiles_dataset->y_limit + tiles_dataset->tiles_dimension_y) { tile_origin_northing += tiles_dataset->tiles_dimension_y; }
@@ -175,17 +174,17 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
         tile_origin_easting -= tiles_dataset->tiles_dimension_x;
     }
     else if (input->easting > tile_origin_easting && input->northing < tile_origin_northing) {
-        //Do nothing
+        
     }
     else if (input->easting < tile_origin_easting && input->northing == tile_origin_northing) {
         tile_origin_easting -= tiles_dataset->tiles_dimension_x;
     }
 
 
-    /*
+    
     printf("Tile origin easting after if statements: %f\n", tile_origin_easting);
     printf("Tile origin northing after if statements: %f\n\n", tile_origin_northing);
-    */
+    
 
     //printf("Press any key to continue...\n");
     //_getch();
@@ -195,17 +194,26 @@ east_north round_to_tile_origin(const east_north* input, const TilesDataset* til
     return tile_origin;
 }
 
-void retrieve_new_file_name
+void set_new_DSM_file
 (
-    char* new_file_name,
-    size_t new_file_name_size,
+    DSMFileStruct* DSM_file,
+    char* new_DSM_file,
+    size_t new_file_size,
     const east_north* tile_origin_coords,
     const char* file_path,
     const char* file_prefix,
-    const char* file_extension)
+    const char* file_extension
+)
 {
+    printf("\nset_new_DSM_file\n");
     char tile_origin_coords_char_E[100];
     char tile_origin_coords_char_N[100];
+
+    // Set new DSMFileStruct values
+    snprintf(DSM_file->file_path, sizeof(DSM_file->file_path), "%s", file_path);
+    snprintf(DSM_file->file_prefix, sizeof(DSM_file->file_prefix), "%s", file_prefix);
+    snprintf(DSM_file->file_extension, sizeof(DSM_file->file_extension), "%s", file_extension);
+    printf("\nDSMFileStruct successfully modified\n");
 
     if (snprintf(tile_origin_coords_char_E, sizeof(tile_origin_coords_char_E), "%d", (int)round(tile_origin_coords->easting)) < 0) {
         fprintf(stderr, "Error converting double to string.\n");
@@ -216,16 +224,21 @@ void retrieve_new_file_name
         return;
     }
 
-    if (snprintf(new_file_name, new_file_name_size, "%s%s_%sE_%sN%s", file_path, file_prefix, tile_origin_coords_char_E, tile_origin_coords_char_N, file_extension) < 0)
+    if (snprintf(new_DSM_file, new_file_size, "%s%s_%sE_%sN%s", file_path, file_prefix, tile_origin_coords_char_E, tile_origin_coords_char_N, file_extension) < 0)
     {
-        fprintf(stderr, "Error converting double to string.\n");
+        fprintf(stderr, "Error building new DSM file string.\n");
         return;
     }
+    printf("\nNew DSM file set: %s\n", new_DSM_file);
+}
+
+void get_DSM_file(DSMFileStruct* DSM_file, char* file_name, size_t file_name_size) {
+    snprintf(file_name, file_name_size, "%s%s%s", DSM_file->file_path, DSM_file->file_prefix, DSM_file->file_extension);
 }
 
 void initialize_dsm_tile
 (
-    const char* file_name, /* Name of the DSM .bin file */
+    DSMFileStruct* DSM_file, /* DSM Source File Structure */
     DSMData* DSM, /* Output DSM struct to fill in from the raster data */
     double E_origin_DSM, /* Input easting origin of the DSM (ex. top left location easting of the DSM) */
     double N_origin_DSM, /* Input northing origin of the DSM (ex. top left location northing of the DSM)*/
@@ -237,13 +250,20 @@ void initialize_dsm_tile
         free(DSM->heights_array);
         DSM->heights_array = NULL;
     }
-    //printf("\nInitializing dsm\n");
-    //printf("\nOpening file name %s\n", file_name);
+    printf("\nInitializing dsm tile\n");
+
+    char file_name[300];
+    get_DSM_file(DSM_file, file_name, sizeof(file_name));
+
+    printf("\nOpening initial DSM file: %s\n", file_name);
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     int64_t n_samples = open_BIN(&file, file_name);
     if (n_samples < 0) {
         fprintf(stderr, "\nFailed to open DSM file\n");
+    }
+    else {
+        printf("\n Initial DSM .bin file found (%s)\n", file_name);
     }
 
     DSM->n_data_points = n_samples;
@@ -346,6 +366,7 @@ int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM)
 /* set_relative_origin ---------------------------------------------------*/
 void set_relative_origin
 (
+    DSMFileStruct* DSM_file,
     DSMData* DSM,
     const TilesDataset* tiles_dataset,
     const lat_long* relative_origin_degrees,
@@ -393,18 +414,15 @@ void set_relative_origin
         fprintf(stderr, "Opening a new tile in set_relative origin\n");
         east_north traverse_to_tile_origin = round_to_tile_origin(&DSM->relative_origin_traverse_true, tiles_dataset);
 
-        char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
-        char file_prefix[100] = "DSM_CGY_5x5km_res1m";
-        char file_extension[100] = ".bin";
-
-        char new_file_name[100];
         //fprintf(stderr, "Loading new tile in relative origin ->");
-        retrieve_new_file_name(new_file_name, sizeof(new_file_name), &traverse_to_tile_origin, file_path, file_prefix, file_extension);
+        char new_file_name[300];
+        set_new_DSM_file(DSM_file, new_file_name, sizeof(new_file_name), &traverse_to_tile_origin,
+            DSM_file->file_path, DSM_file->file_prefix, DSM_file->file_extension);
         //printf("\nnew_file_name: %s\n", new_file_name);
         //printf("\nRe-initializing DSM\n");
 
 
-        initialize_dsm_tile(new_file_name, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
+        initialize_dsm_tile(DSM_file, DSM, traverse_to_tile_origin.easting, traverse_to_tile_origin.northing, 1, 5000);
         //fprintf(stderr, "Success\n");
 
         double tile_limit_x = traverse_to_tile_origin.easting + DSM->n_columns;
@@ -416,7 +434,7 @@ void set_relative_origin
         //printf("\Try setting the relative origin again after connecting to a new tile...\n");
         //printf("Press any key to continue...\n");
         //_getch();
-        set_relative_origin(DSM, tiles_dataset, relative_origin_degrees, proj, e, out_of_bounds);
+        set_relative_origin(DSM_file, DSM, tiles_dataset, relative_origin_degrees, proj, e, out_of_bounds);
 
     }
     else if (out_of_bounds_tiles_dataset == 1) {
@@ -435,7 +453,7 @@ void set_relative_origin
 void get_relative_height
 (
     const DSMData* DSM,
-    const DSMFileStruct* DSM_file_struct,
+    DSMFileStruct* DSM_file_struct,
     const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
@@ -488,23 +506,15 @@ void get_relative_height
 
         fprintf(stderr, "Opening a new tile in get_relative_height\n");
 
-        char new_file_name[100];
-        retrieve_new_file_name
-        (
-            new_file_name, 
-            sizeof(new_file_name), 
-            &relative_point_to_tile_origin, 
-            DSM_file_struct->file_path, 
-            DSM_file_struct->file_prefix, 
-            DSM_file_struct->file_extension
-        );
-        //printf("\nnew_file_name: %s\n", new_file_name);
+        char new_file_name[300];
+        set_new_DSM_file(DSM_file_struct, new_file_name, sizeof(new_file_name), &relative_point_to_tile_origin, DSM_file_struct->file_path, DSM_file_struct->file_prefix, DSM_file_struct->file_extension);
+        printf("\nNew_file_name: %s\n", new_file_name);
 
         //printf("\nRe-initializing DSM\n");
         //printf("Press any key to continue...\n");
         //_getch();
         //fprintf(stderr, "Initializing DSM tile in get height->");
-        initialize_dsm_tile(new_file_name, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
+        initialize_dsm_tile(DSM_file_struct, DSM, relative_point_to_tile_origin.easting, relative_point_to_tile_origin.northing, 1, 5000);
         double tile_limit_x = relative_point_to_tile_origin.easting + DSM->n_columns;
         double tile_limit_y = relative_point_to_tile_origin.northing - DSM->n_rows;
         //fprintf(stderr, "Success\n");

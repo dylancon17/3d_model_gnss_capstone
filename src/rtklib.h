@@ -1889,7 +1889,8 @@ extern double check_los(
     double origin_height,
     double origin_horizontal_variance,
     double origin_vertical_variance,
-    struct DSMData* DTM,
+    DSMData* DTM,
+    DSMFileStruct* DSM_file_struct,
     TilesDataset* tiles_dataset,
     double traverse_origin_x_grid,
     double traverse_origin_y_grid,
@@ -1933,11 +1934,22 @@ extern double calc_max_height(const DSMData* DSM);
 
 east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset);
 
-extern void retrieve_new_file_name(char* new_file_name, size_t new_file_name_size, const east_north* tile_origin_coords, const char* file_path, const char* file_prefix, const char* file_extension);
+extern void set_new_DSM_file
+(
+    DSMFileStruct* DSM_file,
+    char* new_DSM_file,
+    size_t new_file_size,
+    const east_north* tile_origin_coords,
+    const char* file_path,
+    const char* file_prefix,
+    const char* file_extension
+);
+
+extern void get_DSM_file(DSMFileStruct* DSM_file, char* file_name, size_t file_name_size);
 
 extern void initialize_dsm_tile
 (
-    const char* file_name, /* Name of the DSM .bin file */
+    DSMFileStruct* DSM_file, /* DSM Source File Structure */
     DSMData* DSM, /* Output DSM struct to fill in from the raster data */
     double E_origin_DSM, /* Input easting origin of the DSM (ex. top left location easting of the DSM) */
     double N_origin_DSM, /* Input northing origin of the DSM (ex. top left location northing of the DSM)*/
@@ -1962,6 +1974,7 @@ extern int out_of_bounds_check(int x_steps, int y_steps, DSMData* DSM);
 
 extern void set_relative_origin
 (
+    DSMFileStruct* DSM_file,
     DSMData* DSM,
     const TilesDataset* tiles_dataset,
     const lat_long* relative_origin_degrees,
@@ -1974,6 +1987,7 @@ extern void set_relative_origin
 extern void get_relative_height
 (
     const DSMData* DSM,
+    DSMFileStruct* DSM_file_struct,
     const TilesDataset* tiles_dataset,
     const int* steps_E,
     const int* steps_N,
