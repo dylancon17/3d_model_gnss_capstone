@@ -515,7 +515,7 @@ void get_relative_height
         //printf("\nTry getting the relative height again after changing tile connection...\n");
         //printf("Press any key to continue...\n");
         //_getch();
-        get_relative_height(DSM, tiles_dataset, steps_E, steps_N, d, h, out_of_bounds);
+        get_relative_height(DSM, DSM_file_struct, tiles_dataset, steps_E, steps_N, d, h, out_of_bounds);
     }
     else if (out_of_bounds_tiles_dataset == 1) {
         // printf("Traversing point is outside the DSM bounds. Cannot compute relative height\n");
