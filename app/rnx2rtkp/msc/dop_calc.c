@@ -260,8 +260,8 @@ int dop_csv(prcopt_t* prcopt,
         double ep[6] = { (double)year,(double)month,(double)day,0,0,0 };
         t0 = utc2gpst(epoch2time(ep));
     }
-    t0 = timeadd(t0, 0.0);
-    t1 = timeadd(t0, 864000);
+    t0 = timeadd(t0, 43200);
+    t1 = timeadd(t0, 86400);
 
     // fprintf(stderr, "Set End Time\n");
 
