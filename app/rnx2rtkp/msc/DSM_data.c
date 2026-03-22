@@ -205,7 +205,6 @@ void set_new_DSM_file
     const char* file_extension
 )
 {
-    printf("\nset_new_DSM_file\n");
     char tile_origin_coords_char_E[100];
     char tile_origin_coords_char_N[100];
 
@@ -213,7 +212,6 @@ void set_new_DSM_file
     snprintf(DSM_file->file_path, sizeof(DSM_file->file_path), "%s", file_path);
     snprintf(DSM_file->file_prefix, sizeof(DSM_file->file_prefix), "%s", file_prefix);
     snprintf(DSM_file->file_extension, sizeof(DSM_file->file_extension), "%s", file_extension);
-    printf("\nDSMFileStruct successfully modified\n");
 
     if (snprintf(tile_origin_coords_char_E, sizeof(tile_origin_coords_char_E), "%d", (int)round(tile_origin_coords->easting)) < 0) {
         fprintf(stderr, "Error converting double to string.\n");
@@ -229,7 +227,6 @@ void set_new_DSM_file
         fprintf(stderr, "Error building new DSM file string.\n");
         return;
     }
-    printf("\nNew DSM file set: %s\n", new_DSM_file);
 }
 
 void get_DSM_file(DSMFileStruct* DSM_file, char* file_name, size_t file_name_size) {
@@ -250,12 +247,10 @@ void initialize_dsm_tile
         free(DSM->heights_array);
         DSM->heights_array = NULL;
     }
-    printf("\nInitializing dsm tile\n");
 
     char file_name[300];
     get_DSM_file(DSM_file, file_name, sizeof(file_name));
 
-    printf("\nOpening initial DSM file: %s\n", file_name);
     file_BIN file;
     /* Read how many elevation samples are in the DSM raster dataset. read_BIN() returns the number of 16-bit integer compressed height values */
     int64_t n_samples = open_BIN(&file, file_name);
