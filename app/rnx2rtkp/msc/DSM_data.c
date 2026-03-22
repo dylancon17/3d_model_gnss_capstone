@@ -16,6 +16,7 @@ void initialize_DSM_file_structure
     char* input_file_extension
 )
 {
+    printf("\ninitialize_DSM_file_structure\n");
     // initialize file path
     strncpy(DSM_file_struct->file_path, input_file_path, sizeof(DSM_file_struct->file_path) - 1);
     DSM_file_struct->file_path[sizeof(DSM_file_struct->file_path) - 1] = '\0';
@@ -40,6 +41,7 @@ void initialize_tiles_dataset
     double top_left_tile_origin_y
 )
 {
+    printf("\ninitialize_tiles_dataset\n");
     td->num_tiles_x = num_tiles_x;
     td->num_tiles_y = num_tiles_y;
     td->tiles_dimension_x = tiles_dimension_x;
@@ -52,7 +54,7 @@ void initialize_tiles_dataset
 
 int64_t open_BIN(file_BIN* file, const char* fileName)
 {
-
+    printf("\nopen_BIN\n");
     //Set file to be empty
     memset(file, 0, sizeof(*file));
     file->file_ptr = fopen(fileName, "rb");
@@ -72,6 +74,7 @@ int64_t open_BIN(file_BIN* file, const char* fileName)
 
 int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n)
 {
+    printf("\nread_BIN_data\n");
     if (!file || !file->file_ptr || !buffer) return -1;
 
     int64_t read = (int64_t)fread(buffer, sizeof(uint16_t), n, file->file_ptr);
@@ -80,6 +83,7 @@ int read_BIN_data(file_BIN* file, uint16_t* buffer, int64_t n)
 
 double retrieve_anchor_decimal(const double num)
 {
+    printf("\nretrieve_anchor_decimal\n");
     double num_subtract;
     if (num < 0) num_subtract = floor(-1 * num / 10) * -10;
     else num_subtract = floor(num / 10) * 10;
@@ -87,16 +91,21 @@ double retrieve_anchor_decimal(const double num)
     double num_first_digit = num - num_subtract;
     if (num_first_digit < 0) num_first_digit *= -1;
 
+    printf("\nnum_first_digit: %f\n", num_first_digit);
     return num_first_digit;
 }
 
 double round_to_anchor_step(const double input, const double anchor, const int step_size)
 {
-    return step_size * round((input - anchor) / step_size) + anchor;
+    printf("\nretrieve_anchor_decimal\n");
+    double anchor_step = step_size * round((input - anchor) / step_size) + anchor;
+    printf("\nanchor_step: %f\n", anchor_step);
+    return anchor_step;
 }
 
 east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
 {
+    printf("\nget_closest_coordinate\n");
     east_north snapped;
 
     const double dx = (EN->easting - DSM->origin_dsm.easting) / DSM->step_size;
@@ -108,28 +117,32 @@ east_north get_closest_coordinate(const east_north* EN, const DSMData* DSM)
     snapped.easting = DSM->origin_dsm.easting + ix * DSM->step_size;
     snapped.northing = DSM->origin_dsm.northing - iy * DSM->step_size;
 
+    printf("\nsnapped: %f\n", snapped);
     return snapped;
 }
 
 
 void apply_curvature_correction(double* h, double d) { // https://labs.landsurveyorsunited.com/toools/curvaturecorrection
+    printf("\napply_curvature_correction\n");
     *h = *h - (d) * (d) / 1207420000; //Final number is earth's diameter in meters
 }
 
 
 double calculate_true_height_meters(const DSMData* DSM, const int index, int* out_of_bounds)
 {
+    printf("\ncalculate_true_height_meters\n");
     if ((double)(DSM->heights_array[index] == 50000.0)) {
         *out_of_bounds = 1.0;
         return -1.0f; // Also return a fake height just to be safe
     }
 
     const double val = (double)(DSM->heights_array[index]);
-    const double height = val / 100 + 947.259;
+    const double height = val / 100 + 947.259; // This value must be changed depending on the height bias applied to the DSM.
     return height;
 }
 
 double calc_max_height(const DSMData* DSM) {
+    printf("\ncalc_max_height\n");
     int max_height_index = 0;
     int max_height_grid_code = 0;
     for (int i = 0; i < DSM->n_data_points; i++) {
@@ -146,6 +159,7 @@ double calc_max_height(const DSMData* DSM) {
 }
 
 east_north round_to_tile_origin(const east_north* input, const TilesDataset* tiles_dataset) {
+    printf("\nround_to_tile_origin\n");
     double tile_origin_easting = round_to_anchor_step(input->easting, tiles_dataset->top_left_tile_origin.easting, tiles_dataset->tiles_dimension_x);
     double tile_origin_northing = round_to_anchor_step(input->northing, tiles_dataset->top_left_tile_origin.northing, tiles_dataset->tiles_dimension_y);
 
@@ -205,6 +219,7 @@ void set_new_DSM_file
     const char* file_extension
 )
 {
+    printf("\nset_new_DSM_file\n");
     char tile_origin_coords_char_E[100];
     char tile_origin_coords_char_N[100];
 
@@ -230,6 +245,7 @@ void set_new_DSM_file
 }
 
 void get_DSM_file(DSMFileStruct* DSM_file, char* file_name, size_t file_name_size) {
+    printf("\nget_DSM_file\n");
     snprintf(file_name, file_name_size, "%s%s%s", DSM_file->file_path, DSM_file->file_prefix, DSM_file->file_extension);
 }
 
@@ -243,6 +259,7 @@ void initialize_dsm_tile
     int n_columns /* Number of columns in the DSM grid */
 )
 {
+    printf("\ninitialize_dsm_tile\n");
     if (DSM->heights_array != NULL) {
         free(DSM->heights_array);
         DSM->heights_array = NULL;
@@ -309,6 +326,7 @@ void initialize_dsm_tile
 
 steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM)
 {
+    printf("\ncalculate_steps_from_tile_corner\n");
     const int steps_from_DSM_origin_E = (int)llround((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
     const int steps_from_DSM_origin_N = (int)llround(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
     steps_XY steps;
@@ -323,6 +341,7 @@ steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData
 /// @return True means that the point is outside the DSM bounds. False means that the point is within the bounds.
 int out_of_bounds_check_tiles_dataset(east_north* traverse, TilesDataset* tiles_dataset)
 {
+    printf("\nout_of_bounds_check_tiles_dataset\n");
     //printf("\ntop_left_tile_origin.easting: %f\n", tiles_dataset->top_left_tile_origin.easting);
     //printf("\ntop_left_tile_origin.northing: %f\n", tiles_dataset->top_left_tile_origin.northing);
 
