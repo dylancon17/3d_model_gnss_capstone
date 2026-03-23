@@ -100,7 +100,8 @@ void apply_curvature_correction(double* h, double d) { // https://labs.landsurve
 
 double calculate_true_height_meters(const DSMData* DSM, const int index, int* out_of_bounds)
 {
-    if ((double)(DSM->heights_array[index] == 50000.0)) {
+    printf("DSM raw bin value: %f", ((double)DSM->heights_array[index]));
+    if (((double)DSM->heights_array[index] == 50000.0)) {
         *out_of_bounds = 1.0;
         return -1.0f; // Also return a fake height just to be safe
     }
@@ -282,8 +283,8 @@ void initialize_dsm_tile
 
 steps_XY calculate_steps_from_tile_corner(const east_north* point, const DSMData* DSM)
 {
-    const int steps_from_DSM_origin_E = (int)((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
-    const int steps_from_DSM_origin_N = (int)(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
+    const int steps_from_DSM_origin_E = (int)llround((point->easting - DSM->origin_dsm.easting) / DSM->step_size);
+    const int steps_from_DSM_origin_N = (int)llround(-1 * (point->northing - DSM->origin_dsm.northing) / DSM->step_size);
     steps_XY steps;
     steps.steps_X = steps_from_DSM_origin_E;
     steps.steps_Y = steps_from_DSM_origin_N;
@@ -342,7 +343,7 @@ void set_relative_origin
     int* out_of_bounds
 )
 {
-    printf("\nset_relative_origin: %lf %lf\n", relative_origin_degrees.latitude, relative_origin_degrees.longitude);
+    printf("\nset_relative_origin: %lf %lf\n", relative_origin_degrees->latitude, relative_origin_degrees->longitude);
     project_latitude_longitude_to_UTM
     (
         &DSM->relative_origin_traverse_true,
@@ -350,8 +351,8 @@ void set_relative_origin
         proj,
         e
     );
-    //printf("\nRelative origin easting: %f",DSM->relative_origin_traverse.easting);
-    //fprintf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
+    printf("\nRelative origin easting: %f",DSM->relative_origin_traverse_true.easting);
+    printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse_true.northing);
 
     const steps_XY steps = calculate_steps_from_tile_corner(&DSM->relative_origin_traverse_true, DSM);
 
@@ -456,12 +457,13 @@ void get_relative_height
         const int index = steps.steps_Y * DSM->n_columns + steps.steps_X;
 
         *h = calculate_true_height_meters(DSM, index, out_of_bounds);
+        fprintf(stderr, "Got relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d and index as %d: %lf\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset, index, *h);
+
         if (*out_of_bounds) {
             // No data exists for this point
             // Point is in a tile but coord does not exist, move on
             return;
         }
-        // fprintf(stderr, "Got relative height for steps: %d %d at coordinate %lf %lf with calculated steps from tile corner as %d %d and out of bounds as %d %d and index as %d: %lf\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset, index, *h);
 
 
         apply_curvature_correction(h, (*d * DSM->step_size));
