@@ -342,7 +342,7 @@ void set_relative_origin
     int* out_of_bounds
 )
 {
-    //printf("\nSetting relative origin\n");
+    printf("\nset_relative_origin: %lf %lf\n", relative_origin_degrees.latitude, relative_origin_degrees.longitude);
     project_latitude_longitude_to_UTM
     (
         &DSM->relative_origin_traverse_true,
@@ -368,7 +368,7 @@ void set_relative_origin
         DSM->relative_origin_traverse = get_closest_coordinate(&DSM->relative_origin_traverse_true, DSM);
         //printf("\nRelative origin easting: %f", DSM->relative_origin_traverse.easting);
         //printf("\nRelative origin northing: %f\n", DSM->relative_origin_traverse.northing);
-        //fprintf(stderr, "Relative Origin Set As: %lf %lf and is %d %d steps from tile corner\n", DSM->relative_origin_traverse.easting, DSM->relative_origin_traverse.northing, steps.steps_X, steps.steps_Y);
+        fprintf(stderr, "\nRelative Origin Set As: %lf %lf and is %d %d steps from tile corner\n", DSM->relative_origin_traverse.easting, DSM->relative_origin_traverse.northing, steps.steps_X, steps.steps_Y);
         //printf("Press any key to continue...\n");
         //_getch();
 
@@ -449,7 +449,7 @@ void get_relative_height
     //printf("\nout_of_bounds: %d\n", *out_of_bounds);
     //printf("out_of_bounds_tiles_dataset: %d\n", out_of_bounds_tiles_dataset);
 
-    //fprintf(stderr, "Calculating Height at: %d E %d N with 3TM of %lf E %lf N with steps from corner of %d E %d N and out of bounds as: %d %d\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset);
+    fprintf(stderr, "\nCalculating Height at: %d E %d N with 3TM of %lf E %lf N with steps from corner of %d E %d N and out of bounds as: %d %d\n", *steps_E, *steps_N, traverse_E, traverse_N, steps.steps_X, steps.steps_Y, *out_of_bounds, out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         //printf("\nCoordinate is within bounds. Computing relative height.\n");
