@@ -95,6 +95,7 @@ static void printhelp(void)
 /* rnx2rtkp main -------------------------------------------------------------*/
 int main(int argc, char** argv)
 {
+    printf("\n Start of rnx2rtkp main \n");
     prcopt_t prcopt = prcopt_default;
     solopt_t solopt = solopt_default;
     filopt_t filopt = { "" };
@@ -112,12 +113,13 @@ int main(int argc, char** argv)
     sprintf(filopt.trace, "%s.trace", PROGNAME);
 
     int dop_enable = 0;
+    int dsmopt = 1;
     const char* dop_outdir = "C:\\capstone\\tmp";
     double dop_step_sec = 60.0 * 15.0;
     double dop_grid_m = 1.0;
 
     /* load options from configuration file */
-    for (i = 1;i < argc;i++) {
+    for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-k") && i + 1 < argc) {
             resetsysopts();
             if (!loadopts(argv[++i], sysopts)) return -1;
@@ -128,7 +130,7 @@ int main(int argc, char** argv)
     prcopt.DSM.processing_type = 0; //Manually set DEM default
     prcopt.DSM.heights_array = NULL; //First set the heights array to NULL
 
-    for (i = 1, n = 0;i < argc;i++) {
+    for (i = 1, n = 0; i < argc; i++) {
         if (!strcmp(argv[i], "-o") && i + 1 < argc) outfile = argv[++i];
         else if (!strcmp(argv[i], "-ts") && i + 2 < argc) {
             sscanf(argv[++i], "%lf/%lf/%lf", es, es + 1, es + 2);
@@ -151,6 +153,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "-dem") && i + 1 < argc) prcopt.DSM.processing_type = atoi(argv[++i]);
 
         else if (!strcmp(argv[i], "-dopout") && i + 1 < argc) dop_enable = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-dsmopt") && i + 1 < argc) dsmopt = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-dopstep") && i + 1 < argc) dop_step_sec = atof(argv[++i]);
         else if (!strcmp(argv[i], "-dopgrid") && i + 1 < argc) dop_grid_m = atof(argv[++i]);
 
@@ -166,12 +169,12 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "-g")) solopt.degf = 1;
         else if (!strcmp(argv[i], "-r") && i + 3 < argc) {
             prcopt.refpos = 0;
-            for (j = 0;j < 3;j++) prcopt.rb[j] = atof(argv[++i]);
+            for (j = 0; j < 3; j++) prcopt.rb[j] = atof(argv[++i]);
         }
         else if (!strcmp(argv[i], "-l") && i + 3 < argc) {
             prcopt.refpos = 0;
-            for (j = 0;j < 3;j++) pos[j] = atof(argv[++i]);
-            for (j = 0;j < 2;j++) pos[j] *= D2R;
+            for (j = 0; j < 3; j++) pos[j] = atof(argv[++i]);
+            for (j = 0; j < 2; j++) pos[j] *= D2R;
             pos2ecef(pos, prcopt.rb);
         }
         else if (!strcmp(argv[i], "-y") && i + 1 < argc) solopt.sstat = atoi(argv[++i]);
@@ -185,7 +188,6 @@ int main(int argc, char** argv)
     }
 
     prcopt.navsys = SYS_ALL;
-
 
     /* Initialize DSM and related objects */
     if (prcopt.DSM.processing_type != 0) {
