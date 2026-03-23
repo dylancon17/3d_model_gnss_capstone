@@ -138,11 +138,7 @@ for %%D in (!DATASET_LIST!) do (
         wpr -start CPU.Light -filemode
     )
 
-    if "!DO_DOP!"=="1" (
-        call "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -o "!OUTPATH!" !RTK_INPUTS!
-    ) else (
-        call "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -o "!OUTPATH!" !RTK_INPUTS!
-    )
+
     "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -dsmopt !ARG_DSM_OPT! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
 
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
