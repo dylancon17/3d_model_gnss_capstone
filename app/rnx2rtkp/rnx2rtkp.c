@@ -214,11 +214,42 @@ int main(int argc, char** argv)
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth.bin", &(prcopt.DSM),
         //    -15989.47, 5672949.28, 1, 25000);
 
-        initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
-        initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
 
         // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 35000, 45000, -22000.00, 5678000.00);
         // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombined.bin", &(prcopt.DSM), -22000.000, 5678000.000, 1, 35000);
+        // Original North Tile
+        if (dsmopt == 0) {
+            printf("\nDSM option 0 chosen\n");
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5672949.28_-15989.47_5N_5E.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
+        }
+
+        // Other North Tiles
+        if (dsmopt == 1) {
+            // 1m res
+            printf("\nDSM option 1 chosen\n");
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15989.47, 5672949.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_1m.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 30000);
+        }
+        if (dsmopt == 2) {
+            // 2m res
+            printf("\nDSM option 2 chosen\n");
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15988.97, 5672948.78);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 15000);
+        }
+        if (dsmopt == 3) {
+            // 5m res
+            printf("\nDSM option 3 chosen\n");
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15987.47, 5672947.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5m.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 6000);
+        }
+        if (dsmopt == 4) {
+            // 10m res
+            printf("\nDSM option 4 chosen\n");
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15984.97, 5672944.78);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_10m.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 3000);
+        }
+
 
         /* Calgary 114W 3TM */
         prcopt.UTM.central_meridian = -114.0;
