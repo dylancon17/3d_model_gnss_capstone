@@ -235,7 +235,7 @@ int main(int argc, char** argv)
             // 2m res
             printf("\nDSM option 2 chosen\n");
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15988.97, 5672948.78);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 15000);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth2_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 15000);
         }
         if (dsmopt == 3) {
             // 5m res

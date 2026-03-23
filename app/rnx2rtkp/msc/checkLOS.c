@@ -290,6 +290,8 @@ void reset_scaling(rtk_t* rtk, int* ns, int* sat) {
 
 //Assumes relative origin already set
 extern double check_los(double sat_az, double sat_elev, double origin_lat, double origin_long, double origin_height, double origin_horizontal_variance, double origin_vertical_variance, struct DSMData* DSM, TilesDataset* tiles_dataset, double traverse_origin_x_grid, double traverse_origin_y_grid, int debug, double* obstruction_distance, double* max_possible_distance_m) {
+    
+    /*
     fprintf(stderr, "Checking line of sight for: az: %lf elev: %lf at lat: %lf long: %lf height: %lf with hor var: %lf, vert var: %lf\n",
         sat_az * 180 / M_PI,
         sat_elev * 180 / M_PI,
@@ -298,6 +300,7 @@ extern double check_los(double sat_az, double sat_elev, double origin_lat, doubl
         origin_height,
         origin_horizontal_variance,
         origin_vertical_variance);
+        */
 
     int out_of_bounds = 0;
     double current_DTM_height = 0;
