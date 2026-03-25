@@ -249,7 +249,7 @@ void initialize_dsm_tile
     /* Allocate memory into the DSM height array to fit the size of the .bin file. */
     DSM->heights_array = malloc(DSM->n_data_points * sizeof(uint16_t));
     if (!DSM->heights_array) {
-        perror("\nmalloc failed\n");
+        perror("\nSignificant error: malloc failed\n");
         printf("Press any key to continue...\n");
         _getch();
         fclose(file.file_ptr);
@@ -360,7 +360,7 @@ void set_relative_origin
     int out_of_bounds_tiles_dataset = out_of_bounds_check_tiles_dataset(&DSM->relative_origin_traverse_true, tiles_dataset);
 
     //printf("\nout_of_bounds: %d\n",*out_of_bounds);
-   // printf("out_of_bounds_tiles_dataset: %d\n\n", out_of_bounds_tiles_dataset);
+    //printf("out_of_bounds_tiles_dataset: %d\n\n", out_of_bounds_tiles_dataset);
 
     if (*out_of_bounds == 0 && out_of_bounds_tiles_dataset == 0) {
         //printf("\nCoordinate is within the tile bounds. Computing to be continued.\n");
@@ -476,8 +476,7 @@ void get_relative_height
         //printf("\nRelative height needs to be calculated with a new DSM tile.\n");
         east_north relative_point_to_tile_origin = round_to_tile_origin(&traverse, tiles_dataset);
 
-        fprintf(stderr, "Opening a new tile in get_relative_height\n");
-
+        //fprintf(stderr, "Opening a new tile in get_relative_height\n");
 
         char file_path[100] = "C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\";
         char file_prefix[100] = "DSM_CGY_5x5km_res1m";

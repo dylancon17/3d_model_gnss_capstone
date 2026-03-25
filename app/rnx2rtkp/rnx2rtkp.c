@@ -200,24 +200,7 @@ int main(int argc, char** argv)
         prcopt.DSM.vertical_point_variance = pow(0.15, 2); //15cm accuracy 
         prcopt.DSM.max_noise_scaling = 100; // Scale errors to a max of 20 times
         prcopt.DSM.building_height_margin = 1; //Unused
-      
-        //initialize_tiles_dataset(&prcopt.tiles_dataset, 7, 8, 5000, 5000, -22000.00, 5678000.00);
-        //initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DSM_CGY_5x5km_res1m\\DSM_CGY_5x5km_res1m_-7000E_5658000N.bin", &(prcopt.DSM), -7000.000, 5658000.000, 1, 5000);
 
-        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 20000, 25000, -17000.00, 5678000.00);
-        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_567800_-17000_5N_4E.bin", &(prcopt.DSM), -17000.000, 5678000.000, 1, 20000);
-
-        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -17000.00, 5673000.00);
-        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5673000_-17000_5N_5E.bin", &(prcopt.DSM), -17000.000, 5673000.000, 1, 25000);
-
-        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
-        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth.bin", &(prcopt.DSM),
-        //    -15989.47, 5672949.28, 1, 25000);
-
-
-        // initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 35000, 45000, -22000.00, 5678000.00);
-        // initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombined.bin", &(prcopt.DSM), -22000.000, 5678000.000, 1, 35000);
-        // Original North Tile
         if (dsmopt == 0) {
             printf("\nDSM option 0 chosen\n");
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
@@ -228,26 +211,26 @@ int main(int argc, char** argv)
         if (dsmopt == 1) {
             // 1m res
             printf("\nDSM option 1 chosen\n");
-            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15989.47, 5672949.28);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_1m.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 30000);
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15989.47, 5672949.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_1m.bin", &(prcopt.DSM), -15989.47, 5672949.28, 1, 25000);
         }
         if (dsmopt == 2) {
             // 2m res
             printf("\nDSM option 2 chosen\n");
             initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15988.97, 5672948.78);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth2_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 12500);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_2m.bin", &(prcopt.DSM), -15988.97, 5672948.78, 2, 12500);
         }
         if (dsmopt == 3) {
             // 5m res
             printf("\nDSM option 3 chosen\n");
-            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15987.47, 5672947.28);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5m.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 6000);
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15987.47, 5672947.28);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_5m.bin", &(prcopt.DSM), -15987.47, 5672947.28, 5, 5000);
         }
         if (dsmopt == 4) {
             // 10m res
             printf("\nDSM option 4 chosen\n");
-            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 30000, 20000, -15984.97, 5672944.78);
-            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_10m.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 3000);
+            initialize_tiles_dataset(&prcopt.tiles_dataset, 1, 1, 25000, 25000, -15984.97, 5672944.78);
+            initialize_dsm_tile("C:\\capstone\\dsm_tiles\\DTMCombinedNorth_10m.bin", &(prcopt.DSM), -15984.97, 5672944.78, 10, 2500);
         }
 
 
