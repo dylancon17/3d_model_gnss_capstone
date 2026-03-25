@@ -1,9 +1,9 @@
 @echo off
-
+ 
 REM ------------------------ Help Menu -------------------------
 if /I "%~1"=="-h" goto :show_help
 if /I "%~1"=="--help" goto :show_help
-
+ 
 REM ---------------- Configuration (edit paths if necessary) -----------
 set "ROOT=C:\capstone\ToShare"
 set "DATAYEAR=23"
@@ -35,12 +35,12 @@ if "!ARG_PERFORMANCE!"=="" set "ARG_PERFORMANCE=NOPERFORMANCE"
 if "!ARG_ANALYZE!"=="" set "ARG_ANALYZE=ANALYZE"
 if "!ARG_DOP!"=="" set "ARG_DOP=0"
 if "!ARG_DSM_OPT!"=="" set "ARG_DSM_OPT=0"
-
+ 
 REM ARG_PREFIX default is empty
-
+ 
 REM ------------------ Build dataset list preserving order --------------
 set "DATASET_LIST="
-
+ 
 if /I "!ARG_DATASET!"=="ALL_DATA" (
     set "DATASET_LIST=1 2 3 4 5 6 a b c d e f"
 ) else (
@@ -70,22 +70,22 @@ if /I "!ARG_DATASET!"=="ALL_DATA" (
     REM Fallback to ALL_DATA if nothing was accepted
     if "!DATASET_LIST!"=="" set "DATASET_LIST=1 2 3 4 5 6 a b c d e f"
 )
-
+ 
 REM ------------------ Interpret PLOT argument ---------------------------
 set "DO_PLOT=0"
 if /I "!ARG_PLOT!"=="PLOT" (
     set "DO_PLOT=1"
 )
-
+ 
 REM ------------------ Interpret DOP argument ---------------------------
 set "DO_DOP=0"
 if not "!ARG_DOP!"=="0" (
     set "DO_DOP=1"
 )
-
+ 
 REM ------------------ Generate one timestamp for entire run -----------
 for /f %%a in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TIMESTAMP=%%a"
-
+ 
 REM ---------------- Elevate if needed for performance monitoring --------------------
 net session >nul 2>&1
 if %errorlevel% neq 0 (
@@ -95,23 +95,23 @@ if %errorlevel% neq 0 (
         exit /b
     )
 )
-
+ 
 REM ------------------ MAIN loop over datasets --------------------------
 REM DATASET_LIST is space-separated and preserves user order
 for %%D in (!DATASET_LIST!) do (
     set "SPECIFICDATASET=%%D"
-
+ 
     REM Build per-dataset OUTDIR: ROOT\<dataset>\output
     set "OUTDIR=%ROOT%\!SPECIFICDATASET!\output"
-
+ 
     REM Create output dir if it does not exist (silent)
     if not exist "!OUTDIR!" (
         mkdir "!OUTDIR!" >nul 2>&1
     )
-
+ 
     REM Build BASE path for this dataset (delayed expansion)
     set "BASE=%ROOT%\!SPECIFICDATASET!\EAGLE_HIGHRATE\!SPECIFICDATASET!\RINEXv3_04\EAGLE_HIGHRATE.%DATAYEAR%"
-
+ 
     REM Build rover inputs for this dataset
     if /I "!SPECIFICDATASET!"=="b" (
         set "ROVER_OBS=%ROOT%\!SPECIFICDATASET!\RINEXv3_04\IGS000USA_R_20%DATAYEAR%0142150_00M_01S_MO.rnx"
@@ -121,26 +121,23 @@ for %%D in (!DATASET_LIST!) do (
         set "ROVER=%ROOT%\!SPECIFICDATASET!\RINEXv3_04\!SPECIFICDATASET!.%DATAYEAR%"
         set "RTK_INPUTS="!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P""
     )
-
+ 
     REM Prepare custom prefix (if provided)
     set "CUSTOM_PREFIX="
     if not "%ARG_PREFIX%"=="" (
         set "CUSTOM_PREFIX=%ARG_PREFIX%_"
     )
-
+ 
     set "FINAL_PREFIX=!CUSTOM_PREFIX!!ARG_DEM!_"
     set "OUTFILE=solution_!TIMESTAMP!.pos"
     set "OUTPATH=!OUTDIR!\!FINAL_PREFIX!!OUTFILE!"
     echo Running RTKLIB. Dataset: !SPECIFICDATASET! DEM Flag: !ARG_DEM! Output Name: !OUTPATH!
-
+ 
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         set "OUTPATHETL=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!.etl"
         wpr -start CPU.Light -filemode
     )
-
-
     "%RTKLIB_EXE%" -k "%CONFIG%" -dem !ARG_DEM! -dopout !ARG_DOP! -dsmopt !ARG_DSM_OPT! -o "!OUTPATH!" "!ROVER!O" "!BASE!O" "!ROVER!N" "!ROVER!G" "!ROVER!H" "!ROVER!J" "!ROVER!C" "!ROVER!Q" "!ROVER!P"
-
     if /I "!ARG_PERFORMANCE!"=="PERFORMANCE" (
         wpr -stop !OUTPATHETL!
         wpaexporter.exe -i !OUTPATHETL! -profile %wpaProfile% -outputfolder !OUTDIR!
@@ -150,23 +147,23 @@ for %%D in (!DATASET_LIST!) do (
     if "!DO_PLOT!"=="1" (
         start "" /min "%RTKPLOT_EXE%" "!OUTPATH!" >nul 2>&1
     )
-
+ 
     REM End of per-dataset processing
-
+ 
     REM ------------------ Run Python analysis / plotting ------------------
     if /I "!ARG_ANALYZE!"=="ANALYZE" (
-
+ 
         set "PLOT_SCRIPT=C:\capstone\3d_model_gnss_capstone\analysis_scripts\plotting.py"
         set "TRUTH_FILE=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_truth.txt"
         set "TRUTH_STAT=%ROOT%\!SPECIFICDATASET!\!SPECIFICDATASET!_dd_residuals_truth.pos.stat"
-
+ 
         set "PLOT_OUTDIR=!OUTDIR!\!FINAL_PREFIX!solution_!TIMESTAMP!"
-
+ 
         if not exist "!PLOT_OUTDIR!" (
             mkdir "!PLOT_OUTDIR!" >nul 2>&1
         )
-
 	echo.
+ 
         echo Running plotting script for dataset !SPECIFICDATASET!:
         echo python "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
 		python "!PLOT_SCRIPT!" "!OUTPATH!" "!OUTPATH!.stat" "!TRUTH_FILE!" "!TRUTH_STAT!" "!PLOT_OUTDIR!"
@@ -177,7 +174,7 @@ for %%D in (!DATASET_LIST!) do (
 REM Clean up and exit
 endlocal
 exit /b 0
-
+ 
 :show_help
 echo.
 echo ===================================================================
